@@ -1,10 +1,24 @@
 import { resolve } from 'path'
+import { execSync } from 'child_process'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
+
+let commitHash = 'unknown'
+try {
+  commitHash = execSync('git rev-parse --short HEAD').toString().trim()
+} catch { /* not a git repo */ }
+
+const buildDate = new Date().toISOString().split('T')[0]
+
+const buildDefines = {
+  __COMMIT_HASH__: JSON.stringify(commitHash),
+  __BUILD_DATE__: JSON.stringify(buildDate)
+}
 
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
+    define: buildDefines,
     build: {
       rollupOptions: {
         external: ['node-pty']
@@ -12,7 +26,8 @@ export default defineConfig({
     }
   },
   preload: {
-    plugins: [externalizeDepsPlugin()]
+    plugins: [externalizeDepsPlugin()],
+    define: buildDefines
   },
   renderer: {
     resolve: {
@@ -20,6 +35,7 @@ export default defineConfig({
         '@': resolve('src/renderer')
       }
     },
+    define: buildDefines,
     plugins: [react()],
     css: {
       postcss: './postcss.config.js'

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUiStore } from '../../stores/ui-store'
+import { AboutDialog } from '../shared/AboutDialog'
 
 interface MenuItem {
   label: string
@@ -15,7 +16,7 @@ interface MenuDefinition {
   items: MenuItem[]
 }
 
-function useMenuActions() {
+function useMenuActions(onShowAbout: () => void) {
   const toggleSidebar = useUiStore((s) => s.toggleSidebar)
   const setActiveSidebarPanel = useUiStore((s) => s.setActiveSidebarPanel)
   const toggleTerminalPanel = useUiStore((s) => s.toggleTerminalPanel)
@@ -30,6 +31,39 @@ function useMenuActions() {
       await window.api.fs.writeFile(tab.path, tab.content)
       state.markSaved(state.activePaneIndex, pane.activeTabIndex)
     }
+  }, [])
+
+  const exitApp = useCallback(async () => {
+    const state = useEditorStore.getState()
+    const dirtyTabs: { path: string; title: string; content: string }[] = []
+    for (const pane of state.panes) {
+      if (!pane) continue
+      for (const tab of pane.tabs) {
+        if (tab.isDirty && tab.type === 'file' && tab.path && tab.content !== undefined) {
+          dirtyTabs.push({ path: tab.path, title: tab.title, content: tab.content })
+        }
+      }
+    }
+
+    if (dirtyTabs.length > 0) {
+      const result = await window.api.dialog.showMessageBox({
+        type: 'warning',
+        title: 'Unsaved Changes',
+        message: `Save changes to ${dirtyTabs.length} file(s)?`,
+        detail: dirtyTabs.map((t) => t.title).join(', '),
+        buttons: ['Save All', "Don't Save", 'Cancel'],
+        defaultId: 0,
+        cancelId: 2
+      })
+      if (result === 2) return // Cancel
+      if (result === 0) {
+        for (const tab of dirtyTabs) {
+          await window.api.fs.writeFile(tab.path, tab.content)
+        }
+      }
+    }
+
+    window.api.window.quit()
   }, [])
 
   const closeActiveTab = useCallback(() => {
@@ -58,7 +92,7 @@ function useMenuActions() {
         { separator: true, label: '' },
         { label: 'Close Tab', shortcut: 'Ctrl+W', action: closeActiveTab },
         { separator: true, label: '' },
-        { label: 'Exit', action: () => window.api.window.close() }
+        { label: 'Exit', action: exitApp }
       ]
     },
     {
@@ -113,7 +147,7 @@ function useMenuActions() {
     {
       label: 'Help',
       items: [
-        { label: 'About LiteEditor', disabled: true }
+        { label: 'About LiteEditor', action: onShowAbout }
       ]
     }
   ]
@@ -122,7 +156,8 @@ function useMenuActions() {
 }
 
 export function MenuBar() {
-  const menus = useMenuActions()
+  const [showAbout, setShowAbout] = useState(false)
+  const menus = useMenuActions(() => setShowAbout(true))
   const [openMenu, setOpenMenu] = useState<number | null>(null)
   const [hoverActive, setHoverActive] = useState(false)
   const barRef = useRef<HTMLDivElement>(null)
@@ -197,6 +232,7 @@ export function MenuBar() {
           )}
         </div>
       ))}
+      {showAbout && <AboutDialog onClose={() => setShowAbout(false)} />}
     </div>
   )
 }

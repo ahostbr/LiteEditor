@@ -9,6 +9,7 @@ import { registerSearchHandlers } from './ipc/search-handlers'
 
 let mainWindow: BrowserWindow | null = null
 let pendingFilePath: string | null = null
+let forceQuit = false
 
 /** Extract a file path from argv (skips electron/app flags and .js files) */
 function getFileFromArgs(argv: string[]): string | null {
@@ -108,6 +109,14 @@ function createWindow(): void {
     console.error('Renderer crashed:', details)
   })
 
+  // Minimize instead of closing unless force-quit requested
+  mainWindow.on('close', (e) => {
+    if (!forceQuit) {
+      e.preventDefault()
+      mainWindow?.minimize()
+    }
+  })
+
   mainWindow.on('closed', () => {
     mainWindow = null
   })
@@ -122,6 +131,10 @@ function createWindow(): void {
     }
   })
   ipcMain.on('window:close', () => mainWindow?.close())
+  ipcMain.on('window:quit', () => {
+    forceQuit = true
+    app.quit()
+  })
   ipcMain.handle('window:is-maximized', () => mainWindow?.isMaximized() ?? false)
 
   mainWindow.on('maximize', () => {
@@ -138,6 +151,12 @@ function createWindow(): void {
     })
     if (result.canceled) return null
     return result.filePaths[0]
+  })
+
+  // Message box dialog
+  ipcMain.handle('dialog:show-message-box', async (_e, options: Electron.MessageBoxOptions) => {
+    const result = await dialog.showMessageBox(mainWindow!, options)
+    return result.response
   })
 
   // Shell operations

@@ -1,6 +1,18 @@
 import { contextBridge, ipcRenderer, webFrame } from 'electron'
 
+declare const __COMMIT_HASH__: string
+declare const __BUILD_DATE__: string
+
 const api = {
+  appInfo: {
+    version: '1.0.0',
+    commitHash: __COMMIT_HASH__,
+    buildDate: __BUILD_DATE__,
+    electronVersion: process.versions.electron,
+    nodeVersion: process.versions.node,
+    platform: process.platform
+  },
+
   fs: {
     readFile: (path: string): Promise<string> =>
       ipcRenderer.invoke('fs:read-file', path),
@@ -107,6 +119,7 @@ const api = {
     minimize: (): void => ipcRenderer.send('window:minimize'),
     maximize: (): void => ipcRenderer.send('window:maximize'),
     close: (): void => ipcRenderer.send('window:close'),
+    quit: (): void => ipcRenderer.send('window:quit'),
     isMaximized: (): Promise<boolean> => ipcRenderer.invoke('window:is-maximized'),
     onMaximizeChange: (callback: (maximized: boolean) => void): (() => void) => {
       const handler = (_e: unknown, maximized: boolean) => callback(maximized)
@@ -136,7 +149,9 @@ const api = {
 
   dialog: {
     openFolder: (): Promise<string | null> =>
-      ipcRenderer.invoke('dialog:open-folder')
+      ipcRenderer.invoke('dialog:open-folder'),
+    showMessageBox: (options: { type?: string; title?: string; message: string; detail?: string; buttons?: string[]; defaultId?: number; cancelId?: number }): Promise<number> =>
+      ipcRenderer.invoke('dialog:show-message-box', options)
   },
 
   onOpenFile: (callback: (filePath: string) => void): (() => void) => {
