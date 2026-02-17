@@ -1,0 +1,27 @@
+export const DEFAULT_SETTINGS = {
+  fontSize: 14,
+  fontFamily: 'JetBrains Mono, Consolas, Courier New, monospace',
+  tabSize: 2,
+  wordWrap: 'off' as const,
+  minimap: true,
+  lineNumbers: 'on' as const,
+  accentColor: '#d4a039',
+  terminalShell: '',
+  terminalFontSize: 13,
+  autoSave: 'off' as const,
+  autoSaveDelay: 1000
+}
+
+export const KEYBOARD_SHORTCUTS = {
+  save: 'Ctrl+S',
+  openFile: 'Ctrl+O',
+  openFolder: 'Ctrl+Shift+O',
+  newTerminal: 'Ctrl+`',
+  split: 'Ctrl+\\',
+  closeTab: 'Ctrl+W',
+  search: 'Ctrl+Shift+F',
+  toggleSidebar: 'Ctrl+B',
+  commandPalette: 'Ctrl+Shift+P',
+  nextTab: 'Ctrl+Tab',
+  prevTab: 'Ctrl+Shift+Tab'
+} as const

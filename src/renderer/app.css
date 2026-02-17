@@ -1,0 +1,67 @@
+@import 'tailwindcss';
+
+:root {
+  --bg-base: #0c0c0f;
+  --bg-surface: #111116;
+  --bg-overlay: #1c1c24;
+  --bg-muted: #2a2a35;
+  --bg-subtle: #3a3a48;
+  --text-primary: #d4d4d8;
+  --text-secondary: #9898a4;
+  --text-muted: #5c5c6a;
+  --accent: #d4a039;
+  --accent-hover: #e8b44a;
+  --border: #1c1c24;
+  --success: #7ec87e;
+  --warning: #d4a039;
+  --error: #d15959;
+  --info: #7ca8cf;
+
+  --titlebar-height: 38px;
+  --activity-bar-width: 48px;
+  --sidebar-width: 260px;
+  --status-bar-height: 24px;
+  --tab-height: 36px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+  user-select: none;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-muted);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--bg-subtle);
+}
+
+/* Ensure Monaco editor text is selectable */
+.monaco-editor,
+.monaco-editor .view-lines,
+.xterm {
+  user-select: text;
+}
