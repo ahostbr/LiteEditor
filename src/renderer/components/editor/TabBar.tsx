@@ -1,7 +1,8 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useCallback } from 'react'
 import { Tab } from './Tab'
 import { ContextMenu, type ContextMenuItem } from '../shared/ContextMenu'
-import { useEditorStore, type Tab as TabType } from '../../stores/editor-store'
+import { useEditorStore } from '../../stores/editor-store'
+import { confirmAndSaveTab, confirmAndSaveTabs } from '../../lib/close-helpers'
 
 interface TabBarProps {
   paneIndex: number
@@ -16,6 +17,27 @@ export function TabBar({ paneIndex }: TabBarProps) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; tabIndex: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
+  const handleClose = useCallback(async (tabIndex: number) => {
+    if (!pane) return
+    const tab = pane.tabs[tabIndex]
+    if (!tab) return
+    if (!(await confirmAndSaveTab(tab))) return
+    closeTab(paneIndex, tabIndex)
+  }, [pane, paneIndex, closeTab])
+
+  const handleCloseOthers = useCallback(async (keepIndex: number) => {
+    if (!pane) return
+    const toClose = pane.tabs.filter((_, i) => i !== keepIndex)
+    if (!(await confirmAndSaveTabs(toClose))) return
+    closeOtherTabs(paneIndex, keepIndex)
+  }, [pane, paneIndex, closeOtherTabs])
+
+  const handleCloseAll = useCallback(async () => {
+    if (!pane) return
+    if (!(await confirmAndSaveTabs(pane.tabs))) return
+    closeAllTabs(paneIndex)
+  }, [pane, paneIndex, closeAllTabs])
+
   if (!pane || pane.tabs.length === 0) return null
 
   const handleContextMenu = (e: React.MouseEvent, tabIndex: number) => {
@@ -25,9 +47,9 @@ export function TabBar({ paneIndex }: TabBarProps) {
 
   const contextItems: ContextMenuItem[] = contextMenu
     ? [
-        { label: 'Close', onClick: () => closeTab(paneIndex, contextMenu.tabIndex) },
-        { label: 'Close Others', onClick: () => closeOtherTabs(paneIndex, contextMenu.tabIndex) },
-        { label: 'Close All', onClick: () => closeAllTabs(paneIndex) }
+        { label: 'Close', onClick: () => handleClose(contextMenu.tabIndex) },
+        { label: 'Close Others', onClick: () => handleCloseOthers(contextMenu.tabIndex) },
+        { label: 'Close All', onClick: () => handleCloseAll() }
       ]
     : []
 
@@ -48,7 +70,7 @@ export function TabBar({ paneIndex }: TabBarProps) {
             tab={tab}
             isActive={i === pane.activeTabIndex}
             onClick={() => setActiveTab(paneIndex, i)}
-            onClose={() => closeTab(paneIndex, i)}
+            onClose={() => handleClose(i)}
             onContextMenu={(e) => handleContextMenu(e, i)}
           />
         ))}

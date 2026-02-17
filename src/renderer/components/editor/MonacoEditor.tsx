@@ -1,8 +1,11 @@
-import React, { useEffect, useRef, useCallback } from 'react'
+import React, { useEffect, useRef } from 'react'
 import * as monaco from 'monaco-editor'
 import { getLanguageFromPath } from '../../lib/language-map'
 import { useSettingsStore } from '../../stores/settings-store'
 import { useEditorStore } from '../../stores/editor-store'
+
+// Expose monaco globally so other modules can access models without importing monaco
+;(window as any).__monaco = monaco
 
 // Configure Monaco workers
 self.MonacoEnvironment = {
@@ -35,7 +38,6 @@ export function MonacoEditor({ content, path, paneIndex, tabIndex }: MonacoEdito
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const modelRef = useRef<monaco.editor.ITextModel | null>(null)
   const settings = useSettingsStore()
-  const updateContent = useEditorStore((s) => s.updateContent)
   const markDirty = useEditorStore((s) => s.markDirty)
 
   // Create editor
@@ -78,10 +80,9 @@ export function MonacoEditor({ content, path, paneIndex, tabIndex }: MonacoEdito
     })
     editorRef.current = editor
 
-    // Listen for content changes
+    // Listen for content changes — only mark dirty, Monaco model is source of truth
     const disposable = editor.onDidChangeModelContent(() => {
-      const newContent = editor.getValue()
-      updateContent(paneIndex, tabIndex, newContent)
+      markDirty(paneIndex, tabIndex)
     })
 
     return () => {
@@ -107,3 +108,5 @@ export function MonacoEditor({ content, path, paneIndex, tabIndex }: MonacoEdito
     <div ref={containerRef} className="w-full h-full" />
   )
 }
+
+export default MonacoEditor

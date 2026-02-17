@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
-import { useEditorStore } from '../stores/editor-store'
+import { useEditorStore, getMonacoContent } from '../stores/editor-store'
 import { useUiStore } from '../stores/ui-store'
+import { confirmAndSaveTab } from '../lib/close-helpers'
 
 export function useKeyboardShortcuts() {
   const openFile = useEditorStore((s) => s.openFile)
@@ -31,19 +32,24 @@ export function useKeyboardShortcuts() {
         const pane = state.panes[state.activePaneIndex]
         if (!pane) return
         const tab = pane.tabs[pane.activeTabIndex]
-        if (tab?.type === 'file' && tab.path && tab.isDirty && tab.content !== undefined) {
-          await window.api.fs.writeFile(tab.path, tab.content)
+        if (tab?.type === 'file' && tab.path && tab.isDirty) {
+          const content = getMonacoContent(tab.path)
+          if (content === undefined) return
+          await window.api.fs.writeFile(tab.path, content)
           state.markSaved(state.activePaneIndex, pane.activeTabIndex)
         }
       }
 
-      // Ctrl+W: Close active tab
+      // Ctrl+W: Close active tab (with save prompt)
       if (ctrl && !shift && e.key === 'w') {
         e.preventDefault()
         const state = useEditorStore.getState()
         const pane = state.panes[state.activePaneIndex]
         if (pane && pane.activeTabIndex >= 0) {
-          closeTab(state.activePaneIndex, pane.activeTabIndex)
+          const tab = pane.tabs[pane.activeTabIndex]
+          if (tab && (await confirmAndSaveTab(tab))) {
+            closeTab(state.activePaneIndex, pane.activeTabIndex)
+          }
         }
       }
 

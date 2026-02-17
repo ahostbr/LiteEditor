@@ -112,3 +112,5 @@ export function TerminalPanel() {
     </div>
   )
 }
+
+export default TerminalPanel

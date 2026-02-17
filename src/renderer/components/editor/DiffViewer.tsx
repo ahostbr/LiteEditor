@@ -45,3 +45,5 @@ export function DiffViewer({ path, original, modified }: DiffViewerProps) {
 
   return <div ref={containerRef} className="w-full h-full" />
 }
+
+export default DiffViewer

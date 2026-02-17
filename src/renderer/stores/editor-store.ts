@@ -1,5 +1,30 @@
 import { create } from 'zustand'
 
+/** Read current file content from Monaco model (source of truth).
+ *  Returns undefined if Monaco hasn't loaded yet or model not found. */
+export function getMonacoContent(filePath: string): string | undefined {
+  try {
+    const monaco = (window as any).__monaco
+    if (!monaco) return undefined
+    const model = monaco.editor.getModel(monaco.Uri.file(filePath))
+    return model?.getValue()
+  } catch { return undefined }
+}
+
+/** Dispose a Monaco model if no remaining tab references it. */
+function disposeMonacoModel(path: string, allPanes: [PaneState, PaneState | null]): void {
+  for (const pane of allPanes) {
+    if (!pane) continue
+    if (pane.tabs.some(t => t.path === path)) return
+  }
+  try {
+    const monaco = (window as any).__monaco
+    if (!monaco) return
+    const model = monaco.editor.getModel(monaco.Uri.file(path))
+    model?.dispose()
+  } catch { /* ignore */ }
+}
+
 export type TabType = 'file' | 'diff'
 
 export interface Tab {
@@ -33,7 +58,6 @@ interface EditorState {
   reorderTab: (paneIndex: number, fromIndex: number, toIndex: number) => void
   markDirty: (paneIndex: number, tabIndex: number) => void
   markSaved: (paneIndex: number, tabIndex: number) => void
-  updateContent: (paneIndex: number, tabIndex: number, content: string) => void
   splitPane: () => void
   closeSplitPane: () => void
   openDiff: (path: string, original: string, modified: string, paneIndex?: number) => void
@@ -95,6 +119,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const pane = state.panes[paneIndex]
       if (!pane) return state
 
+      const closedTab = pane.tabs[tabIndex]
       const newTabs = pane.tabs.filter((_, i) => i !== tabIndex)
       let newActiveIndex = pane.activeTabIndex
 
@@ -109,9 +134,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
       // Auto-close split if second pane is empty
       if (paneIndex === 1 && newTabs.length === 0) {
-        return { panes: [newPanes[0]!, null] as [PaneState, PaneState | null], isSplit: false, activePaneIndex: 0 }
+        const result = { panes: [newPanes[0]!, null] as [PaneState, PaneState | null], isSplit: false, activePaneIndex: 0 }
+        if (closedTab?.path) disposeMonacoModel(closedTab.path, result.panes)
+        return result
       }
 
+      if (closedTab?.path) disposeMonacoModel(closedTab.path, newPanes)
       return { panes: newPanes }
     })
   },
@@ -122,21 +150,34 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       if (!pane) return state
 
       const kept = [pane.tabs[tabIndex]]
+      const closed = pane.tabs.filter((_, i) => i !== tabIndex)
       const newPanes = [...state.panes] as [PaneState, PaneState | null]
       newPanes[paneIndex] = { tabs: kept, activeTabIndex: 0 }
+      for (const tab of closed) {
+        if (tab.path) disposeMonacoModel(tab.path, newPanes)
+      }
       return { panes: newPanes }
     })
   },
 
   closeAllTabs: (paneIndex) => {
     set((state) => {
+      const pane = state.panes[paneIndex]
+      const closedTabs = pane ? [...pane.tabs] : []
       const newPanes = [...state.panes] as [PaneState, PaneState | null]
       newPanes[paneIndex] = createEmptyPane()
 
       if (paneIndex === 1) {
-        return { panes: [newPanes[0]!, null] as [PaneState, PaneState | null], isSplit: false, activePaneIndex: 0 }
+        const result = { panes: [newPanes[0]!, null] as [PaneState, PaneState | null], isSplit: false, activePaneIndex: 0 }
+        for (const tab of closedTabs) {
+          if (tab.path) disposeMonacoModel(tab.path, result.panes)
+        }
+        return result
       }
 
+      for (const tab of closedTabs) {
+        if (tab.path) disposeMonacoModel(tab.path, newPanes)
+      }
       return { panes: newPanes }
     })
   },
@@ -194,19 +235,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
       const newTabs = [...pane.tabs]
       newTabs[tabIndex] = { ...newTabs[tabIndex], isDirty: false }
-      const newPanes = [...state.panes] as [PaneState, PaneState | null]
-      newPanes[paneIndex] = { ...pane, tabs: newTabs }
-      return { panes: newPanes }
-    })
-  },
-
-  updateContent: (paneIndex, tabIndex, content) => {
-    set((state) => {
-      const pane = state.panes[paneIndex]
-      if (!pane) return state
-
-      const newTabs = [...pane.tabs]
-      newTabs[tabIndex] = { ...newTabs[tabIndex], content, isDirty: true }
       const newPanes = [...state.panes] as [PaneState, PaneState | null]
       newPanes[paneIndex] = { ...pane, tabs: newTabs }
       return { panes: newPanes }

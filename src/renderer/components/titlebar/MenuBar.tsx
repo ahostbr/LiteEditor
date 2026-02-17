@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { useEditorStore } from '../../stores/editor-store'
+import { useEditorStore, getMonacoContent } from '../../stores/editor-store'
 import { useUiStore } from '../../stores/ui-store'
 import { AboutDialog } from '../shared/AboutDialog'
+import { confirmAndSaveTab, confirmAndSaveTabs } from '../../lib/close-helpers'
 
 interface MenuItem {
   label: string
@@ -27,49 +28,27 @@ function useMenuActions(onShowAbout: () => void) {
     const pane = state.panes[state.activePaneIndex]
     if (!pane) return
     const tab = pane.tabs[pane.activeTabIndex]
-    if (tab?.type === 'file' && tab.path && tab.isDirty && tab.content !== undefined) {
-      await window.api.fs.writeFile(tab.path, tab.content)
+    if (tab?.type === 'file' && tab.path && tab.isDirty) {
+      const content = getMonacoContent(tab.path)
+      if (content === undefined) return
+      await window.api.fs.writeFile(tab.path, content)
       state.markSaved(state.activePaneIndex, pane.activeTabIndex)
     }
   }, [])
 
   const exitApp = useCallback(async () => {
     const state = useEditorStore.getState()
-    const dirtyTabs: { path: string; title: string; content: string }[] = []
-    for (const pane of state.panes) {
-      if (!pane) continue
-      for (const tab of pane.tabs) {
-        if (tab.isDirty && tab.type === 'file' && tab.path && tab.content !== undefined) {
-          dirtyTabs.push({ path: tab.path, title: tab.title, content: tab.content })
-        }
-      }
-    }
-
-    if (dirtyTabs.length > 0) {
-      const result = await window.api.dialog.showMessageBox({
-        type: 'warning',
-        title: 'Unsaved Changes',
-        message: `Save changes to ${dirtyTabs.length} file(s)?`,
-        detail: dirtyTabs.map((t) => t.title).join(', '),
-        buttons: ['Save All', "Don't Save", 'Cancel'],
-        defaultId: 0,
-        cancelId: 2
-      })
-      if (result === 2) return // Cancel
-      if (result === 0) {
-        for (const tab of dirtyTabs) {
-          await window.api.fs.writeFile(tab.path, tab.content)
-        }
-      }
-    }
-
+    const allTabs = state.panes.flatMap((pane) => pane ? pane.tabs : [])
+    if (!(await confirmAndSaveTabs(allTabs))) return
     window.api.window.quit()
   }, [])
 
-  const closeActiveTab = useCallback(() => {
+  const closeActiveTab = useCallback(async () => {
     const state = useEditorStore.getState()
     const pane = state.panes[state.activePaneIndex]
     if (pane && pane.activeTabIndex >= 0) {
+      const tab = pane.tabs[pane.activeTabIndex]
+      if (tab && !(await confirmAndSaveTab(tab))) return
       state.closeTab(state.activePaneIndex, pane.activeTabIndex)
     }
   }, [])

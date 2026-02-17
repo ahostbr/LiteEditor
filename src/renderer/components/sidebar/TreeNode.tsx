@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { ChevronRight, ChevronDown } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { FileIcon } from '../shared/FileIcon'
@@ -18,8 +18,22 @@ interface TreeNodeProps {
 
 export function TreeNode({ node, depth, onFileClick }: TreeNodeProps) {
   const [isOpen, setIsOpen] = useState(depth < 1)
-  const [children, setChildren] = useState<FileNode[] | undefined>(node.children)
+  const [children, setChildren] = useState<FileNode[] | undefined>(undefined)
   const [isLoading, setIsLoading] = useState(false)
+
+  // Auto-load children for directories that start expanded (depth < 1)
+  useEffect(() => {
+    if (node.isDirectory && isOpen && !children) {
+      setIsLoading(true)
+      window.api.fs.readDir(node.path).then((loaded) => {
+        setChildren(loaded as FileNode[])
+      }).catch(() => {
+        setChildren([])
+      }).finally(() => {
+        setIsLoading(false)
+      })
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleClick = async () => {
     if (node.isDirectory) {
@@ -41,9 +55,6 @@ export function TreeNode({ node, depth, onFileClick }: TreeNodeProps) {
       onFileClick(node)
     }
   }
-
-  // Sync children from parent when node.children changes (e.g. after tree refresh)
-  const displayChildren = children ?? node.children
 
   return (
     <div>
@@ -70,9 +81,9 @@ export function TreeNode({ node, depth, onFileClick }: TreeNodeProps) {
           <span className="text-xs ml-1" style={{ color: 'var(--text-muted)' }}>...</span>
         )}
       </div>
-      {node.isDirectory && isOpen && displayChildren && (
+      {node.isDirectory && isOpen && children && (
         <div>
-          {displayChildren.map((child) => (
+          {children.map((child) => (
             <TreeNode
               key={child.path}
               node={child}

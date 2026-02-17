@@ -20,6 +20,7 @@ export function TerminalTab({ sessionId }: TerminalTabProps) {
     if (!containerRef.current) return
 
     const term = new Terminal({
+      scrollback: 5000,
       theme: {
         background: '#0c0c0f',
         foreground: '#d4d4d8',

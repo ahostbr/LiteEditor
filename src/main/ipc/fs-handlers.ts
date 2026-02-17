@@ -1,71 +1,15 @@
 import { ipcMain, BrowserWindow } from 'electron'
-import { readFile, writeFile, readdir, stat } from 'fs/promises'
-import { join, basename } from 'path'
+import { readFile, writeFile } from 'fs/promises'
 import { FileWatcher } from '../services/file-watcher'
-
-export interface FileNode {
-  name: string
-  path: string
-  isDirectory: boolean
-  children?: FileNode[]
-}
-
-const IGNORED_DIRS = new Set([
-  'node_modules', '.git', '.next', 'dist', 'out', '.cache',
-  '__pycache__', '.vscode', '.idea', 'coverage', '.turbo'
-])
-
-async function buildTree(root: string, depth: number = 3, currentDepth: number = 0): Promise<FileNode[]> {
-  const entries = await readdir(root, { withFileTypes: true })
-
-  const dirPromises: Promise<FileNode>[] = []
-  const files: FileNode[] = []
-
-  for (const entry of entries) {
-    if (entry.name.startsWith('.') && entry.name !== '.env') continue
-    if (IGNORED_DIRS.has(entry.name)) continue
-
-    const fullPath = join(root, entry.name)
-
-    if (entry.isDirectory()) {
-      if (currentDepth + 1 >= depth) {
-        // At depth limit: leave children undefined so TreeNode will lazy-load
-        dirPromises.push(Promise.resolve({
-          name: entry.name,
-          path: fullPath,
-          isDirectory: true
-        }))
-      } else {
-        dirPromises.push(
-          buildTree(fullPath, depth, currentDepth + 1).then(children => ({
-            name: entry.name,
-            path: fullPath,
-            isDirectory: true,
-            children
-          }))
-        )
-      }
-    } else {
-      files.push({
-        name: entry.name,
-        path: fullPath,
-        isDirectory: false
-      })
-    }
-  }
-
-  const dirs = await Promise.all(dirPromises)
-
-  // Directories first, then files, both alphabetical
-  dirs.sort((a, b) => a.name.localeCompare(b.name))
-  files.sort((a, b) => a.name.localeCompare(b.name))
-
-  return [...dirs, ...files]
-}
+import { FileTreeDB } from '../services/file-tree-db'
 
 let fileWatcher: FileWatcher | null = null
+let fileTreeDB: FileTreeDB | null = null
+let currentRoot: string | null = null
 
 export function registerFsHandlers(): void {
+  fileTreeDB = new FileTreeDB()
+
   ipcMain.handle('fs:read-file', async (_e, path: string) => {
     return readFile(path, 'utf-8')
   })
@@ -74,12 +18,18 @@ export function registerFsHandlers(): void {
     await writeFile(path, content, 'utf-8')
   })
 
-  ipcMain.handle('fs:read-tree', async (_e, root: string, depth?: number) => {
-    return buildTree(root, depth ?? 3)
+  ipcMain.handle('fs:read-tree', async (_e, root: string, _depth?: number) => {
+    if (!fileTreeDB) return []
+    if (root !== currentRoot) {
+      fileTreeDB.clear()
+      currentRoot = root
+    }
+    return fileTreeDB.initRoot(root)
   })
 
   ipcMain.handle('fs:read-dir', async (_e, dirPath: string) => {
-    return buildTree(dirPath, 1)
+    if (!fileTreeDB) return []
+    return fileTreeDB.getChildren(dirPath)
   })
 
   ipcMain.on('fs:watch-start', (_e, path: string) => {
@@ -87,6 +37,10 @@ export function registerFsHandlers(): void {
       fileWatcher.close()
     }
     fileWatcher = new FileWatcher(path, (event, filePath) => {
+      // Targeted invalidation: only mark the affected directory as stale
+      if (fileTreeDB) {
+        fileTreeDB.invalidatePath(filePath)
+      }
       const windows = BrowserWindow.getAllWindows()
       for (const win of windows) {
         win.webContents.send('fs:file-changed', event, filePath)
@@ -100,4 +54,9 @@ export function registerFsHandlers(): void {
       fileWatcher = null
     }
   })
+}
+
+export function shutdownFsHandlers(): void {
+  fileWatcher?.close()
+  fileTreeDB?.close()
 }

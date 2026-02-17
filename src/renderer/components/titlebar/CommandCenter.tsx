@@ -1,29 +1,34 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Search, X } from 'lucide-react'
-import * as monaco from 'monaco-editor'
 import { useEditorStore } from '../../stores/editor-store'
+
+/** Access Monaco lazily — only available after first file is opened. */
+function getMonaco(): typeof import('monaco-editor') | null {
+  return (window as any).__monaco ?? null
+}
 
 export function CommandCenter() {
   const [isSearching, setIsSearching] = useState(false)
   const [query, setQuery] = useState('')
   const [matchInfo, setMatchInfo] = useState<{ current: number; total: number } | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const decorationsRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
+  const decorationsRef = useRef<any>(null)
   const activeTab = useEditorStore((s) => {
     const pane = s.panes[s.activePaneIndex]
     if (!pane || pane.activeTabIndex < 0) return null
     return pane.tabs[pane.activeTabIndex] ?? null
   })
 
-  const getActiveEditor = useCallback((): monaco.editor.IStandaloneCodeEditor | null => {
+  const getActiveEditor = useCallback((): any | null => {
+    const monaco = getMonaco()
+    if (!monaco) return null
     const editors = monaco.editor.getEditors()
-    // Return the last focused editor (Monaco tracks focus order)
     for (let i = editors.length - 1; i >= 0; i--) {
       if (editors[i].hasTextFocus() || editors[i].getModel()) {
-        return editors[i] as monaco.editor.IStandaloneCodeEditor
+        return editors[i]
       }
     }
-    return editors[0] as monaco.editor.IStandaloneCodeEditor ?? null
+    return editors[0] ?? null
   }, [])
 
   const clearDecorations = useCallback(() => {
@@ -33,7 +38,8 @@ export function CommandCenter() {
 
   const doSearch = useCallback((searchQuery: string) => {
     const editor = getActiveEditor()
-    if (!editor || !searchQuery) {
+    const monaco = getMonaco()
+    if (!editor || !monaco || !searchQuery) {
       clearDecorations()
       setMatchInfo(null)
       return
@@ -46,7 +52,7 @@ export function CommandCenter() {
     setMatchInfo(matches.length > 0 ? { current: 1, total: matches.length } : { current: 0, total: 0 })
 
     // Highlight all matches
-    const decorations = matches.map((m) => ({
+    const decorations = matches.map((m: any) => ({
       range: m.range,
       options: {
         className: 'findMatch',

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, Suspense } from 'react'
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels'
 import { Titlebar } from './components/titlebar/Titlebar'
 import { ActivityBar } from './components/activity-bar/ActivityBar'
@@ -7,13 +7,16 @@ import { SearchPanel } from './components/sidebar/SearchPanel'
 import { GitPanel } from './components/sidebar/GitPanel'
 import { SettingsPanel } from './components/sidebar/SettingsPanel'
 import { SplitPane } from './components/editor/SplitPane'
-import { TerminalPanel } from './components/terminal/TerminalPanel'
 import { useUiStore } from './stores/ui-store'
+
+// Lazy-load terminal — xterm.js only loads when user first opens terminal
+const TerminalPanel = React.lazy(() => import('./components/terminal/TerminalPanel'))
 import { useEditorStore } from './stores/editor-store'
 import { useGitStore } from './stores/git-store'
 import { useSettingsStore } from './stores/settings-store'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { getLanguageFromPath, getLanguageDisplayName } from './lib/language-map'
+import { ConfirmDialog } from './components/shared/ConfirmDialog'
 
 function SidebarContent() {
   const panel = useUiStore((s) => s.activeSidebarPanel)
@@ -161,7 +164,9 @@ export default function App() {
                   style={{ backgroundColor: 'var(--border)' }}
                 />
                 <Panel defaultSize={35} minSize={15}>
-                  <TerminalPanel />
+                  <Suspense fallback={<div className="h-full" style={{ backgroundColor: '#0c0c0f' }} />}>
+                    <TerminalPanel />
+                  </Suspense>
                 </Panel>
               </>
             )}
@@ -169,6 +174,7 @@ export default function App() {
         </div>
       </div>
       <StatusBar />
+      <ConfirmDialog />
     </div>
   )
 }

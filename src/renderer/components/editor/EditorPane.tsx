@@ -1,10 +1,12 @@
-import React from 'react'
+import React, { Suspense } from 'react'
 import { TabBar } from './TabBar'
-import { MonacoEditor } from './MonacoEditor'
-import { DiffViewer } from './DiffViewer'
 import { EmptyState } from './EmptyState'
 import { useEditorStore } from '../../stores/editor-store'
 import { cn } from '../../lib/cn'
+
+// Lazy-load Monaco-dependent components — defers ~500MB until first file is opened
+const MonacoEditor = React.lazy(() => import('./MonacoEditor'))
+const DiffViewer = React.lazy(() => import('./DiffViewer'))
 
 interface EditorPaneProps {
   paneIndex: number
@@ -33,21 +35,25 @@ export function EditorPane({ paneIndex }: EditorPaneProps) {
       <div className="flex-1 overflow-hidden" style={{ backgroundColor: 'var(--bg-base)' }}>
         {!activeTab && <EmptyState />}
         {activeTab?.type === 'file' && activeTab.path && (
-          <MonacoEditor
-            key={activeTab.id}
-            content={activeTab.content || ''}
-            path={activeTab.path}
-            paneIndex={paneIndex}
-            tabIndex={pane.activeTabIndex}
-          />
+          <Suspense fallback={<div className="w-full h-full" style={{ backgroundColor: 'var(--bg-base)' }} />}>
+            <MonacoEditor
+              key={activeTab.id}
+              content={activeTab.content || ''}
+              path={activeTab.path}
+              paneIndex={paneIndex}
+              tabIndex={pane.activeTabIndex}
+            />
+          </Suspense>
         )}
         {activeTab?.type === 'diff' && activeTab.path && (
-          <DiffViewer
-            key={activeTab.id}
-            path={activeTab.path}
-            original={activeTab.originalContent || ''}
-            modified={activeTab.modifiedContent || ''}
-          />
+          <Suspense fallback={<div className="w-full h-full" style={{ backgroundColor: 'var(--bg-base)' }} />}>
+            <DiffViewer
+              key={activeTab.id}
+              path={activeTab.path}
+              original={activeTab.originalContent || ''}
+              modified={activeTab.modifiedContent || ''}
+            />
+          </Suspense>
         )}
       </div>
     </div>

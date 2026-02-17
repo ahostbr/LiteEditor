@@ -2,10 +2,13 @@ import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import { join, dirname } from 'path'
 import { readFile, writeFile, mkdir, stat } from 'fs/promises'
 import { homedir } from 'os'
-import { registerFsHandlers } from './ipc/fs-handlers'
+import { registerFsHandlers, shutdownFsHandlers } from './ipc/fs-handlers'
 import { registerGitHandlers } from './ipc/git-handlers'
 import { registerPtyHandlers } from './ipc/pty-handlers'
 import { registerSearchHandlers } from './ipc/search-handlers'
+
+// Limit V8 heap — default scales with system RAM and gets way too aggressive
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=512')
 
 let mainWindow: BrowserWindow | null = null
 let pendingFilePath: string | null = null
@@ -79,6 +82,13 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
+  })
+
+  // F12 toggles DevTools for debugging
+  mainWindow.webContents.on('before-input-event', (_e, input) => {
+    if (input.key === 'F12' && input.type === 'keyDown') {
+      mainWindow?.webContents.toggleDevTools()
+    }
   })
 
   mainWindow.webContents.on('did-finish-load', () => {
@@ -221,6 +231,10 @@ function createWindow(): void {
 }
 
 app.whenReady().then(createWindow)
+
+app.on('before-quit', () => {
+  shutdownFsHandlers()
+})
 
 app.on('window-all-closed', () => {
   app.quit()

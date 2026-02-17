@@ -58,7 +58,7 @@ export function AboutDialog({ onClose }: AboutDialogProps) {
           style={{ borderTop: '1px solid var(--border)' }}
         >
           <div className="flex items-center gap-4">
-            <AboutLink href="https://github.com/ahostbr/LiteSpeak" label="GitHub" />
+            <AboutLink href="https://github.com/ahostbr/LiteEditor" label="GitHub" />
           </div>
           <button
             onClick={onClose}
