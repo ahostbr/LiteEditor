@@ -7,6 +7,7 @@ import { SearchPanel } from './components/sidebar/SearchPanel'
 import { GitPanel } from './components/sidebar/GitPanel'
 import { SettingsPanel } from './components/sidebar/SettingsPanel'
 import { SplitPane } from './components/editor/SplitPane'
+import { TerminalPanel } from './components/terminal/TerminalPanel'
 import { useUiStore } from './stores/ui-store'
 import { useEditorStore } from './stores/editor-store'
 import { useGitStore } from './stores/git-store'
@@ -70,6 +71,7 @@ export default function App() {
   useKeyboardShortcuts()
 
   const sidebarVisible = useUiStore((s) => s.sidebarVisible)
+  const terminalPanelVisible = useUiStore((s) => s.terminalPanelVisible)
 
   useEffect(() => {
     useSettingsStore.getState().loadSettings()
@@ -110,7 +112,22 @@ export default function App() {
           </>
         )}
         <div className="flex-1 overflow-hidden">
-          <SplitPane />
+          <PanelGroup direction="horizontal">
+            <Panel>
+              <SplitPane />
+            </Panel>
+            {terminalPanelVisible && (
+              <>
+                <PanelResizeHandle
+                  className="w-1 shrink-0 hover:bg-[var(--accent)] transition-colors"
+                  style={{ backgroundColor: 'var(--border)' }}
+                />
+                <Panel defaultSize={35} minSize={15}>
+                  <TerminalPanel />
+                </Panel>
+              </>
+            )}
+          </PanelGroup>
         </div>
       </div>
       <StatusBar />

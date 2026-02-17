@@ -16,7 +16,6 @@ export const KEYBOARD_SHORTCUTS = {
   save: 'Ctrl+S',
   openFile: 'Ctrl+O',
   openFolder: 'Ctrl+Shift+O',
-  newTerminal: 'Ctrl+`',
   split: 'Ctrl+\\',
   closeTab: 'Ctrl+W',
   search: 'Ctrl+Shift+F',

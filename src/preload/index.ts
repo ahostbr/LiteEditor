@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webFrame } from 'electron'
 
 const api = {
   fs: {
@@ -110,7 +110,10 @@ const api = {
       const handler = (_e: unknown, maximized: boolean) => callback(maximized)
       ipcRenderer.on('window:maximize-change', handler)
       return () => ipcRenderer.removeListener('window:maximize-change', handler)
-    }
+    },
+    zoomIn: (): void => { webFrame.setZoomLevel(webFrame.getZoomLevel() + 0.5) },
+    zoomOut: (): void => { webFrame.setZoomLevel(webFrame.getZoomLevel() - 0.5) },
+    zoomReset: (): void => { webFrame.setZoomLevel(0) }
   },
 
   settings: {

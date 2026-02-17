@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type TabType = 'file' | 'terminal' | 'diff'
+export type TabType = 'file' | 'diff'
 
 export interface Tab {
   id: string
@@ -36,7 +36,6 @@ interface EditorState {
   updateContent: (paneIndex: number, tabIndex: number, content: string) => void
   splitPane: () => void
   closeSplitPane: () => void
-  openTerminal: (sessionId: string, paneIndex?: number) => void
   openDiff: (path: string, original: string, modified: string, paneIndex?: number) => void
   setProjectRoot: (path: string) => void
   getActiveTab: () => Tab | null
@@ -230,26 +229,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       isSplit: false,
       activePaneIndex: 0
     }))
-  },
-
-  openTerminal: (sessionId, paneIndex) => {
-    set((state) => {
-      const pi = paneIndex ?? state.activePaneIndex
-      const pane = state.panes[pi]
-      if (!pane) return state
-
-      const tab: Tab = {
-        id: sessionId,
-        type: 'terminal',
-        title: 'Terminal',
-        isDirty: false
-      }
-
-      const newTabs = [...pane.tabs, tab]
-      const newPanes = [...state.panes] as [PaneState, PaneState | null]
-      newPanes[pi] = { tabs: newTabs, activeTabIndex: newTabs.length - 1 }
-      return { panes: newPanes }
-    })
   },
 
   openDiff: (path, original, modified, paneIndex) => {

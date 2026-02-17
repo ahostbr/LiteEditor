@@ -2,7 +2,6 @@ import React from 'react'
 import { TabBar } from './TabBar'
 import { MonacoEditor } from './MonacoEditor'
 import { DiffViewer } from './DiffViewer'
-import { TerminalTab } from './TerminalTab'
 import { EmptyState } from './EmptyState'
 import { useEditorStore } from '../../stores/editor-store'
 import { cn } from '../../lib/cn'
@@ -48,12 +47,6 @@ export function EditorPane({ paneIndex }: EditorPaneProps) {
             path={activeTab.path}
             original={activeTab.originalContent || ''}
             modified={activeTab.modifiedContent || ''}
-          />
-        )}
-        {activeTab?.type === 'terminal' && (
-          <TerminalTab
-            key={activeTab.id}
-            sessionId={activeTab.id}
           />
         )}
       </div>

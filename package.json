@@ -9,7 +9,38 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "test": "npx playwright test",
-    "test:e2e": "npx playwright test tests/e2e/"
+    "test:e2e": "npx playwright test tests/e2e/",
+    "dist": "electron-vite build && electron-builder --win",
+    "dist:dir": "electron-vite build && electron-builder --win --dir"
+  },
+  "build": {
+    "appId": "com.liteeditor.app",
+    "productName": "LiteEditor",
+    "directories": {
+      "output": "dist"
+    },
+    "npmRebuild": false,
+    "files": [
+      "out/**/*",
+      "node_modules/**/*",
+      "!node_modules/*/{test,tests,__tests__,docs,example,examples}/**",
+      "!node_modules/.cache/**"
+    ],
+    "win": {
+      "target": ["nsis"],
+      "icon": "resources/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/node-pty/**/*",
+      "node_modules/simple-git/**/*"
+    ]
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.10.0",
@@ -35,6 +66,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "electron": "^34.0.2",
+    "electron-builder": "^26.7.0",
     "electron-vite": "^3.0.0",
     "playwright": "^1.58.2",
     "postcss": "^8.5.1",

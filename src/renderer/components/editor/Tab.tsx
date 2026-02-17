@@ -1,5 +1,5 @@
 import React from 'react'
-import { X, Terminal } from 'lucide-react'
+import { X } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { FileIcon } from '../shared/FileIcon'
 import type { Tab as TabType } from '../../stores/editor-store'
@@ -31,11 +31,7 @@ export function Tab({ tab, isActive, onClick, onClose, onContextMenu }: TabProps
           style={{ backgroundColor: 'var(--accent)' }}
         />
       )}
-      {tab.type === 'terminal' ? (
-        <Terminal size={14} style={{ color: 'var(--accent)' }} />
-      ) : (
-        <FileIcon name={tab.title} />
-      )}
+      <FileIcon name={tab.title} />
       <span
         className="text-xs whitespace-nowrap max-w-[120px] truncate"
         style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)' }}

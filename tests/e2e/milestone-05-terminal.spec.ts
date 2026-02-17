@@ -15,20 +15,21 @@ test.afterAll(async () => {
   await app.close()
 })
 
-test('Ctrl+Backtick shortcut opens terminal', async () => {
-  await page.keyboard.press('Control+`')
+test('clicking terminal icon in activity bar opens terminal panel', async () => {
+  // Click the terminal button in the activity bar
+  const terminalButton = page.locator('button[title="Terminal"]')
+  await terminalButton.click()
   await page.waitForTimeout(1500)
 
-  // Terminal tab should appear with "Terminal" text
-  const terminalTab = page.locator('text=Terminal').first()
+  // Terminal panel header should appear with "Terminal" text
+  const terminalHeader = page.locator('text=Terminal').first()
   // xterm container should be rendered
   const xtermElement = page.locator('.xterm').first()
 
-  // At least one of these should be visible if terminal opened
-  const tabVisible = await terminalTab.isVisible().catch(() => false)
+  const headerVisible = await terminalHeader.isVisible().catch(() => false)
   const xtermVisible = await xtermElement.isVisible().catch(() => false)
 
-  expect(tabVisible || xtermVisible).toBe(true)
+  expect(headerVisible || xtermVisible).toBe(true)
 })
 
 test('terminal renders xterm canvas', async () => {

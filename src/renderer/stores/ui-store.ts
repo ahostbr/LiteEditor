@@ -6,16 +6,19 @@ interface UiState {
   sidebarVisible: boolean
   activeSidebarPanel: SidebarPanel
   sidebarWidth: number
+  terminalPanelVisible: boolean
 
   toggleSidebar: () => void
   setActiveSidebarPanel: (panel: SidebarPanel) => void
   setSidebarWidth: (width: number) => void
+  toggleTerminalPanel: () => void
 }
 
 export const useUiStore = create<UiState>((set) => ({
   sidebarVisible: true,
   activeSidebarPanel: 'files',
   sidebarWidth: 260,
+  terminalPanelVisible: false,
 
   toggleSidebar: () => set((s) => ({ sidebarVisible: !s.sidebarVisible })),
 
@@ -27,5 +30,7 @@ export const useUiStore = create<UiState>((set) => ({
       return { activeSidebarPanel: panel, sidebarVisible: true }
     }),
 
-  setSidebarWidth: (width) => set({ sidebarWidth: width })
+  setSidebarWidth: (width) => set({ sidebarWidth: width }),
+
+  toggleTerminalPanel: () => set((s) => ({ terminalPanelVisible: !s.terminalPanelVisible }))
 }))

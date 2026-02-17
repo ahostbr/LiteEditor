@@ -17,8 +17,6 @@ export function EmptyState() {
       <div className="grid grid-cols-2 gap-x-8 gap-y-1 mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
         <span className="text-right">Open Folder</span>
         <kbd className="font-mono">{KEYBOARD_SHORTCUTS.openFolder}</kbd>
-        <span className="text-right">New Terminal</span>
-        <kbd className="font-mono">{KEYBOARD_SHORTCUTS.newTerminal}</kbd>
         <span className="text-right">Search Files</span>
         <kbd className="font-mono">{KEYBOARD_SHORTCUTS.search}</kbd>
         <span className="text-right">Toggle Sidebar</span>

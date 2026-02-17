@@ -18,7 +18,7 @@ function createWindow(): void {
     frame: false,
     titleBarStyle: 'hidden',
     backgroundColor: '#0c0c0f',
-    show: false,
+    show: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       contextIsolation: true,
@@ -29,6 +29,21 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
+  })
+
+  // Fallback: show window after timeout even if ready-to-show doesn't fire
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isVisible()) {
+      mainWindow.show()
+    }
+  }, 5000)
+
+  // Log renderer errors
+  mainWindow.webContents.on('did-fail-load', (_e, code, desc) => {
+    console.error('Failed to load:', code, desc)
+  })
+  mainWindow.webContents.on('render-process-gone', (_e, details) => {
+    console.error('Renderer crashed:', details)
   })
 
   mainWindow.on('closed', () => {
@@ -92,10 +107,10 @@ function createWindow(): void {
   })
 
   // Register IPC handler modules
-  registerFsHandlers()
-  registerGitHandlers()
-  registerPtyHandlers()
-  registerSearchHandlers()
+  try { registerFsHandlers() } catch (e) { console.error('Failed to register fs handlers:', e) }
+  try { registerGitHandlers() } catch (e) { console.error('Failed to register git handlers:', e) }
+  try { registerPtyHandlers() } catch (e) { console.error('Failed to register pty handlers:', e) }
+  try { registerSearchHandlers() } catch (e) { console.error('Failed to register search handlers:', e) }
 
   // Load renderer
   if (process.env['ELECTRON_RENDERER_URL']) {

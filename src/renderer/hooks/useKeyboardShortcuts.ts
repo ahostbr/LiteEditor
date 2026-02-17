@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { useEditorStore } from '../stores/editor-store'
 import { useUiStore } from '../stores/ui-store'
-import { useTerminalStore } from '../stores/terminal-store'
 
 export function useKeyboardShortcuts() {
   const openFile = useEditorStore((s) => s.openFile)
@@ -9,7 +8,6 @@ export function useKeyboardShortcuts() {
   const setActiveTab = useEditorStore((s) => s.setActiveTab)
   const splitPane = useEditorStore((s) => s.splitPane)
   const setProjectRoot = useEditorStore((s) => s.setProjectRoot)
-  const openTerminal = useEditorStore((s) => s.openTerminal)
   const toggleSidebar = useUiStore((s) => s.toggleSidebar)
   const setActiveSidebarPanel = useUiStore((s) => s.setActiveSidebarPanel)
 
@@ -47,19 +45,22 @@ export function useKeyboardShortcuts() {
         splitPane()
       }
 
-      // Ctrl+`: New terminal
-      if (ctrl && e.key === '`') {
+      // Ctrl+=: Zoom in
+      if (ctrl && !shift && (e.key === '=' || e.key === '+')) {
         e.preventDefault()
-        const state = useEditorStore.getState()
-        const cwd = state.projectRoot || undefined
-        const shell = undefined
-        try {
-          const sessionId = await window.api.pty.create(shell, cwd)
-          useTerminalStore.getState().createSession(sessionId, shell, cwd)
-          openTerminal(sessionId)
-        } catch (err) {
-          console.error('Failed to create terminal:', err)
-        }
+        window.api.window.zoomIn()
+      }
+
+      // Ctrl+-: Zoom out
+      if (ctrl && !shift && e.key === '-') {
+        e.preventDefault()
+        window.api.window.zoomOut()
+      }
+
+      // Ctrl+0: Reset zoom
+      if (ctrl && !shift && e.key === '0') {
+        e.preventDefault()
+        window.api.window.zoomReset()
       }
 
       // Ctrl+B: Toggle sidebar
