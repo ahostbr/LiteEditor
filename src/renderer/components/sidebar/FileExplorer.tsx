@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { RefreshCw, FolderOpen } from 'lucide-react'
 import { TreeNode, type FileNode } from './TreeNode'
 import { useEditorStore } from '../../stores/editor-store'
@@ -9,12 +9,13 @@ export function FileExplorer() {
   const projectRoot = useEditorStore((s) => s.projectRoot)
   const setProjectRoot = useEditorStore((s) => s.setProjectRoot)
   const openFile = useEditorStore((s) => s.openFile)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const loadTree = useCallback(async () => {
     if (!projectRoot) return
     setIsLoading(true)
     try {
-      const nodes = await window.api.fs.readTree(projectRoot, 10) as FileNode[]
+      const nodes = await window.api.fs.readTree(projectRoot, 2) as FileNode[]
       setTree(nodes)
     } catch {
       setTree([])
@@ -31,11 +32,16 @@ export function FileExplorer() {
     if (!projectRoot) return
     window.api.fs.watchStart(projectRoot)
     const unsub = window.api.fs.onFileChange(() => {
-      loadTree()
+      // Debounce file change reloads
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      debounceRef.current = setTimeout(() => {
+        loadTree()
+      }, 500)
     })
     return () => {
       unsub()
       window.api.fs.watchStop()
+      if (debounceRef.current) clearTimeout(debounceRef.current)
     }
   }, [projectRoot, loadTree])
 

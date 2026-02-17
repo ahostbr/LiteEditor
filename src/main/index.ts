@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
-import { join } from 'path'
-import { readFile, writeFile, mkdir } from 'fs/promises'
+import { join, dirname } from 'path'
+import { readFile, writeFile, mkdir, stat } from 'fs/promises'
 import { homedir } from 'os'
 import { registerFsHandlers } from './ipc/fs-handlers'
 import { registerGitHandlers } from './ipc/git-handlers'
@@ -8,6 +8,55 @@ import { registerPtyHandlers } from './ipc/pty-handlers'
 import { registerSearchHandlers } from './ipc/search-handlers'
 
 let mainWindow: BrowserWindow | null = null
+let pendingFilePath: string | null = null
+
+/** Extract a file path from argv (skips electron/app flags and .js files) */
+function getFileFromArgs(argv: string[]): string | null {
+  // argv[0] is electron exe, argv[1] may be the app .js entry in dev
+  // In packaged app, argv[0] is the .exe, rest are args
+  for (let i = 1; i < argv.length; i++) {
+    const arg = argv[i]
+    if (arg.startsWith('-') || arg.startsWith('--')) continue
+    if (arg.endsWith('.js') || arg.endsWith('.mjs')) continue
+    // Check if it looks like a file path (has a dot extension or backslash/forward slash)
+    if (arg.includes('\\') || arg.includes('/') || arg.includes('.')) {
+      return arg
+    }
+  }
+  return null
+}
+
+function sendFileToRenderer(filePath: string): void {
+  if (mainWindow && mainWindow.webContents) {
+    if (mainWindow.webContents.isLoading()) {
+      mainWindow.webContents.once('did-finish-load', () => {
+        mainWindow?.webContents.send('file:open', filePath)
+      })
+    } else {
+      mainWindow.webContents.send('file:open', filePath)
+    }
+  } else {
+    pendingFilePath = filePath
+  }
+}
+
+// Single instance lock
+const gotTheLock = app.requestSingleInstanceLock()
+if (!gotTheLock) {
+  app.quit()
+} else {
+  app.on('second-instance', (_event, argv) => {
+    const filePath = getFileFromArgs(argv)
+    if (filePath) {
+      sendFileToRenderer(filePath)
+    }
+    // Focus the existing window
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+    }
+  })
+}
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -18,7 +67,7 @@ function createWindow(): void {
     frame: false,
     titleBarStyle: 'hidden',
     backgroundColor: '#0c0c0f',
-    show: true,
+    show: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       contextIsolation: true,
@@ -29,6 +78,19 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
+  })
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    // Send file from initial launch argv
+    const fileFromArgv = getFileFromArgs(process.argv)
+    if (fileFromArgv) {
+      mainWindow?.webContents.send('file:open', fileFromArgv)
+    }
+    // Send any pending file from second-instance that arrived before window was ready
+    if (pendingFilePath) {
+      mainWindow?.webContents.send('file:open', pendingFilePath)
+      pendingFilePath = null
+    }
   })
 
   // Fallback: show window after timeout even if ready-to-show doesn't fire

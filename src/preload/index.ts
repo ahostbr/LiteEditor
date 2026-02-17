@@ -8,6 +8,8 @@ const api = {
       ipcRenderer.invoke('fs:write-file', path, content),
     readTree: (root: string, depth?: number): Promise<unknown[]> =>
       ipcRenderer.invoke('fs:read-tree', root, depth),
+    readDir: (dirPath: string): Promise<unknown[]> =>
+      ipcRenderer.invoke('fs:read-dir', dirPath),
     watchStart: (path: string): void =>
       ipcRenderer.send('fs:watch-start', path),
     watchStop: (): void =>
@@ -111,9 +113,11 @@ const api = {
       ipcRenderer.on('window:maximize-change', handler)
       return () => ipcRenderer.removeListener('window:maximize-change', handler)
     },
-    zoomIn: (): void => { webFrame.setZoomLevel(webFrame.getZoomLevel() + 0.5) },
-    zoomOut: (): void => { webFrame.setZoomLevel(webFrame.getZoomLevel() - 0.5) },
-    zoomReset: (): void => { webFrame.setZoomLevel(0) }
+    zoomIn: (): number => { const l = webFrame.getZoomLevel() + 0.5; webFrame.setZoomLevel(l); return l },
+    zoomOut: (): number => { const l = webFrame.getZoomLevel() - 0.5; webFrame.setZoomLevel(l); return l },
+    zoomReset: (): number => { webFrame.setZoomLevel(0); return 0 },
+    getZoomLevel: (): number => webFrame.getZoomLevel(),
+    setZoomLevel: (level: number): void => { webFrame.setZoomLevel(level) }
   },
 
   settings: {
@@ -133,6 +137,12 @@ const api = {
   dialog: {
     openFolder: (): Promise<string | null> =>
       ipcRenderer.invoke('dialog:open-folder')
+  },
+
+  onOpenFile: (callback: (filePath: string) => void): (() => void) => {
+    const handler = (_e: unknown, filePath: string) => callback(filePath)
+    ipcRenderer.on('file:open', handler)
+    return () => ipcRenderer.removeListener('file:open', handler)
   }
 }
 

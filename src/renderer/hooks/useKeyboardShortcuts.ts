@@ -12,6 +12,14 @@ export function useKeyboardShortcuts() {
   const setActiveSidebarPanel = useUiStore((s) => s.setActiveSidebarPanel)
 
   useEffect(() => {
+    const saveZoom = (level: number) => {
+      window.api.workspace.load().then((data: unknown) => {
+        const ws = (data && typeof data === 'object') ? data as Record<string, unknown> : {}
+        ws.zoomLevel = level
+        window.api.workspace.save(JSON.stringify(ws))
+      }).catch(() => {})
+    }
+
     const handler = async (e: KeyboardEvent) => {
       const ctrl = e.ctrlKey || e.metaKey
       const shift = e.shiftKey
@@ -48,19 +56,22 @@ export function useKeyboardShortcuts() {
       // Ctrl+=: Zoom in
       if (ctrl && !shift && (e.key === '=' || e.key === '+')) {
         e.preventDefault()
-        window.api.window.zoomIn()
+        const level = window.api.window.zoomIn()
+        saveZoom(level)
       }
 
       // Ctrl+-: Zoom out
       if (ctrl && !shift && e.key === '-') {
         e.preventDefault()
-        window.api.window.zoomOut()
+        const level = window.api.window.zoomOut()
+        saveZoom(level)
       }
 
       // Ctrl+0: Reset zoom
       if (ctrl && !shift && e.key === '0') {
         e.preventDefault()
-        window.api.window.zoomReset()
+        const level = window.api.window.zoomReset()
+        saveZoom(level)
       }
 
       // Ctrl+B: Toggle sidebar

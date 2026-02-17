@@ -18,14 +18,32 @@ interface TreeNodeProps {
 
 export function TreeNode({ node, depth, onFileClick }: TreeNodeProps) {
   const [isOpen, setIsOpen] = useState(depth < 1)
+  const [children, setChildren] = useState<FileNode[] | undefined>(node.children)
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleClick = () => {
+  const handleClick = async () => {
     if (node.isDirectory) {
-      setIsOpen(!isOpen)
+      const opening = !isOpen
+      setIsOpen(opening)
+      // Lazy-load children if directory has no children loaded yet
+      if (opening && !children) {
+        setIsLoading(true)
+        try {
+          const loaded = await window.api.fs.readDir(node.path) as FileNode[]
+          setChildren(loaded)
+        } catch {
+          setChildren([])
+        } finally {
+          setIsLoading(false)
+        }
+      }
     } else {
       onFileClick(node)
     }
   }
+
+  // Sync children from parent when node.children changes (e.g. after tree refresh)
+  const displayChildren = children ?? node.children
 
   return (
     <div>
@@ -48,10 +66,13 @@ export function TreeNode({ node, depth, onFileClick }: TreeNodeProps) {
         <span className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>
           {node.name}
         </span>
+        {isLoading && (
+          <span className="text-xs ml-1" style={{ color: 'var(--text-muted)' }}>...</span>
+        )}
       </div>
-      {node.isDirectory && isOpen && node.children && (
+      {node.isDirectory && isOpen && displayChildren && (
         <div>
-          {node.children.map((child) => (
+          {displayChildren.map((child) => (
             <TreeNode
               key={child.path}
               node={child}

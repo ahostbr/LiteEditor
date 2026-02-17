@@ -77,13 +77,33 @@ export default function App() {
     useSettingsStore.getState().loadSettings()
     // Restore last workspace
     window.api.workspace.load().then((data: unknown) => {
-      if (data && typeof data === 'object' && 'projectRoot' in data) {
-        const root = (data as { projectRoot: string | null }).projectRoot
-        if (root) {
-          useEditorStore.getState().setProjectRoot(root)
+      if (data && typeof data === 'object') {
+        const ws = data as Record<string, unknown>
+        if (ws.projectRoot && typeof ws.projectRoot === 'string') {
+          useEditorStore.getState().setProjectRoot(ws.projectRoot)
+        }
+        if (typeof ws.zoomLevel === 'number') {
+          window.api.window.setZoomLevel(ws.zoomLevel)
         }
       }
     }).catch(() => {})
+  }, [])
+
+  // Listen for files opened from OS (file associations / second instance)
+  useEffect(() => {
+    const unsub = window.api.onOpenFile(async (filePath: string) => {
+      try {
+        const content = await window.api.fs.readFile(filePath)
+        useEditorStore.getState().openFile(filePath, content)
+        // Set project root to file's parent dir if none is open
+        const state = useEditorStore.getState()
+        if (!state.projectRoot) {
+          const dir = filePath.replace(/[\\/][^\\/]+$/, '')
+          state.setProjectRoot(dir)
+        }
+      } catch { /* ignore unreadable files */ }
+    })
+    return unsub
   }, [])
 
   // Sync accent color from settings to CSS variable
@@ -96,9 +116,17 @@ export default function App() {
   const projectRoot = useEditorStore((s) => s.projectRoot)
   useEffect(() => {
     if (projectRoot) {
-      window.api.git.init(projectRoot).catch(() => {})
-      window.api.search.setRoot(projectRoot).catch(() => {})
-      window.api.workspace.save(JSON.stringify({ projectRoot })).catch(() => {})
+      // Defer non-critical init so it doesn't compete with tree load
+      setTimeout(() => {
+        window.api.git.init(projectRoot).catch(() => {})
+        window.api.search.setRoot(projectRoot).catch(() => {})
+      }, 0)
+      // Save projectRoot (merge with existing workspace data to preserve zoomLevel etc.)
+      window.api.workspace.load().then((data: unknown) => {
+        const ws = (data && typeof data === 'object') ? data as Record<string, unknown> : {}
+        ws.projectRoot = projectRoot
+        window.api.workspace.save(JSON.stringify(ws))
+      }).catch(() => {})
     }
   }, [projectRoot])
 

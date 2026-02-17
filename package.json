@@ -28,7 +28,74 @@
     ],
     "win": {
       "target": ["nsis"],
-      "icon": "resources/icon.png"
+      "icon": "resources/icon.png",
+      "fileAssociations": [
+        {
+          "ext": ["md", "markdown"],
+          "name": "Markdown",
+          "description": "Markdown Document"
+        },
+        {
+          "ext": ["txt", "log"],
+          "name": "Text",
+          "description": "Text Document"
+        },
+        {
+          "ext": ["json", "jsonc"],
+          "name": "JSON",
+          "description": "JSON Document"
+        },
+        {
+          "ext": ["js", "mjs", "cjs"],
+          "name": "JavaScript",
+          "description": "JavaScript File"
+        },
+        {
+          "ext": ["ts", "mts", "cts"],
+          "name": "TypeScript",
+          "description": "TypeScript File"
+        },
+        {
+          "ext": ["jsx", "tsx"],
+          "name": "React",
+          "description": "React Component"
+        },
+        {
+          "ext": ["html", "htm"],
+          "name": "HTML",
+          "description": "HTML Document"
+        },
+        {
+          "ext": ["css", "scss", "less"],
+          "name": "Stylesheet",
+          "description": "Stylesheet"
+        },
+        {
+          "ext": ["py"],
+          "name": "Python",
+          "description": "Python File"
+        },
+        {
+          "ext": ["yaml", "yml"],
+          "name": "YAML",
+          "description": "YAML Document"
+        },
+        {
+          "ext": ["xml", "svg"],
+          "name": "XML",
+          "description": "XML Document"
+        },
+        {
+          "ext": ["sh", "bash", "zsh"],
+          "name": "Shell",
+          "description": "Shell Script"
+        },
+        {
+          "ext": ["toml", "ini", "cfg", "conf"],
+          "name": "Config",
+          "description": "Configuration File"
+        }
+      ]
     },
     "nsis": {
       "oneClick": false,

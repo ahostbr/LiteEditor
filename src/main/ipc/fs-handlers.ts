@@ -19,9 +19,8 @@ async function buildTree(root: string, depth: number = 3, currentDepth: number =
   if (currentDepth >= depth) return []
 
   const entries = await readdir(root, { withFileTypes: true })
-  const nodes: FileNode[] = []
 
-  const dirs: FileNode[] = []
+  const dirPromises: Promise<FileNode>[] = []
   const files: FileNode[] = []
 
   for (const entry of entries) {
@@ -31,13 +30,14 @@ async function buildTree(root: string, depth: number = 3, currentDepth: number =
     const fullPath = join(root, entry.name)
 
     if (entry.isDirectory()) {
-      const children = await buildTree(fullPath, depth, currentDepth + 1)
-      dirs.push({
-        name: entry.name,
-        path: fullPath,
-        isDirectory: true,
-        children
-      })
+      dirPromises.push(
+        buildTree(fullPath, depth, currentDepth + 1).then(children => ({
+          name: entry.name,
+          path: fullPath,
+          isDirectory: true,
+          children
+        }))
+      )
     } else {
       files.push({
         name: entry.name,
@@ -46,6 +46,8 @@ async function buildTree(root: string, depth: number = 3, currentDepth: number =
       })
     }
   }
+
+  const dirs = await Promise.all(dirPromises)
 
   // Directories first, then files, both alphabetical
   dirs.sort((a, b) => a.name.localeCompare(b.name))
@@ -67,6 +69,10 @@ export function registerFsHandlers(): void {
 
   ipcMain.handle('fs:read-tree', async (_e, root: string, depth?: number) => {
     return buildTree(root, depth ?? 3)
+  })
+
+  ipcMain.handle('fs:read-dir', async (_e, dirPath: string) => {
+    return buildTree(dirPath, 1)
   })
 
   ipcMain.on('fs:watch-start', (_e, path: string) => {
