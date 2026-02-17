@@ -42,10 +42,15 @@ test('settings has terminal section', async () => {
 
 test('settings has appearance section', async () => {
   await page.locator('[title="Settings"]').click()
+  await page.waitForTimeout(500)
+
+  // Scroll down in settings panel to find Appearance
+  const settingsScroll = page.locator('.overflow-y-auto').last()
+  await settingsScroll.evaluate((el) => el.scrollTop = el.scrollHeight)
   await page.waitForTimeout(300)
 
   const appearanceSection = page.locator('text=Appearance').first()
-  await expect(appearanceSection).toBeVisible()
+  await expect(appearanceSection).toBeVisible({ timeout: 5000 })
 })
 
 test('font size setting has a number input', async () => {

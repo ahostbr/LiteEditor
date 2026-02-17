@@ -1,16 +1,12 @@
 import { test, expect } from '@playwright/test'
 import { launchApp } from './helpers/electron-app'
 import type { ElectronApplication, Page } from 'playwright'
-import { join, dirname } from 'path'
-import { fileURLToPath } from 'url'
+import { join } from 'path'
 import { mkdirSync, writeFileSync, rmSync } from 'fs'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
 
 let app: ElectronApplication
 let page: Page
-const testDir = join(__dirname, '../../.test-workspace')
+const testDir = join(process.cwd(), '.test-workspace')
 
 test.beforeAll(async () => {
   // Create test workspace
