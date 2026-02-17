@@ -161,10 +161,12 @@ export function MenuBar() {
       {menus.map((menu, i) => (
         <div key={menu.label} className="relative">
           <button
-            className="px-2 py-1 text-[11px] transition-colors rounded-[3px]"
+            className="py-1 text-[11px] transition-colors rounded-[3px]"
             style={{
               color: 'var(--text-secondary)',
-              background: openMenu === i ? 'var(--bg-overlay)' : 'transparent'
+              background: openMenu === i ? 'var(--bg-overlay)' : 'transparent',
+              paddingLeft: '10px',
+              paddingRight: '10px'
             }}
             onMouseDown={() => {
               if (openMenu === i) {
