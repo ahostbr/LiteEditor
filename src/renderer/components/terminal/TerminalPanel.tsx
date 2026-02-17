@@ -14,7 +14,7 @@ export function TerminalPanel() {
   const setActiveSession = useTerminalStore((s) => s.setActiveSession)
   const toggleTerminalPanel = useUiStore((s) => s.toggleTerminalPanel)
 
-  const sessionList = Array.from(sessions.values())
+  const sessionList = sessions
 
   // Auto-create a terminal if panel is open but empty
   React.useEffect(() => {

@@ -74,7 +74,7 @@ export function TerminalTab({ sessionId }: TerminalTabProps) {
     // Handle PTY exit — remove terminal and hide panel if last one
     const unsubExit = window.api.pty.onExit(sessionId, () => {
       useTerminalStore.getState().removeTerminal(sessionId)
-      if (useTerminalStore.getState().sessions.size === 0) {
+      if (useTerminalStore.getState().sessions.length === 0) {
         useUiStore.getState().toggleTerminalPanel()
       }
     })

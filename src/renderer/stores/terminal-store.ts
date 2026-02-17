@@ -9,7 +9,7 @@ export interface TerminalSession {
 }
 
 interface TerminalState {
-  sessions: Map<string, TerminalSession>
+  sessions: TerminalSession[]
   activeSessionId: string | null
 
   createSession: (id: string, shell?: string, cwd?: string) => void
@@ -21,39 +21,31 @@ interface TerminalState {
 }
 
 export const useTerminalStore = create<TerminalState>((set, get) => ({
-  sessions: new Map(),
+  sessions: [],
   activeSessionId: null,
 
   createSession: (id, shell, cwd) => {
     set((state) => {
-      const sessions = new Map(state.sessions)
-      sessions.set(id, {
+      const sessions = [...state.sessions, {
         id,
-        title: `Terminal ${sessions.size + 1}`,
+        title: `Terminal ${state.sessions.length + 1}`,
         shell,
         cwd
-      })
+      }]
       return { sessions, activeSessionId: id }
     })
   },
 
   killSession: (id) => {
-    set((state) => {
-      const sessions = new Map(state.sessions)
-      sessions.delete(id)
-      return { sessions }
-    })
+    set((state) => ({
+      sessions: state.sessions.filter((s) => s.id !== id)
+    }))
   },
 
   renameSession: (id, title) => {
-    set((state) => {
-      const sessions = new Map(state.sessions)
-      const session = sessions.get(id)
-      if (session) {
-        sessions.set(id, { ...session, title })
-      }
-      return { sessions }
-    })
+    set((state) => ({
+      sessions: state.sessions.map((s) => s.id === id ? { ...s, title } : s)
+    }))
   },
 
   addTerminal: async () => {
@@ -67,15 +59,12 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   },
 
   removeTerminal: (id) => {
-    window.api.pty.kill(id).catch(() => {})
+    try { window.api.pty.kill(id) } catch { /* ignore */ }
     set((state) => {
-      const sessions = new Map(state.sessions)
-      sessions.delete(id)
-      // Select next session if we removed the active one
+      const sessions = state.sessions.filter((s) => s.id !== id)
       let activeSessionId = state.activeSessionId
       if (activeSessionId === id) {
-        const remaining = Array.from(sessions.keys())
-        activeSessionId = remaining.length > 0 ? remaining[remaining.length - 1] : null
+        activeSessionId = sessions.length > 0 ? sessions[sessions.length - 1].id : null
       }
       return { sessions, activeSessionId }
     })
