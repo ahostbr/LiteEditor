@@ -16,8 +16,6 @@ const IGNORED_DIRS = new Set([
 ])
 
 async function buildTree(root: string, depth: number = 3, currentDepth: number = 0): Promise<FileNode[]> {
-  if (currentDepth >= depth) return []
-
   const entries = await readdir(root, { withFileTypes: true })
 
   const dirPromises: Promise<FileNode>[] = []
@@ -30,14 +28,23 @@ async function buildTree(root: string, depth: number = 3, currentDepth: number =
     const fullPath = join(root, entry.name)
 
     if (entry.isDirectory()) {
-      dirPromises.push(
-        buildTree(fullPath, depth, currentDepth + 1).then(children => ({
+      if (currentDepth + 1 >= depth) {
+        // At depth limit: leave children undefined so TreeNode will lazy-load
+        dirPromises.push(Promise.resolve({
           name: entry.name,
           path: fullPath,
-          isDirectory: true,
-          children
+          isDirectory: true
         }))
-      )
+      } else {
+        dirPromises.push(
+          buildTree(fullPath, depth, currentDepth + 1).then(children => ({
+            name: entry.name,
+            path: fullPath,
+            isDirectory: true,
+            children
+          }))
+        )
+      }
     } else {
       files.push({
         name: entry.name,
