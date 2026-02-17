@@ -106,6 +106,25 @@ function createWindow(): void {
     } catch { /* ignore */ }
   })
 
+  // Workspace IPC
+  const workspaceFile = join(settingsDir, 'workspace.json')
+
+  ipcMain.handle('workspace:load', async () => {
+    try {
+      const content = await readFile(workspaceFile, 'utf-8')
+      return JSON.parse(content)
+    } catch {
+      return null
+    }
+  })
+
+  ipcMain.handle('workspace:save', async (_e, data: string) => {
+    try {
+      await mkdir(settingsDir, { recursive: true })
+      await writeFile(workspaceFile, data, 'utf-8')
+    } catch { /* ignore */ }
+  })
+
   // Register IPC handler modules
   try { registerFsHandlers() } catch (e) { console.error('Failed to register fs handlers:', e) }
   try { registerGitHandlers() } catch (e) { console.error('Failed to register git handlers:', e) }

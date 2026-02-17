@@ -123,6 +123,13 @@ const api = {
       ipcRenderer.invoke('settings:save', data)
   },
 
+  workspace: {
+    load: (): Promise<unknown> =>
+      ipcRenderer.invoke('workspace:load'),
+    save: (data: string): Promise<void> =>
+      ipcRenderer.invoke('workspace:save', data)
+  },
+
   dialog: {
     openFolder: (): Promise<string | null> =>
       ipcRenderer.invoke('dialog:open-folder')

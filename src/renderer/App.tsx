@@ -75,6 +75,15 @@ export default function App() {
 
   useEffect(() => {
     useSettingsStore.getState().loadSettings()
+    // Restore last workspace
+    window.api.workspace.load().then((data: unknown) => {
+      if (data && typeof data === 'object' && 'projectRoot' in data) {
+        const root = (data as { projectRoot: string | null }).projectRoot
+        if (root) {
+          useEditorStore.getState().setProjectRoot(root)
+        }
+      }
+    }).catch(() => {})
   }, [])
 
   // Sync accent color from settings to CSS variable
@@ -83,12 +92,13 @@ export default function App() {
     document.documentElement.style.setProperty('--accent', accentColor)
   }, [accentColor])
 
-  // Initialize git and search when project root changes
+  // Initialize git and search when project root changes, and persist workspace
   const projectRoot = useEditorStore((s) => s.projectRoot)
   useEffect(() => {
     if (projectRoot) {
       window.api.git.init(projectRoot).catch(() => {})
       window.api.search.setRoot(projectRoot).catch(() => {})
+      window.api.workspace.save(JSON.stringify({ projectRoot })).catch(() => {})
     }
   }, [projectRoot])
 
