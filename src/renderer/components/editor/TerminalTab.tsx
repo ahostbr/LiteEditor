@@ -3,6 +3,8 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { useSettingsStore } from '../../stores/settings-store'
+import { useTerminalStore } from '../../stores/terminal-store'
+import { useUiStore } from '../../stores/ui-store'
 
 interface TerminalTabProps {
   sessionId: string
@@ -69,9 +71,12 @@ export function TerminalTab({ sessionId }: TerminalTabProps) {
       term.write(data)
     })
 
-    // Handle PTY exit
+    // Handle PTY exit — remove terminal and hide panel if last one
     const unsubExit = window.api.pty.onExit(sessionId, () => {
-      term.writeln('\r\n[Process exited]')
+      useTerminalStore.getState().removeTerminal(sessionId)
+      if (useTerminalStore.getState().sessions.size === 0) {
+        useUiStore.getState().toggleTerminalPanel()
+      }
     })
 
     // Handle resize
