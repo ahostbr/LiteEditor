@@ -1,4 +1,4 @@
-import { webContents } from 'electron'
+import { WebContentsView, BrowserWindow } from 'electron'
 
 let counter = 0
 
@@ -10,7 +10,9 @@ interface ConsoleLogEntry {
 
 interface BrowserSession {
   id: string
-  webContentsId: number
+  view: WebContentsView
+  mainWindow: BrowserWindow
+  hidden: boolean
   consoleLogs: ConsoleLogEntry[]
 }
 
@@ -19,29 +21,127 @@ const MAX_CONSOLE_LOGS = 500
 export class BrowserManager {
   private sessions = new Map<string, BrowserSession>()
 
-  register(webContentsId: number): string {
+  createView(mainWindow: BrowserWindow, initialUrl: string): string {
     const id = `browser-${++counter}-${Date.now()}`
+
+    const view = new WebContentsView({
+      webPreferences: {
+        partition: 'persist:browser',
+        sandbox: true,
+        contextIsolation: true
+      }
+    })
+
+    // Chrome-like user-agent so Google services work properly
+    const defaultUA = view.webContents.getUserAgent()
+    view.webContents.setUserAgent(
+      defaultUA.replace(/\s*Electron\/\S+/, '').replace(/\s*LiteEditor\/\S+/, '')
+    )
+
+    // Start at zero bounds until the renderer reports real bounds
+    view.setBounds({ x: 0, y: 0, width: 0, height: 0 })
+    mainWindow.contentView.addChildView(view)
+
     const session: BrowserSession = {
       id,
-      webContentsId,
+      view,
+      mainWindow,
+      hidden: false,
       consoleLogs: []
     }
     this.sessions.set(id, session)
 
-    const wc = webContents.fromId(webContentsId)
-    if (wc) {
-      wc.on('console-message', (_e, level, message) => {
-        this.addConsoleLog(id, level, message)
+    const wc = view.webContents
+
+    wc.on('console-message', (_e, level, message) => {
+      this.addConsoleLog(id, level, message)
+    })
+
+    wc.on('did-navigate', () => {
+      this.sendStateUpdate(id)
+    })
+
+    wc.on('did-navigate-in-page', () => {
+      this.sendStateUpdate(id)
+    })
+
+    wc.on('did-start-loading', () => {
+      mainWindow.webContents.send('browser:state-update', {
+        sessionId: id,
+        isLoading: true
       })
-    }
+    })
+
+    wc.on('did-stop-loading', () => {
+      this.sendStateUpdate(id)
+    })
+
+    wc.on('page-title-updated', (_e, title) => {
+      mainWindow.webContents.send('browser:state-update', {
+        sessionId: id,
+        title
+      })
+    })
+
+    wc.loadURL(initialUrl)
 
     return id
+  }
+
+  private sendStateUpdate(sessionId: string) {
+    const session = this.sessions.get(sessionId)
+    if (!session) return
+    const wc = session.view.webContents
+    session.mainWindow.webContents.send('browser:state-update', {
+      sessionId,
+      url: wc.getURL(),
+      title: wc.getTitle(),
+      canGoBack: wc.canGoBack(),
+      canGoForward: wc.canGoForward(),
+      isLoading: wc.isLoading()
+    })
+  }
+
+  destroyView(sessionId: string): void {
+    const session = this.sessions.get(sessionId)
+    if (!session) return
+    this.sessions.delete(sessionId)
+    try {
+      session.mainWindow.contentView.removeChildView(session.view)
+    } catch { /* window may already be closed */ }
+    try {
+      session.view.webContents.close()
+    } catch { /* already destroyed */ }
+  }
+
+  setBounds(sessionId: string, bounds: { x: number; y: number; width: number; height: number }): void {
+    const session = this.sessions.get(sessionId)
+    if (!session || session.hidden) return
+    session.view.setBounds(bounds)
+  }
+
+  showView(sessionId: string): void {
+    const session = this.sessions.get(sessionId)
+    if (!session || !session.hidden) return
+    session.hidden = false
+    try {
+      session.mainWindow.contentView.addChildView(session.view)
+    } catch { /* window may be closed */ }
+  }
+
+  hideView(sessionId: string): void {
+    const session = this.sessions.get(sessionId)
+    if (!session || session.hidden) return
+    session.hidden = true
+    try {
+      session.mainWindow.contentView.removeChildView(session.view)
+    } catch { /* window may be closed */ }
   }
 
   getWebContents(sessionId: string) {
     const session = this.sessions.get(sessionId)
     if (!session) return undefined
-    return webContents.fromId(session.webContentsId) ?? undefined
+    return session.view.webContents
   }
 
   getSession(sessionId: string) {
@@ -85,10 +185,12 @@ export class BrowserManager {
   }
 
   remove(sessionId: string): void {
-    this.sessions.delete(sessionId)
+    this.destroyView(sessionId)
   }
 
   removeAll(): void {
-    this.sessions.clear()
+    for (const sessionId of Array.from(this.sessions.keys())) {
+      this.destroyView(sessionId)
+    }
   }
 }

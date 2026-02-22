@@ -1,4 +1,4 @@
-import { useState, useRef, type MutableRefObject, type KeyboardEvent } from 'react'
+import { useState, useRef, type KeyboardEvent } from 'react'
 import { ArrowLeft, ArrowRight, RotateCw, Loader2, X } from 'lucide-react'
 import { useBrowserStore } from '../../stores/browser-store'
 import { useZenStore } from '../../stores/zen-store'
@@ -10,7 +10,6 @@ interface BrowserHeaderProps {
   title: string
   isActive: boolean
   onFocus: () => void
-  webviewRef: MutableRefObject<Electron.WebviewTag | null>
   draggable?: boolean
   onDragStart?: (e: React.DragEvent) => void
   onDragOver?: (e: React.DragEvent) => void
@@ -23,7 +22,6 @@ export function BrowserHeader({
   title,
   isActive,
   onFocus,
-  webviewRef,
   draggable,
   onDragStart,
   onDragOver,
@@ -44,26 +42,27 @@ export function BrowserHeader({
 
   const handleBack = (e: React.MouseEvent) => {
     e.stopPropagation()
-    webviewRef.current?.goBack()
+    if (browserSessionId) window.api.browser.goBack(browserSessionId)
   }
 
   const handleForward = (e: React.MouseEvent) => {
     e.stopPropagation()
-    webviewRef.current?.goForward()
+    if (browserSessionId) window.api.browser.goForward(browserSessionId)
   }
 
   const handleReload = (e: React.MouseEvent) => {
     e.stopPropagation()
+    if (!browserSessionId) return
     if (isLoading) {
-      webviewRef.current?.stop()
+      window.api.browser.stop(browserSessionId)
     } else {
-      webviewRef.current?.reload()
+      window.api.browser.reload(browserSessionId)
     }
   }
 
   const handleUrlSubmit = () => {
     const value = urlInput.trim()
-    if (!value) return
+    if (!value || !browserSessionId) return
 
     let targetUrl = value
     // If it looks like a URL (has dots and no spaces), navigate directly
@@ -76,7 +75,7 @@ export function BrowserHeader({
       targetUrl = 'https://www.google.com/search?q=' + encodeURIComponent(value)
     }
 
-    webviewRef.current?.loadURL(targetUrl)
+    window.api.browser.navigate(browserSessionId, targetUrl)
     inputRef.current?.blur()
   }
 

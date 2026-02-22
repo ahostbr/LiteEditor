@@ -205,6 +205,7 @@ export function TabLayout({ panels }: TabLayoutProps) {
             <PanelRenderer
               panel={panel}
               isActive={panel.id === activePanelId}
+              visible={panel.id === activePanelId}
               onFocus={() => setActivePanel(panel.id)}
               onTermRef={(ref) => {
                 if (panel.terminalSessionId) {

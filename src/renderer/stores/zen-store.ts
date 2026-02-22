@@ -116,7 +116,7 @@ export const useZenStore = create<ZenState>((set, get) => ({
     }
 
     if (panel.type === 'browser' && panel.browserSessionId) {
-      window.api.browser.unregister(panel.browserSessionId)
+      window.api.browser.destroyView(panel.browserSessionId)
       useBrowserStore.getState().removeSession(panel.browserSessionId)
     }
 

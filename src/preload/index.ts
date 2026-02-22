@@ -109,12 +109,23 @@ const api = {
   },
 
   browser: {
-    register: (wcId: number): Promise<string> =>
-      ipcRenderer.invoke('browser:register', wcId),
-    unregister: (sessionId: string): void =>
-      ipcRenderer.send('browser:unregister', sessionId),
-    urlChanged: (sessionId: string, url: string): void =>
-      ipcRenderer.send('browser:url-changed', sessionId, url),
+    // View lifecycle (WebContentsView managed by main process)
+    createView: (initialUrl: string): Promise<string> =>
+      ipcRenderer.invoke('browser:create-view', initialUrl),
+    destroyView: (sessionId: string): void =>
+      ipcRenderer.send('browser:destroy-view', sessionId),
+    setBounds: (sessionId: string, bounds: { x: number; y: number; width: number; height: number }): void =>
+      ipcRenderer.send('browser:set-bounds', sessionId, bounds),
+    showView: (sessionId: string): void =>
+      ipcRenderer.send('browser:show-view', sessionId),
+    hideView: (sessionId: string): void =>
+      ipcRenderer.send('browser:hide-view', sessionId),
+    onStateUpdate: (callback: (event: unknown, data: { sessionId: string; url?: string; title?: string; canGoBack?: boolean; canGoForward?: boolean; isLoading?: boolean }) => void): (() => void) => {
+      const handler = (_e: unknown, data: { sessionId: string; url?: string; title?: string; canGoBack?: boolean; canGoForward?: boolean; isLoading?: boolean }) => callback(_e, data)
+      ipcRenderer.on('browser:state-update', handler)
+      return () => ipcRenderer.removeListener('browser:state-update', handler)
+    },
+    // Navigation
     navigate: (sessionId: string, url: string): Promise<unknown> =>
       ipcRenderer.invoke('browser:navigate', sessionId, url),
     goBack: (sessionId: string): Promise<unknown> =>
@@ -123,6 +134,9 @@ const api = {
       ipcRenderer.invoke('browser:go-forward', sessionId),
     reload: (sessionId: string): Promise<unknown> =>
       ipcRenderer.invoke('browser:reload', sessionId),
+    stop: (sessionId: string): Promise<unknown> =>
+      ipcRenderer.invoke('browser:stop', sessionId),
+    // Agent tools
     readPage: (sessionId: string): Promise<unknown> =>
       ipcRenderer.invoke('browser:read-page', sessionId),
     screenshot: (sessionId: string): Promise<unknown> =>

@@ -1,129 +1,120 @@
-import { useEffect, useRef, type MutableRefObject } from 'react'
+import { useEffect, useRef } from 'react'
 import { useBrowserStore } from '../../stores/browser-store'
 import { useZenStore } from '../../stores/zen-store'
 
 interface BrowserPanelProps {
   panelId: string
   initialUrl: string
-  webviewRef: MutableRefObject<Electron.WebviewTag | null>
+  visible?: boolean
 }
 
-export function BrowserPanel({ panelId, initialUrl, webviewRef }: BrowserPanelProps) {
+export function BrowserPanel({ panelId, initialUrl, visible = true }: BrowserPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const sessionIdRef = useRef<string | null>(null)
+  const visibleRef = useRef(visible)
+  visibleRef.current = visible
+
   const registerSession = useBrowserStore((s) => s.registerSession)
   const removeSession = useBrowserStore((s) => s.removeSession)
   const updateSession = useBrowserStore((s) => s.updateSession)
 
+  // Create view and wire up bounds reporting + state updates
   useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
+    let destroyed = false
 
-    // Create webview element imperatively to avoid React type issues
-    const webview = document.createElement('webview') as Electron.WebviewTag
-    webview.src = initialUrl
-    webview.setAttribute('partition', 'persist:browser')
-    webview.setAttribute('allowpopups', 'true')
-    webview.style.width = '100%'
-    webview.style.height = '100%'
-    container.appendChild(webview)
-    webviewRef.current = webview
+    const init = async () => {
+      const sessionId = await window.api.browser.createView(initialUrl)
+      if (destroyed) {
+        window.api.browser.destroyView(sessionId)
+        return
+      }
 
-    const handleDomReady = async () => {
-      try {
-        const wcId = (webview as any).getWebContentsId()
-        const sessionId = await window.api.browser.register(wcId)
-        sessionIdRef.current = sessionId
-        registerSession(sessionId, wcId, webview.getURL())
+      sessionIdRef.current = sessionId
+      registerSession(sessionId, initialUrl)
 
-        // Store sessionId on zen panel
-        const panels = useZenStore.getState().panels
-        const panel = panels.find((p) => p.id === panelId)
-        if (panel) {
-          useZenStore.setState((state) => ({
-            panels: state.panels.map((p) =>
-              p.id === panelId ? { ...p, browserSessionId: sessionId } : p
-            )
-          }))
+      // Store sessionId on zen panel
+      useZenStore.setState((state) => ({
+        panels: state.panels.map((p) =>
+          p.id === panelId ? { ...p, browserSessionId: sessionId } : p
+        )
+      }))
+
+      // Send initial bounds if visible, otherwise hide
+      if (visibleRef.current) {
+        const rect = containerRef.current?.getBoundingClientRect()
+        if (rect) {
+          window.api.browser.setBounds(sessionId, {
+            x: Math.round(rect.x),
+            y: Math.round(rect.y),
+            width: Math.round(rect.width),
+            height: Math.round(rect.height)
+          })
         }
-      } catch (err) {
-        console.error('Failed to register browser session:', err)
+      } else {
+        window.api.browser.hideView(sessionId)
       }
     }
 
-    const handleDidNavigate = () => {
-      if (!sessionIdRef.current) return
-      const url = webview.getURL()
-      const canGoBack = webview.canGoBack()
-      const canGoForward = webview.canGoForward()
-      updateSession(sessionIdRef.current, { url, canGoBack, canGoForward })
+    init()
 
-      // Update zen panel title
-      useZenStore.setState((state) => ({
-        panels: state.panels.map((p) =>
-          p.id === panelId ? { ...p, title: webview.getTitle() || url } : p
-        )
-      }))
-    }
-
-    const handleDidNavigateInPage = () => {
-      handleDidNavigate()
-    }
-
-    const handleStartLoading = () => {
-      if (!sessionIdRef.current) return
-      updateSession(sessionIdRef.current, { isLoading: true })
-    }
-
-    const handleStopLoading = () => {
-      if (!sessionIdRef.current) return
-      const url = webview.getURL()
-      const canGoBack = webview.canGoBack()
-      const canGoForward = webview.canGoForward()
-      updateSession(sessionIdRef.current, {
-        isLoading: false,
-        url,
-        canGoBack,
-        canGoForward
+    // ResizeObserver reports bounds to main process
+    const observer = new ResizeObserver(() => {
+      if (!sessionIdRef.current || !containerRef.current || !visibleRef.current) return
+      const rect = containerRef.current.getBoundingClientRect()
+      window.api.browser.setBounds(sessionIdRef.current, {
+        x: Math.round(rect.x),
+        y: Math.round(rect.y),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height)
       })
+    })
+    if (containerRef.current) {
+      observer.observe(containerRef.current)
     }
 
-    const handleTitleUpdated = (e: any) => {
-      if (!sessionIdRef.current) return
-      updateSession(sessionIdRef.current, { title: e.title })
-      useZenStore.setState((state) => ({
-        panels: state.panels.map((p) =>
-          p.id === panelId ? { ...p, title: e.title } : p
-        )
-      }))
-    }
-
-    webview.addEventListener('dom-ready', handleDomReady)
-    webview.addEventListener('did-navigate', handleDidNavigate)
-    webview.addEventListener('did-navigate-in-page', handleDidNavigateInPage)
-    webview.addEventListener('did-start-loading', handleStartLoading)
-    webview.addEventListener('did-stop-loading', handleStopLoading)
-    webview.addEventListener('page-title-updated', handleTitleUpdated)
+    // State updates from main process
+    const unsub = window.api.browser.onStateUpdate((_event, data) => {
+      if (data.sessionId !== sessionIdRef.current) return
+      updateSession(data.sessionId, data)
+      if (data.title) {
+        useZenStore.setState((state) => ({
+          panels: state.panels.map((p) =>
+            p.id === panelId ? { ...p, title: data.title! } : p
+          )
+        }))
+      }
+    })
 
     return () => {
-      webview.removeEventListener('dom-ready', handleDomReady)
-      webview.removeEventListener('did-navigate', handleDidNavigate)
-      webview.removeEventListener('did-navigate-in-page', handleDidNavigateInPage)
-      webview.removeEventListener('did-start-loading', handleStartLoading)
-      webview.removeEventListener('did-stop-loading', handleStopLoading)
-      webview.removeEventListener('page-title-updated', handleTitleUpdated)
-
+      destroyed = true
+      observer.disconnect()
+      unsub()
       if (sessionIdRef.current) {
-        window.api.browser.unregister(sessionIdRef.current)
+        window.api.browser.destroyView(sessionIdRef.current)
         removeSession(sessionIdRef.current)
-      }
-
-      webviewRef.current = null
-      if (container.contains(webview)) {
-        container.removeChild(webview)
       }
     }
   }, [])
+
+  // Show/hide view when visibility changes
+  useEffect(() => {
+    if (!sessionIdRef.current) return
+    if (visible) {
+      window.api.browser.showView(sessionIdRef.current)
+      // Re-send bounds when becoming visible
+      const rect = containerRef.current?.getBoundingClientRect()
+      if (rect) {
+        window.api.browser.setBounds(sessionIdRef.current, {
+          x: Math.round(rect.x),
+          y: Math.round(rect.y),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height)
+        })
+      }
+    } else {
+      window.api.browser.hideView(sessionIdRef.current)
+    }
+  }, [visible])
 
   return <div ref={containerRef} className="w-full h-full" />
 }

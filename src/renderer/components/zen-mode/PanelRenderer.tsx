@@ -13,6 +13,7 @@ interface PanelRendererProps {
   isActive: boolean
   onFocus: () => void
   onTermRef?: (ref: Terminal | null) => void
+  visible?: boolean
   draggable?: boolean
   onDragStart?: (e: React.DragEvent) => void
   onDragOver?: (e: React.DragEvent) => void
@@ -24,13 +25,13 @@ export function PanelRenderer({
   isActive,
   onFocus,
   onTermRef,
+  visible = true,
   draggable,
   onDragStart,
   onDragOver,
   onDrop
 }: PanelRendererProps) {
   const termRefLocal = useRef<Terminal | null>(null)
-  const webviewRefLocal = useRef<Electron.WebviewTag | null>(null)
 
   if (panel.type === 'terminal' && panel.terminalSessionId) {
     return (
@@ -91,7 +92,6 @@ export function PanelRenderer({
           title={panel.title}
           isActive={isActive}
           onFocus={onFocus}
-          webviewRef={webviewRefLocal}
           draggable={draggable}
           onDragStart={onDragStart}
           onDragOver={onDragOver}
@@ -101,7 +101,7 @@ export function PanelRenderer({
           <BrowserPanel
             panelId={panel.id}
             initialUrl={panel.browserUrl || 'https://www.google.com'}
-            webviewRef={webviewRefLocal}
+            visible={visible}
           />
         </div>
       </>

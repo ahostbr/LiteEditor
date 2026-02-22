@@ -151,8 +151,7 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.mjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
-      webviewTag: true
+      sandbox: false
     }
   })
 
@@ -302,7 +301,7 @@ function createWindow(): void {
   try { registerGitHandlers() } catch (e) { console.error('Failed to register git handlers:', e) }
   try { registerPtyHandlers() } catch (e) { console.error('Failed to register pty handlers:', e) }
   try { registerSearchHandlers() } catch (e) { console.error('Failed to register search handlers:', e) }
-  try { registerBrowserHandlers() } catch (e) { console.error('Failed to register browser handlers:', e) }
+  try { registerBrowserHandlers(mainWindow!) } catch (e) { console.error('Failed to register browser handlers:', e) }
 
   // Load renderer
   if (process.env['ELECTRON_RENDERER_URL']) {
@@ -321,6 +320,7 @@ app.whenReady().then(async () => {
   }
   startMcpServer()
   createWindow()
+
 })
 
 app.on('before-quit', () => {

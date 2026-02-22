@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { ipcMain, BrowserWindow } from 'electron'
 import { BrowserManager } from '../services/browser-manager'
 import {
   DOM_INDEX_SCRIPT,
@@ -12,24 +12,32 @@ const browserManager = new BrowserManager()
 
 export { browserManager }
 
-export function registerBrowserHandlers(): void {
-  // Lifecycle: renderer registers webview's webContentsId
-  ipcMain.handle('browser:register', async (_e, webContentsId: number) => {
-    const sessionId = browserManager.register(webContentsId)
-    return sessionId
+export function registerBrowserHandlers(mainWindow: BrowserWindow): void {
+  // Lifecycle: create WebContentsView in main process
+  ipcMain.handle('browser:create-view', async (_e, initialUrl: string) => {
+    return browserManager.createView(mainWindow, initialUrl)
   })
 
-  // Lifecycle: renderer unregisters on panel close
-  ipcMain.on('browser:unregister', (_e, sessionId: string) => {
-    browserManager.remove(sessionId)
+  // Lifecycle: destroy view
+  ipcMain.on('browser:destroy-view', (_e, sessionId: string) => {
+    browserManager.destroyView(sessionId)
   })
 
-  // Lifecycle: renderer notifies of URL change
-  ipcMain.on('browser:url-changed', (_e, _sessionId: string, _url: string) => {
-    // Currently a no-op on main side; renderer tracks URL in browser-store
+  // Lifecycle: set view bounds (from renderer ResizeObserver)
+  ipcMain.on('browser:set-bounds', (_e, sessionId: string, bounds: { x: number; y: number; width: number; height: number }) => {
+    browserManager.setBounds(sessionId, bounds)
   })
 
-  // Agent tool: navigate to URL
+  // Lifecycle: show/hide view (tab visibility)
+  ipcMain.on('browser:show-view', (_e, sessionId: string) => {
+    browserManager.showView(sessionId)
+  })
+
+  ipcMain.on('browser:hide-view', (_e, sessionId: string) => {
+    browserManager.hideView(sessionId)
+  })
+
+  // Navigation: navigate to URL
   ipcMain.handle('browser:navigate', async (_e, sessionId: string, url: string) => {
     try {
       const wc = browserManager.getWebContents(sessionId)
@@ -48,7 +56,7 @@ export function registerBrowserHandlers(): void {
     }
   })
 
-  // Agent tool: go back
+  // Navigation: go back
   ipcMain.handle('browser:go-back', async (_e, sessionId: string) => {
     try {
       const wc = browserManager.getWebContents(sessionId)
@@ -61,7 +69,7 @@ export function registerBrowserHandlers(): void {
     }
   })
 
-  // Agent tool: go forward
+  // Navigation: go forward
   ipcMain.handle('browser:go-forward', async (_e, sessionId: string) => {
     try {
       const wc = browserManager.getWebContents(sessionId)
@@ -74,12 +82,24 @@ export function registerBrowserHandlers(): void {
     }
   })
 
-  // Agent tool: reload
+  // Navigation: reload
   ipcMain.handle('browser:reload', async (_e, sessionId: string) => {
     try {
       const wc = browserManager.getWebContents(sessionId)
       if (!wc) return { success: false, error: 'Session not found' }
       wc.reload()
+      return { success: true }
+    } catch (err) {
+      return { success: false, error: String(err) }
+    }
+  })
+
+  // Navigation: stop loading
+  ipcMain.handle('browser:stop', async (_e, sessionId: string) => {
+    try {
+      const wc = browserManager.getWebContents(sessionId)
+      if (!wc) return { success: false, error: 'Session not found' }
+      wc.stop()
       return { success: true }
     } catch (err) {
       return { success: false, error: String(err) }

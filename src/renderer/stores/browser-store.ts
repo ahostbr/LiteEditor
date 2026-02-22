@@ -2,7 +2,6 @@ import { create } from 'zustand'
 
 export interface BrowserSession {
   id: string
-  webContentsId: number
   url: string
   title: string
   isLoading: boolean
@@ -12,7 +11,7 @@ export interface BrowserSession {
 
 interface BrowserState {
   sessions: Map<string, BrowserSession>
-  registerSession: (id: string, webContentsId: number, url?: string) => void
+  registerSession: (id: string, url?: string) => void
   removeSession: (id: string) => void
   updateSession: (id: string, updates: Partial<BrowserSession>) => void
   getSession: (id: string) => BrowserSession | undefined
@@ -21,12 +20,11 @@ interface BrowserState {
 export const useBrowserStore = create<BrowserState>((set, get) => ({
   sessions: new Map(),
 
-  registerSession: (id, webContentsId, url) => {
+  registerSession: (id, url) => {
     set((state) => {
       const sessions = new Map(state.sessions)
       sessions.set(id, {
         id,
-        webContentsId,
         url: url || 'about:blank',
         title: '',
         isLoading: true,
