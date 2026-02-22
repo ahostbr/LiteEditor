@@ -1,5 +1,6 @@
 import Database, { type Statement } from 'better-sqlite3'
 import { readdir } from 'fs/promises'
+import { type Dirent } from 'fs'
 import { join, dirname, basename } from 'path'
 
 export interface FileNode {
@@ -67,9 +68,9 @@ export class FileTreeDB {
    * Read one directory from filesystem and insert entries into DB.
    */
   async scanDir(dirPath: string): Promise<void> {
-    let entries: Awaited<ReturnType<typeof readdir>>
+    let entries: Dirent[]
     try {
-      entries = await readdir(dirPath, { withFileTypes: true })
+      entries = await readdir(dirPath, { withFileTypes: true }) as unknown as Dirent[]
     } catch {
       // Directory unreadable or gone — mark scanned with no children
       this.stmtDeleteByParent.run(dirPath)

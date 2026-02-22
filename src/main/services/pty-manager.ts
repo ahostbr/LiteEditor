@@ -62,7 +62,7 @@ export class PtyManager {
   }
 
   killAll(): void {
-    for (const [id, session] of this.sessions) {
+    for (const [, session] of Array.from(this.sessions)) {
       session.process.kill()
     }
     this.sessions.clear()

@@ -2,6 +2,8 @@ import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { RefreshCw, FolderOpen } from 'lucide-react'
 import { TreeNode, type FileNode } from './TreeNode'
 import { useEditorStore } from '../../stores/editor-store'
+import { useUiStore } from '../../stores/ui-store'
+import { useZenStore } from '../../stores/zen-store'
 
 export function FileExplorer() {
   const [tree, setTree] = useState<FileNode[]>([])
@@ -58,7 +60,12 @@ export function FileExplorer() {
     if (node.isDirectory) return
     try {
       const content = await window.api.fs.readFile(node.path)
-      openFile(node.path, content)
+      const appMode = useUiStore.getState().appMode
+      if (appMode === 'zen') {
+        useZenStore.getState().addEditorPanel(node.path, content)
+      } else {
+        openFile(node.path, content)
+      }
     } catch { /* ignore */ }
   }
 

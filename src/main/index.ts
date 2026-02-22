@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell, screen } from 'electron'
 import { join, dirname } from 'path'
 import { readFile, writeFile, mkdir, stat } from 'fs/promises'
 import { homedir } from 'os'
@@ -13,6 +13,23 @@ app.commandLine.appendSwitch('js-flags', '--max-old-space-size=512')
 let mainWindow: BrowserWindow | null = null
 let pendingFilePath: string | null = null
 let forceQuit = false
+let preSpanBounds: Electron.Rectangle | null = null
+let isSpanned = false
+
+function getUnionBounds(): Electron.Rectangle {
+  const displays = screen.getAllDisplays()
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+
+  for (const display of displays) {
+    const { x, y, width, height } = display.bounds
+    minX = Math.min(minX, x)
+    minY = Math.min(minY, y)
+    maxX = Math.max(maxX, x + width)
+    maxY = Math.max(maxY, y + height)
+  }
+
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
+}
 
 /** Extract a file path from argv (skips electron/app flags and .js files) */
 function getFileFromArgs(argv: string[]): string | null {
@@ -147,6 +164,40 @@ function createWindow(): void {
   })
   ipcMain.handle('window:is-maximized', () => mainWindow?.isMaximized() ?? false)
 
+  ipcMain.on('window:span-all-monitors', () => {
+    if (!mainWindow || isSpanned) return
+    preSpanBounds = mainWindow.getBounds()
+    const union = getUnionBounds()
+    mainWindow.setMinimumSize(1, 1)
+    mainWindow.setBounds(union)
+    isSpanned = true
+    mainWindow.webContents.send('window:span-change', true)
+  })
+
+  ipcMain.on('window:restore-span', () => {
+    if (!mainWindow || !isSpanned) return
+    if (preSpanBounds) {
+      mainWindow.setBounds(preSpanBounds)
+    }
+    mainWindow.setMinimumSize(800, 600)
+    isSpanned = false
+    preSpanBounds = null
+    mainWindow.webContents.send('window:span-change', false)
+  })
+
+  ipcMain.handle('window:is-spanned', () => isSpanned)
+
+  screen.on('display-removed', () => {
+    if (isSpanned && mainWindow) {
+      const primary = screen.getPrimaryDisplay()
+      mainWindow.setBounds(primary.workArea)
+      mainWindow.setMinimumSize(800, 600)
+      isSpanned = false
+      preSpanBounds = null
+      mainWindow.webContents.send('window:span-change', false)
+    }
+  })
+
   mainWindow.on('maximize', () => {
     mainWindow?.webContents.send('window:maximize-change', true)
   })
@@ -158,6 +209,15 @@ function createWindow(): void {
   ipcMain.handle('dialog:open-folder', async () => {
     const result = await dialog.showOpenDialog(mainWindow!, {
       properties: ['openDirectory']
+    })
+    if (result.canceled) return null
+    return result.filePaths[0]
+  })
+
+  // Open file dialog
+  ipcMain.handle('dialog:open-file', async () => {
+    const result = await dialog.showOpenDialog(mainWindow!, {
+      properties: ['openFile']
     })
     if (result.canceled) return null
     return result.filePaths[0]

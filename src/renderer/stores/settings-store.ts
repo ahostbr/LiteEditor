@@ -17,6 +17,7 @@ interface SettingsState {
   terminalFontSize: number
   autoSave: AutoSave
   autoSaveDelay: number
+  defaultTerminalCwd: string
   isLoaded: boolean
 
   setSetting: <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => void
@@ -59,7 +60,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       terminalShell: state.terminalShell,
       terminalFontSize: state.terminalFontSize,
       autoSave: state.autoSave,
-      autoSaveDelay: state.autoSaveDelay
+      autoSaveDelay: state.autoSaveDelay,
+      defaultTerminalCwd: state.defaultTerminalCwd
     }
     try {
       await window.api.settings.save(JSON.stringify(toSave, null, 2))

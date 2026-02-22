@@ -35,12 +35,11 @@ export class GitService {
     const result: StatusResult = await this.git.status()
     const files: ChangedFile[] = []
 
-    for (const f of result.staged) {
-      files.push({ path: f.path, status: f.index, staged: true })
-    }
+    const stagedSet = new Set(result.staged)
     for (const f of result.files) {
-      const isStaged = result.staged.some(s => s.path === f.path)
-      if (!isStaged) {
+      if (stagedSet.has(f.path)) {
+        files.push({ path: f.path, status: f.index, staged: true })
+      } else {
         files.push({ path: f.path, status: f.working_dir, staged: false })
       }
     }

@@ -15,9 +15,11 @@ interface TerminalState {
   createSession: (id: string, shell?: string, cwd?: string) => void
   killSession: (id: string) => void
   renameSession: (id: string, title: string) => void
-  addTerminal: () => Promise<void>
+  addTerminal: (shell?: string, cwd?: string) => Promise<void>
   removeTerminal: (id: string) => void
   setActiveSession: (id: string) => void
+  reorderTerminals: (fromIndex: number, toIndex: number) => void
+  restartTerminal: (id: string, cwd: string) => Promise<void>
 }
 
 export const useTerminalStore = create<TerminalState>((set, get) => ({
@@ -48,11 +50,11 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     }))
   },
 
-  addTerminal: async () => {
-    const cwd = useEditorStore.getState().projectRoot || undefined
+  addTerminal: async (shell?: string, cwd?: string) => {
+    const fallbackCwd = cwd || useEditorStore.getState().projectRoot || undefined
     try {
-      const sessionId = await window.api.pty.create(undefined, cwd)
-      get().createSession(sessionId, undefined, cwd)
+      const sessionId = await window.api.pty.create(shell || undefined, fallbackCwd)
+      get().createSession(sessionId, shell, fallbackCwd)
     } catch (err) {
       console.error('Failed to create terminal:', err)
     }
@@ -70,5 +72,34 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     })
   },
 
-  setActiveSession: (id) => set({ activeSessionId: id })
+  setActiveSession: (id) => set({ activeSessionId: id }),
+
+  reorderTerminals: (fromIndex, toIndex) => {
+    set((state) => {
+      const sessions = [...state.sessions]
+      const [moved] = sessions.splice(fromIndex, 1)
+      sessions.splice(toIndex, 0, moved)
+      return { sessions }
+    })
+  },
+
+  restartTerminal: async (id, cwd) => {
+    const session = get().sessions.find((s) => s.id === id)
+    if (!session) return
+    const { shell } = session
+
+    try { window.api.pty.kill(id) } catch { /* ignore */ }
+
+    try {
+      const newId = await window.api.pty.create(shell || undefined, cwd)
+      set((state) => ({
+        sessions: state.sessions.map((s) =>
+          s.id === id ? { ...s, id: newId, cwd } : s
+        ),
+        activeSessionId: state.activeSessionId === id ? newId : state.activeSessionId
+      }))
+    } catch (err) {
+      console.error('Failed to restart terminal:', err)
+    }
+  }
 }))

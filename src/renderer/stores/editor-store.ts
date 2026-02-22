@@ -134,7 +134,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
       // Auto-close split if second pane is empty
       if (paneIndex === 1 && newTabs.length === 0) {
-        const result = { panes: [newPanes[0]!, null] as [PaneState, PaneState | null], isSplit: false, activePaneIndex: 0 }
+        const result = { panes: [newPanes[0]!, null] as [PaneState, PaneState | null], isSplit: false, activePaneIndex: 0 as const }
         if (closedTab?.path) disposeMonacoModel(closedTab.path, result.panes)
         return result
       }
@@ -168,7 +168,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       newPanes[paneIndex] = createEmptyPane()
 
       if (paneIndex === 1) {
-        const result = { panes: [newPanes[0]!, null] as [PaneState, PaneState | null], isSplit: false, activePaneIndex: 0 }
+        const result = { panes: [newPanes[0]!, null] as [PaneState, PaneState | null], isSplit: false, activePaneIndex: 0 as const }
         for (const tab of closedTabs) {
           if (tab.path) disposeMonacoModel(tab.path, result.panes)
         }

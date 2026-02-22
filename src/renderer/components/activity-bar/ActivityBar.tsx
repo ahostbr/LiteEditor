@@ -1,5 +1,5 @@
 import React from 'react'
-import { Files, Search, GitBranch, Settings, Terminal } from 'lucide-react'
+import { Files, Search, GitBranch, Settings, Terminal, LayoutGrid } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { useUiStore, type SidebarPanel } from '../../stores/ui-store'
 
@@ -11,7 +11,7 @@ const items: Array<{ id: SidebarPanel; icon: React.ReactNode; label: string }> =
 ]
 
 export function ActivityBar() {
-  const { activeSidebarPanel, sidebarVisible, setActiveSidebarPanel, terminalPanelVisible, toggleTerminalPanel } = useUiStore()
+  const { activeSidebarPanel, sidebarVisible, setActiveSidebarPanel, terminalPanelVisible, toggleTerminalPanel, appMode, toggleAppMode } = useUiStore()
 
   return (
     <div
@@ -49,23 +49,43 @@ export function ActivityBar() {
         })}
       </div>
       <div className="flex flex-col items-center w-full">
+        {appMode === 'editor' && (
+          <button
+            onClick={toggleTerminalPanel}
+            title="Terminal"
+            className={cn(
+              'flex items-center justify-center w-full h-12 transition-colors relative',
+              terminalPanelVisible
+                ? 'text-[var(--text-primary)]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+            )}
+          >
+            {terminalPanelVisible && (
+              <div
+                className="absolute left-0 top-1 bottom-1 w-0.5 rounded-r"
+                style={{ backgroundColor: 'var(--accent)' }}
+              />
+            )}
+            <Terminal size={22} />
+          </button>
+        )}
         <button
-          onClick={toggleTerminalPanel}
-          title="Terminal"
+          onClick={toggleAppMode}
+          title={appMode === 'editor' ? 'Zen Mode' : 'Editor Mode'}
           className={cn(
             'flex items-center justify-center w-full h-12 transition-colors relative',
-            terminalPanelVisible
+            appMode === 'zen'
               ? 'text-[var(--text-primary)]'
               : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
           )}
         >
-          {terminalPanelVisible && (
+          {appMode === 'zen' && (
             <div
               className="absolute left-0 top-1 bottom-1 w-0.5 rounded-r"
               style={{ backgroundColor: 'var(--accent)' }}
             />
           )}
-          <Terminal size={22} />
+          <LayoutGrid size={22} />
         </button>
       </div>
     </div>

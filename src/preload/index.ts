@@ -130,7 +130,15 @@ const api = {
     zoomOut: (): number => { const l = webFrame.getZoomLevel() - 0.5; webFrame.setZoomLevel(l); return l },
     zoomReset: (): number => { webFrame.setZoomLevel(0); return 0 },
     getZoomLevel: (): number => webFrame.getZoomLevel(),
-    setZoomLevel: (level: number): void => { webFrame.setZoomLevel(level) }
+    setZoomLevel: (level: number): void => { webFrame.setZoomLevel(level) },
+    spanAllMonitors: (): void => ipcRenderer.send('window:span-all-monitors'),
+    restoreSpan: (): void => ipcRenderer.send('window:restore-span'),
+    isSpanned: (): Promise<boolean> => ipcRenderer.invoke('window:is-spanned'),
+    onSpanChange: (callback: (spanned: boolean) => void): (() => void) => {
+      const handler = (_e: unknown, spanned: boolean) => callback(spanned)
+      ipcRenderer.on('window:span-change', handler)
+      return () => ipcRenderer.removeListener('window:span-change', handler)
+    }
   },
 
   settings: {
@@ -150,6 +158,8 @@ const api = {
   dialog: {
     openFolder: (): Promise<string | null> =>
       ipcRenderer.invoke('dialog:open-folder'),
+    openFile: (): Promise<string | null> =>
+      ipcRenderer.invoke('dialog:open-file'),
     showMessageBox: (options: { type?: string; title?: string; message: string; detail?: string; buttons?: string[]; defaultId?: number; cancelId?: number }): Promise<number> =>
       ipcRenderer.invoke('dialog:show-message-box', options)
   },

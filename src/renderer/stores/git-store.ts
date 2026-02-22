@@ -169,7 +169,7 @@ export const useGitStore = create<GitState>((set, get) => ({
 
   loadBranches: async () => {
     try {
-      const result = await window.api.git.branches() as { current: string; branches: Branch[] }
+      const result = await window.api.git.branches() as unknown as { current: string; branches: Branch[] }
       set({ branches: result.branches })
     } catch { /* ignore */ }
   },

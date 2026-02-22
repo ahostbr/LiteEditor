@@ -101,6 +101,13 @@ export function useKeyboardShortcuts() {
         }
       }
 
+      // Ctrl+Shift+T: Toggle zen mode
+      if (ctrl && shift && e.key === 'T') {
+        e.preventDefault()
+        useUiStore.getState().toggleAppMode()
+        return
+      }
+
       // Ctrl+Tab / Ctrl+Shift+Tab: Next/Prev tab
       if (ctrl && e.key === 'Tab') {
         e.preventDefault()

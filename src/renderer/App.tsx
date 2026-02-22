@@ -11,9 +11,12 @@ import { useUiStore } from './stores/ui-store'
 
 // Lazy-load terminal — xterm.js only loads when user first opens terminal
 const TerminalPanel = React.lazy(() => import('./components/terminal/TerminalPanel'))
+// Lazy-load zen mode — only loads when user switches to zen mode
+const ZenArea = React.lazy(() => import('./components/zen-mode/ZenArea'))
 import { useEditorStore } from './stores/editor-store'
 import { useGitStore } from './stores/git-store'
 import { useSettingsStore } from './stores/settings-store'
+import { useLayoutStore } from './stores/layout-store'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { getLanguageFromPath, getLanguageDisplayName } from './lib/language-map'
 import { ConfirmDialog } from './components/shared/ConfirmDialog'
@@ -75,9 +78,11 @@ export default function App() {
 
   const sidebarVisible = useUiStore((s) => s.sidebarVisible)
   const terminalPanelVisible = useUiStore((s) => s.terminalPanelVisible)
+  const appMode = useUiStore((s) => s.appMode)
 
   useEffect(() => {
     useSettingsStore.getState().loadSettings()
+    useLayoutStore.getState().loadLayout()
     // Restore last workspace
     window.api.workspace.load().then((data: unknown) => {
       if (data && typeof data === 'object') {
@@ -137,7 +142,7 @@ export default function App() {
     <div className="flex flex-col h-screen w-screen overflow-hidden">
       <Titlebar />
       <div className="flex flex-1 overflow-hidden">
-        <ActivityBar />
+        {(appMode === 'editor' || sidebarVisible) && <ActivityBar />}
         {sidebarVisible && (
           <>
             <div
@@ -153,24 +158,30 @@ export default function App() {
           </>
         )}
         <div className="flex-1 overflow-hidden">
-          <PanelGroup direction="horizontal">
-            <Panel>
-              <SplitPane />
-            </Panel>
-            {terminalPanelVisible && (
-              <>
-                <PanelResizeHandle
-                  className="w-1 shrink-0 hover:bg-[var(--accent)] transition-colors"
-                  style={{ backgroundColor: 'var(--border)' }}
-                />
-                <Panel defaultSize={35} minSize={15}>
-                  <Suspense fallback={<div className="h-full" style={{ backgroundColor: '#0c0c0f' }} />}>
-                    <TerminalPanel />
-                  </Suspense>
-                </Panel>
-              </>
-            )}
-          </PanelGroup>
+          {appMode === 'zen' ? (
+            <Suspense fallback={<div className="h-full" style={{ backgroundColor: 'var(--bg-base)' }} />}>
+              <ZenArea />
+            </Suspense>
+          ) : (
+            <PanelGroup direction="horizontal">
+              <Panel>
+                <SplitPane />
+              </Panel>
+              {terminalPanelVisible && (
+                <>
+                  <PanelResizeHandle
+                    className="w-1 shrink-0 hover:bg-[var(--accent)] transition-colors"
+                    style={{ backgroundColor: 'var(--border)' }}
+                  />
+                  <Panel defaultSize={35} minSize={15}>
+                    <Suspense fallback={<div className="h-full" style={{ backgroundColor: '#0c0c0f' }} />}>
+                      <TerminalPanel />
+                    </Suspense>
+                  </Panel>
+                </>
+              )}
+            </PanelGroup>
+          )}
         </div>
       </div>
       <StatusBar />

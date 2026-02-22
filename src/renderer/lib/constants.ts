@@ -9,7 +9,8 @@ export const DEFAULT_SETTINGS = {
   terminalShell: '',
   terminalFontSize: 13,
   autoSave: 'off' as const,
-  autoSaveDelay: 1000
+  autoSaveDelay: 1000,
+  defaultTerminalCwd: ''
 }
 
 export const KEYBOARD_SHORTCUTS = {
@@ -22,5 +23,6 @@ export const KEYBOARD_SHORTCUTS = {
   toggleSidebar: 'Ctrl+B',
   commandPalette: 'Ctrl+Shift+P',
   nextTab: 'Ctrl+Tab',
-  prevTab: 'Ctrl+Shift+Tab'
+  prevTab: 'Ctrl+Shift+Tab',
+  toggleZenMode: 'Ctrl+Shift+T'
 } as const
