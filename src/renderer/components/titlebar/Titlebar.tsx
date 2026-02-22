@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Minus, Square, X, Copy, PanelLeft, PanelBottom, Terminal, Code, Plus, LayoutGrid, GripVertical, Layers, PanelTop, ChevronDown, FileCode, Monitor } from 'lucide-react'
+import { Minus, Square, X, Copy, PanelLeft, PanelBottom, Terminal, Code, Plus, LayoutGrid, GripVertical, Layers, PanelTop, ChevronDown, FileCode, Monitor, Globe } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { useUiStore } from '../../stores/ui-store'
 import { useLayoutStore, type LayoutMode, type GridLayout } from '../../stores/layout-store'
@@ -38,6 +38,7 @@ export function Titlebar() {
   const setGridLayout = useLayoutStore((s) => s.setGridLayout)
   const addTerminalPanel = useZenStore((s) => s.addTerminalPanel)
   const addEditorPanel = useZenStore((s) => s.addEditorPanel)
+  const addBrowserPanel = useZenStore((s) => s.addBrowserPanel)
 
   useEffect(() => {
     window.api.window.isMaximized().then(setIsMaximized)
@@ -63,6 +64,11 @@ export function Titlebar() {
 
   const handleAddTerminal = () => {
     addTerminalPanel()
+    setShowAddMenu(false)
+  }
+
+  const handleAddBrowser = () => {
+    addBrowserPanel()
     setShowAddMenu(false)
   }
 
@@ -194,6 +200,13 @@ export function Titlebar() {
                     style={{ color: 'var(--text-primary)' }}
                   >
                     <FileCode size={14} /> Open File...
+                  </button>
+                  <button
+                    onClick={handleAddBrowser}
+                    className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-[var(--bg-overlay)] transition-colors"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    <Globe size={14} /> New Browser
                   </button>
                 </div>
               )}

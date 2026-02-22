@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useEditorStore, getMonacoContent } from '../stores/editor-store'
 import { useUiStore } from '../stores/ui-store'
+import { useZenStore } from '../stores/zen-store'
 import { confirmAndSaveTab } from '../lib/close-helpers'
 
 export function useKeyboardShortcuts() {
@@ -105,6 +106,15 @@ export function useKeyboardShortcuts() {
       if (ctrl && shift && e.key === 'T') {
         e.preventDefault()
         useUiStore.getState().toggleAppMode()
+        return
+      }
+
+      // Ctrl+Shift+B: New browser panel (zen mode only)
+      if (ctrl && shift && e.key === 'B') {
+        e.preventDefault()
+        if (useUiStore.getState().appMode === 'zen') {
+          useZenStore.getState().addBrowserPanel()
+        }
         return
       }
 

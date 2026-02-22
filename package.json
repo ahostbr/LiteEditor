@@ -149,6 +149,13 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
     },
+    "extraResources": [
+      {
+        "from": "src/mcp-server",
+        "to": "mcp-server",
+        "filter": ["**/*.py"]
+      }
+    ],
     "asar": true,
     "asarUnpack": [
       "node_modules/node-pty/**/*",

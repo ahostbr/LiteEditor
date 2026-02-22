@@ -1,8 +1,9 @@
 import { create } from 'zustand'
 import { useTerminalStore } from './terminal-store'
 import { useEditorStore } from './editor-store'
+import { useBrowserStore } from './browser-store'
 
-export type ZenPanelType = 'terminal' | 'editor'
+export type ZenPanelType = 'terminal' | 'editor' | 'browser'
 
 export interface ZenPanel {
   id: string
@@ -13,6 +14,9 @@ export interface ZenPanel {
   // Editor panels
   filePath?: string
   isDirty?: boolean
+  // Browser panels
+  browserSessionId?: string
+  browserUrl?: string
 }
 
 interface ZenState {
@@ -21,6 +25,7 @@ interface ZenState {
 
   addTerminalPanel: (shell?: string, cwd?: string) => Promise<void>
   addEditorPanel: (filePath: string, content: string) => void
+  addBrowserPanel: (url?: string) => void
   removePanel: (id: string) => void
   setActivePanel: (id: string) => void
   reorderPanels: (fromIndex: number, toIndex: number) => void
@@ -53,6 +58,20 @@ export const useZenStore = create<ZenState>((set, get) => ({
     } catch (err) {
       console.error('Failed to create zen terminal panel:', err)
     }
+  },
+
+  addBrowserPanel: (url?: string) => {
+    const id = `zen-browser-${++panelCounter}`
+    const browserCount = get().panels.filter((p) => p.type === 'browser').length + 1
+    set((state) => ({
+      panels: [...state.panels, {
+        id,
+        type: 'browser',
+        title: `Browser ${browserCount}`,
+        browserUrl: url || 'https://www.google.com'
+      }],
+      activePanelId: id
+    }))
   },
 
   addEditorPanel: (filePath: string, content: string) => {
@@ -94,6 +113,11 @@ export const useZenStore = create<ZenState>((set, get) => ({
 
     if (panel.type === 'terminal' && panel.terminalSessionId) {
       useTerminalStore.getState().removeTerminal(panel.terminalSessionId)
+    }
+
+    if (panel.type === 'browser' && panel.browserSessionId) {
+      window.api.browser.unregister(panel.browserSessionId)
+      useBrowserStore.getState().removeSession(panel.browserSessionId)
     }
 
     set((state) => {

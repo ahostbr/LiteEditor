@@ -2,10 +2,13 @@ import { app, BrowserWindow, ipcMain, dialog, shell, screen } from 'electron'
 import { join, dirname } from 'path'
 import { readFile, writeFile, mkdir, stat } from 'fs/promises'
 import { homedir } from 'os'
+import { spawn, ChildProcess } from 'child_process'
 import { registerFsHandlers, shutdownFsHandlers } from './ipc/fs-handlers'
 import { registerGitHandlers } from './ipc/git-handlers'
-import { registerPtyHandlers } from './ipc/pty-handlers'
+import { registerPtyHandlers, ptyManager } from './ipc/pty-handlers'
 import { registerSearchHandlers } from './ipc/search-handlers'
+import { registerBrowserHandlers, shutdownBrowserHandlers, browserManager } from './ipc/browser-handlers'
+import { AgentBridge } from './services/agent-bridge'
 
 // Limit V8 heap — default scales with system RAM and gets way too aggressive
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=512')
@@ -15,6 +18,61 @@ let pendingFilePath: string | null = null
 let forceQuit = false
 let preSpanBounds: Electron.Rectangle | null = null
 let isSpanned = false
+let mcpServer: ChildProcess | null = null
+const agentBridge = new AgentBridge(ptyManager, browserManager, () => mainWindow)
+
+function startMcpServer(): void {
+  const serverScript = app.isPackaged
+    ? join(process.resourcesPath, 'mcp-server', 'server.py')
+    : join(app.getAppPath(), 'src', 'mcp-server', 'server.py')
+
+  mcpServer = spawn('python', [serverScript], {
+    stdio: 'ignore',
+    env: { ...process.env, MCP_TRANSPORT: 'sse', MCP_PORT: '7422' }
+  })
+
+  mcpServer.on('error', (err) => {
+    console.error('MCP server failed to start:', err)
+    mcpServer = null
+  })
+  mcpServer.on('exit', (code) => {
+    console.log('MCP server exited with code:', code)
+    mcpServer = null
+  })
+}
+
+function stopMcpServer(): void {
+  if (mcpServer && !mcpServer.killed) {
+    const pid = mcpServer.pid
+    mcpServer.kill()
+    // On Windows, child_process.kill() sends SIGTERM which Python ignores.
+    // Force-kill the process tree to prevent zombie Python processes.
+    if (pid && process.platform === 'win32') {
+      try {
+        require('child_process').execSync(`taskkill /pid ${pid} /T /F`, { windowsHide: true, stdio: 'ignore' })
+      } catch { /* already dead */ }
+    }
+    mcpServer = null
+  }
+}
+
+function killOrphanedMcpServers(): void {
+  if (process.platform !== 'win32') return
+  try {
+    const { execSync } = require('child_process')
+    const result = execSync(
+      'wmic process where "commandline like \'%mcp-server%server.py%\'" get processid /format:csv',
+      { windowsHide: true, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }
+    )
+    const pids = result.split('\n')
+      .map((line: string) => line.trim().split(',').pop()?.trim())
+      .filter((pid: string | undefined) => pid && /^\d+$/.test(pid))
+    for (const pid of pids) {
+      try { execSync(`taskkill /pid ${pid} /T /F`, { windowsHide: true, stdio: 'ignore' }) } catch { /* */ }
+    }
+    if (pids.length > 0) console.log(`Killed ${pids.length} orphaned MCP server(s)`)
+  } catch { /* no orphans */ }
+}
 
 function getUnionBounds(): Electron.Rectangle {
   const displays = screen.getAllDisplays()
@@ -93,7 +151,8 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.mjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: false,
+      webviewTag: true
     }
   })
 
@@ -281,6 +340,7 @@ function createWindow(): void {
   try { registerGitHandlers() } catch (e) { console.error('Failed to register git handlers:', e) }
   try { registerPtyHandlers() } catch (e) { console.error('Failed to register pty handlers:', e) }
   try { registerSearchHandlers() } catch (e) { console.error('Failed to register search handlers:', e) }
+  try { registerBrowserHandlers() } catch (e) { console.error('Failed to register browser handlers:', e) }
 
   // Load renderer
   if (process.env['ELECTRON_RENDERER_URL']) {
@@ -290,13 +350,27 @@ function createWindow(): void {
   }
 }
 
-app.whenReady().then(createWindow)
+app.whenReady().then(async () => {
+  killOrphanedMcpServers()
+  try {
+    await agentBridge.start()
+  } catch (err) {
+    console.error('Failed to start Agent Bridge:', err)
+  }
+  startMcpServer()
+  createWindow()
+})
 
 app.on('before-quit', () => {
   shutdownFsHandlers()
+  shutdownBrowserHandlers()
+  agentBridge.stop()
+  stopMcpServer()
 })
 
 app.on('window-all-closed', () => {
+  agentBridge.stop()
+  stopMcpServer()
   app.quit()
 })
 

@@ -108,6 +108,41 @@ const api = {
       ipcRenderer.invoke('search:files', query, options)
   },
 
+  browser: {
+    register: (wcId: number): Promise<string> =>
+      ipcRenderer.invoke('browser:register', wcId),
+    unregister: (sessionId: string): void =>
+      ipcRenderer.send('browser:unregister', sessionId),
+    urlChanged: (sessionId: string, url: string): void =>
+      ipcRenderer.send('browser:url-changed', sessionId, url),
+    navigate: (sessionId: string, url: string): Promise<unknown> =>
+      ipcRenderer.invoke('browser:navigate', sessionId, url),
+    goBack: (sessionId: string): Promise<unknown> =>
+      ipcRenderer.invoke('browser:go-back', sessionId),
+    goForward: (sessionId: string): Promise<unknown> =>
+      ipcRenderer.invoke('browser:go-forward', sessionId),
+    reload: (sessionId: string): Promise<unknown> =>
+      ipcRenderer.invoke('browser:reload', sessionId),
+    readPage: (sessionId: string): Promise<unknown> =>
+      ipcRenderer.invoke('browser:read-page', sessionId),
+    screenshot: (sessionId: string): Promise<unknown> =>
+      ipcRenderer.invoke('browser:screenshot', sessionId),
+    click: (sessionId: string, index: number): Promise<unknown> =>
+      ipcRenderer.invoke('browser:click', sessionId, index),
+    type: (sessionId: string, text: string, index?: number): Promise<unknown> =>
+      ipcRenderer.invoke('browser:type', sessionId, text, index),
+    scroll: (sessionId: string, direction: string, amount: number): Promise<unknown> =>
+      ipcRenderer.invoke('browser:scroll', sessionId, direction, amount),
+    selectOption: (sessionId: string, elementIndex: number, optionIndex: number): Promise<unknown> =>
+      ipcRenderer.invoke('browser:select-option', sessionId, elementIndex, optionIndex),
+    executeJs: (sessionId: string, code: string): Promise<unknown> =>
+      ipcRenderer.invoke('browser:execute-js', sessionId, code),
+    consoleLogs: (sessionId: string, since?: number): Promise<unknown> =>
+      ipcRenderer.invoke('browser:console-logs', sessionId, since),
+    listSessions: (): Promise<string[]> =>
+      ipcRenderer.invoke('browser:list-sessions')
+  },
+
   shell: {
     openExternal: (url: string): void =>
       ipcRenderer.send('shell:open-external', url),

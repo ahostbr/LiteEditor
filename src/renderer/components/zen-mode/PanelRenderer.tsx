@@ -3,6 +3,8 @@ import { TerminalInstance } from './TerminalInstance'
 import { TerminalHeader } from './TerminalHeader'
 import { ZenMonacoEditor } from './ZenMonacoEditor'
 import { EditorPanelHeader } from './EditorPanelHeader'
+import { BrowserPanel } from './BrowserPanel'
+import { BrowserHeader } from './BrowserHeader'
 import { useZenStore, type ZenPanel } from '../../stores/zen-store'
 import type { Terminal } from '@xterm/xterm'
 
@@ -28,6 +30,7 @@ export function PanelRenderer({
   onDrop
 }: PanelRendererProps) {
   const termRefLocal = useRef<Terminal | null>(null)
+  const webviewRefLocal = useRef<Electron.WebviewTag | null>(null)
 
   if (panel.type === 'terminal' && panel.terminalSessionId) {
     return (
@@ -74,6 +77,32 @@ export function PanelRenderer({
         />
         <div className="flex-1 min-h-0 overflow-hidden">
           <ZenMonacoEditor filePath={panel.filePath} panelId={panel.id} />
+        </div>
+      </>
+    )
+  }
+
+  if (panel.type === 'browser') {
+    return (
+      <>
+        <BrowserHeader
+          panelId={panel.id}
+          browserSessionId={panel.browserSessionId}
+          title={panel.title}
+          isActive={isActive}
+          onFocus={onFocus}
+          webviewRef={webviewRefLocal}
+          draggable={draggable}
+          onDragStart={onDragStart}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+        />
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <BrowserPanel
+            panelId={panel.id}
+            initialUrl={panel.browserUrl || 'https://www.google.com'}
+            webviewRef={webviewRefLocal}
+          />
         </div>
       </>
     )
