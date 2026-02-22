@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useZenStore } from '../../stores/zen-store'
 import { useLayoutStore } from '../../stores/layout-store'
+import { useEditorStore, getMonacoContent } from '../../stores/editor-store'
 import { GridLayout } from './GridLayout'
 import { SplitterLayout } from './SplitterLayout'
 import { WindowLayout } from './WindowLayout'
@@ -9,11 +10,22 @@ import { TabLayout } from './TabLayout'
 export function ZenArea() {
   const panels = useZenStore((s) => s.panels)
   const addTerminalPanel = useZenStore((s) => s.addTerminalPanel)
+  const addEditorPanel = useZenStore((s) => s.addEditorPanel)
   const layoutMode = useLayoutStore((s) => s.layoutMode)
 
-  // Auto-create first terminal on mount
+  // Auto-create editor panels from normal mode's open tabs + a terminal
   useEffect(() => {
     if (panels.length === 0) {
+      const editorState = useEditorStore.getState()
+      for (const pane of editorState.panes) {
+        if (!pane) continue
+        for (const tab of pane.tabs) {
+          if (tab.path && tab.type === 'file') {
+            const content = getMonacoContent(tab.path) || tab.content || ''
+            addEditorPanel(tab.path, content)
+          }
+        }
+      }
       addTerminalPanel()
     }
   }, [])
