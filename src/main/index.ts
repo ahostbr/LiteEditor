@@ -1,13 +1,12 @@
 import { app, BrowserWindow, ipcMain, dialog, shell, screen } from 'electron'
-import { join, dirname } from 'path'
-import { readFile, writeFile, mkdir, stat } from 'fs/promises'
-import { homedir } from 'os'
+import { join } from 'path'
 import { spawn, ChildProcess } from 'child_process'
 import { registerFsHandlers, shutdownFsHandlers } from './ipc/fs-handlers'
 import { registerGitHandlers } from './ipc/git-handlers'
 import { registerPtyHandlers, ptyManager } from './ipc/pty-handlers'
 import { registerSearchHandlers } from './ipc/search-handlers'
 import { registerBrowserHandlers, shutdownBrowserHandlers, browserManager } from './ipc/browser-handlers'
+import { registerWorkspaceHandlers } from './ipc/workspace-handlers'
 import { AgentBridge } from './services/agent-bridge'
 
 // Limit V8 heap — default scales with system RAM and gets way too aggressive
@@ -119,8 +118,9 @@ function sendFileToRenderer(filePath: string): void {
   }
 }
 
-// Single instance lock
-const gotTheLock = app.requestSingleInstanceLock()
+// Single instance lock (skip in test mode so Playwright can launch sequential instances)
+const isTest = process.env.NODE_ENV === 'test'
+const gotTheLock = isTest || app.requestSingleInstanceLock()
 if (!gotTheLock) {
   app.quit()
 } else {
@@ -296,46 +296,8 @@ function createWindow(): void {
     shell.openPath(path)
   })
 
-  // Settings IPC
-  const settingsDir = join(homedir(), '.liteeditor')
-  const settingsFile = join(settingsDir, 'settings.json')
-
-  ipcMain.handle('settings:load', async () => {
-    try {
-      const content = await readFile(settingsFile, 'utf-8')
-      return JSON.parse(content)
-    } catch {
-      return null
-    }
-  })
-
-  ipcMain.handle('settings:save', async (_e, data: string) => {
-    try {
-      await mkdir(settingsDir, { recursive: true })
-      await writeFile(settingsFile, data, 'utf-8')
-    } catch { /* ignore */ }
-  })
-
-  // Workspace IPC
-  const workspaceFile = join(settingsDir, 'workspace.json')
-
-  ipcMain.handle('workspace:load', async () => {
-    try {
-      const content = await readFile(workspaceFile, 'utf-8')
-      return JSON.parse(content)
-    } catch {
-      return null
-    }
-  })
-
-  ipcMain.handle('workspace:save', async (_e, data: string) => {
-    try {
-      await mkdir(settingsDir, { recursive: true })
-      await writeFile(workspaceFile, data, 'utf-8')
-    } catch { /* ignore */ }
-  })
-
   // Register IPC handler modules
+  try { registerWorkspaceHandlers() } catch (e) { console.error('Failed to register workspace handlers:', e) }
   try { registerFsHandlers() } catch (e) { console.error('Failed to register fs handlers:', e) }
   try { registerGitHandlers() } catch (e) { console.error('Failed to register git handlers:', e) }
   try { registerPtyHandlers() } catch (e) { console.error('Failed to register pty handlers:', e) }

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { launchApp } from './helpers/electron-app'
+import { launchApp, quitApp } from './helpers/electron-app'
 import type { ElectronApplication, Page } from 'playwright'
 import { join } from 'path'
 import { mkdirSync, writeFileSync, rmSync, readFileSync } from 'fs'
@@ -33,7 +33,7 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  await app.close()
+  await quitApp(app)
   rmSync(testDir, { recursive: true, force: true })
 })
 

@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react'
+import React, { Suspense, useEffect } from 'react'
 import { TabBar } from './TabBar'
 import { EmptyState } from './EmptyState'
 import { useEditorStore } from '../../stores/editor-store'
@@ -22,6 +22,18 @@ export function EditorPane({ paneIndex }: EditorPaneProps) {
   const activeTab = pane.activeTabIndex >= 0 ? pane.tabs[pane.activeTabIndex] : null
   const isActive = activePaneIndex === paneIndex
 
+  // Lazy-load content for tabs restored from workspace
+  useEffect(() => {
+    if (activeTab?.needsLoad && activeTab.path) {
+      window.api.fs.readFile(activeTab.path).then((content) => {
+        useEditorStore.getState().openFile(activeTab.path!, content, paneIndex)
+      }).catch(() => {
+        // File no longer exists — close the tab
+        useEditorStore.getState().closeTab(paneIndex, pane.activeTabIndex)
+      })
+    }
+  }, [activeTab?.id, activeTab?.needsLoad])
+
   return (
     <div
       className="flex flex-col h-full w-full"
@@ -34,7 +46,7 @@ export function EditorPane({ paneIndex }: EditorPaneProps) {
       <TabBar paneIndex={paneIndex} />
       <div className="flex-1 overflow-hidden" style={{ backgroundColor: 'var(--bg-base)' }}>
         {!activeTab && <EmptyState />}
-        {activeTab?.type === 'file' && activeTab.path && (
+        {activeTab?.type === 'file' && activeTab.path && !activeTab.needsLoad && (
           <Suspense fallback={<div className="w-full h-full" style={{ backgroundColor: 'var(--bg-base)' }} />}>
             <MonacoEditor
               key={activeTab.id}
@@ -44,6 +56,11 @@ export function EditorPane({ paneIndex }: EditorPaneProps) {
               tabIndex={pane.activeTabIndex}
             />
           </Suspense>
+        )}
+        {activeTab?.needsLoad && (
+          <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: 'var(--bg-base)', color: 'var(--text-muted)' }}>
+            <span className="text-xs">Loading...</span>
+          </div>
         )}
         {activeTab?.type === 'diff' && activeTab.path && (
           <Suspense fallback={<div className="w-full h-full" style={{ backgroundColor: 'var(--bg-base)' }} />}>

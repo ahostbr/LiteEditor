@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test'
-import { launchApp } from './helpers/electron-app'
+import { launchApp, quitApp } from './helpers/electron-app'
 import type { ElectronApplication, Page } from 'playwright'
 import { join } from 'path'
 import { mkdirSync, writeFileSync, rmSync } from 'fs'
+import { homedir } from 'os'
 
 let app: ElectronApplication
 let page: Page
@@ -17,13 +18,17 @@ test.beforeAll(async () => {
   writeFileSync(join(testDir, 'src', 'index.ts'), 'console.log("hello")')
   writeFileSync(join(testDir, 'package.json'), '{ "name": "test" }')
 
+  // Clear any saved projectRoot so the app starts fresh (no folder opened)
+  const wsFile = join(homedir(), '.liteeditor', 'workspace.json')
+  try { writeFileSync(wsFile, JSON.stringify({})) } catch {}
+
   const launched = await launchApp()
   app = launched.app
   page = launched.page
 })
 
 test.afterAll(async () => {
-  await app.close()
+  await quitApp(app)
   rmSync(testDir, { recursive: true, force: true })
 })
 

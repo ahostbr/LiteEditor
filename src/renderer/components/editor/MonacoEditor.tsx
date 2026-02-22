@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useCallback } from 'react'
 import * as monaco from 'monaco-editor'
 import { getLanguageFromPath } from '../../lib/language-map'
 import { useSettingsStore } from '../../stores/settings-store'
@@ -39,6 +39,14 @@ export function MonacoEditor({ content, path, paneIndex, tabIndex }: MonacoEdito
   const modelRef = useRef<monaco.editor.ITextModel | null>(null)
   const settings = useSettingsStore()
   const markDirty = useEditorStore((s) => s.markDirty)
+  const updateCursorPosition = useEditorStore((s) => s.updateCursorPosition)
+  const updateScrollPosition = useEditorStore((s) => s.updateScrollPosition)
+
+  // Get saved cursor/scroll from the tab
+  const tab = useEditorStore((s) => {
+    const pane = s.panes[paneIndex]
+    return pane?.tabs[tabIndex]
+  })
 
   // Create editor
   useEffect(() => {
@@ -80,13 +88,48 @@ export function MonacoEditor({ content, path, paneIndex, tabIndex }: MonacoEdito
     })
     editorRef.current = editor
 
+    // Restore cursor position if saved
+    const currentTab = useEditorStore.getState().panes[paneIndex]?.tabs[tabIndex]
+    if (currentTab?.cursorLine) {
+      const pos = { lineNumber: currentTab.cursorLine, column: currentTab.cursorColumn || 1 }
+      editor.setPosition(pos)
+      editor.revealLineInCenter(currentTab.cursorLine)
+    }
+
+    // Restore scroll position if saved
+    if (currentTab?.scrollTop !== undefined) {
+      editor.setScrollTop(currentTab.scrollTop)
+    }
+
     // Listen for content changes — only mark dirty, Monaco model is source of truth
-    const disposable = editor.onDidChangeModelContent(() => {
+    const contentDisposable = editor.onDidChangeModelContent(() => {
       markDirty(paneIndex, tabIndex)
     })
 
+    // Debounced cursor position tracking
+    let cursorTimer: ReturnType<typeof setTimeout> | null = null
+    const cursorDisposable = editor.onDidChangeCursorPosition((e) => {
+      if (cursorTimer) clearTimeout(cursorTimer)
+      cursorTimer = setTimeout(() => {
+        updateCursorPosition(paneIndex, tabIndex, e.position.lineNumber, e.position.column)
+      }, 500)
+    })
+
+    // Debounced scroll position tracking
+    let scrollTimer: ReturnType<typeof setTimeout> | null = null
+    const scrollDisposable = editor.onDidScrollChange((e) => {
+      if (scrollTimer) clearTimeout(scrollTimer)
+      scrollTimer = setTimeout(() => {
+        updateScrollPosition(paneIndex, tabIndex, e.scrollTop)
+      }, 500)
+    })
+
     return () => {
-      disposable.dispose()
+      if (cursorTimer) clearTimeout(cursorTimer)
+      if (scrollTimer) clearTimeout(scrollTimer)
+      contentDisposable.dispose()
+      cursorDisposable.dispose()
+      scrollDisposable.dispose()
       editor.dispose()
       // Don't dispose model here — might be reused
     }

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { launchApp } from './helpers/electron-app'
+import { launchApp, quitApp } from './helpers/electron-app'
 import type { ElectronApplication, Page } from 'playwright'
 
 let app: ElectronApplication
@@ -12,7 +12,7 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  await app.close()
+  await quitApp(app)
 })
 
 test('split pane container renders', async () => {

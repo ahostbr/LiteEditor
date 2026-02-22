@@ -187,7 +187,15 @@ const api = {
     load: (): Promise<unknown> =>
       ipcRenderer.invoke('workspace:load'),
     save: (data: string): Promise<void> =>
-      ipcRenderer.invoke('workspace:save', data)
+      ipcRenderer.invoke('workspace:save', data),
+    loadState: (projectRoot: string): Promise<unknown> =>
+      ipcRenderer.invoke('workspace:load-state', projectRoot),
+    saveState: (projectRoot: string, state: string): Promise<void> =>
+      ipcRenderer.invoke('workspace:save-state', projectRoot, state),
+    loadSettings: (projectRoot: string): Promise<unknown> =>
+      ipcRenderer.invoke('workspace:load-settings', projectRoot),
+    saveSettings: (projectRoot: string, data: string): Promise<void> =>
+      ipcRenderer.invoke('workspace:save-settings', projectRoot, data)
   },
 
   dialog: {

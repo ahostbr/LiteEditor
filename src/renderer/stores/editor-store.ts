@@ -36,11 +36,30 @@ export interface Tab {
   content?: string
   originalContent?: string
   modifiedContent?: string
+  cursorLine?: number
+  cursorColumn?: number
+  scrollTop?: number
+  needsLoad?: boolean
 }
 
 export interface PaneState {
   tabs: Tab[]
   activeTabIndex: number
+}
+
+export interface WorkspaceEditorState {
+  panes: Array<{
+    tabs: Array<{
+      path: string
+      type: TabType
+      cursorLine?: number
+      cursorColumn?: number
+      scrollTop?: number
+    }>
+    activeTabIndex: number
+  }>
+  activePaneIndex: number
+  isSplit: boolean
 }
 
 interface EditorState {
@@ -64,6 +83,10 @@ interface EditorState {
   setProjectRoot: (path: string) => void
   getActiveTab: () => Tab | null
   getActivePane: () => PaneState
+  updateCursorPosition: (paneIndex: number, tabIndex: number, line: number, column: number) => void
+  updateScrollPosition: (paneIndex: number, tabIndex: number, scrollTop: number) => void
+  getWorkspaceState: () => WorkspaceEditorState
+  restoreWorkspaceState: (state: WorkspaceEditorState, readFile: (path: string) => Promise<string>) => Promise<void>
 }
 
 function createEmptyPane(): PaneState {
@@ -94,7 +117,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const existingIndex = pane.tabs.findIndex((t) => t.type === 'file' && t.path === path)
       if (existingIndex >= 0) {
         const newPanes = [...state.panes] as [PaneState, PaneState | null]
-        newPanes[pi] = { ...pane, activeTabIndex: existingIndex }
+        const newTabs = [...pane.tabs]
+        // Clear needsLoad if it was set
+        if (newTabs[existingIndex].needsLoad) {
+          newTabs[existingIndex] = { ...newTabs[existingIndex], content, needsLoad: false }
+        }
+        newPanes[pi] = { ...pane, tabs: newTabs, activeTabIndex: existingIndex }
         return { panes: newPanes }
       }
 
@@ -306,5 +334,124 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   getActivePane: () => {
     const state = get()
     return state.panes[state.activePaneIndex] || state.panes[0]
+  },
+
+  updateCursorPosition: (paneIndex, tabIndex, line, column) => {
+    set((state) => {
+      const pane = state.panes[paneIndex]
+      if (!pane || !pane.tabs[tabIndex]) return state
+
+      const newTabs = [...pane.tabs]
+      newTabs[tabIndex] = { ...newTabs[tabIndex], cursorLine: line, cursorColumn: column }
+      const newPanes = [...state.panes] as [PaneState, PaneState | null]
+      newPanes[paneIndex] = { ...pane, tabs: newTabs }
+      return { panes: newPanes }
+    })
+  },
+
+  updateScrollPosition: (paneIndex, tabIndex, scrollTop) => {
+    set((state) => {
+      const pane = state.panes[paneIndex]
+      if (!pane || !pane.tabs[tabIndex]) return state
+
+      const newTabs = [...pane.tabs]
+      newTabs[tabIndex] = { ...newTabs[tabIndex], scrollTop }
+      const newPanes = [...state.panes] as [PaneState, PaneState | null]
+      newPanes[paneIndex] = { ...pane, tabs: newTabs }
+      return { panes: newPanes }
+    })
+  },
+
+  getWorkspaceState: (): WorkspaceEditorState => {
+    const state = get()
+    const panes = state.panes
+      .filter((p): p is PaneState => p !== null)
+      .map((pane) => ({
+        tabs: pane.tabs
+          .filter((t) => t.path && t.type === 'file')
+          .map((t) => ({
+            path: t.path!,
+            type: t.type,
+            cursorLine: t.cursorLine,
+            cursorColumn: t.cursorColumn,
+            scrollTop: t.scrollTop
+          })),
+        activeTabIndex: pane.activeTabIndex
+      }))
+
+    return {
+      panes,
+      activePaneIndex: state.activePaneIndex,
+      isSplit: state.isSplit
+    }
+  },
+
+  restoreWorkspaceState: async (wsState, readFile) => {
+    // Dispose all existing Monaco models
+    const currentState = get()
+    for (const pane of currentState.panes) {
+      if (!pane) continue
+      for (const tab of pane.tabs) {
+        if (tab.path) {
+          try {
+            const monaco = (window as any).__monaco
+            if (monaco) {
+              const model = monaco.editor.getModel(monaco.Uri.file(tab.path))
+              model?.dispose()
+            }
+          } catch { /* ignore */ }
+        }
+      }
+    }
+
+    // Build panes from workspace state
+    const restoredPanes: [PaneState, PaneState | null] = [createEmptyPane(), null]
+
+    for (let pi = 0; pi < wsState.panes.length && pi < 2; pi++) {
+      const savedPane = wsState.panes[pi]
+      const tabs: Tab[] = []
+
+      for (const savedTab of savedPane.tabs) {
+        if (!savedTab.path) continue
+
+        const isActive = tabs.length === savedPane.activeTabIndex
+        let content: string | undefined
+        let needsLoad = true
+
+        // Only load active tab content immediately
+        if (isActive) {
+          try {
+            content = await readFile(savedTab.path)
+            needsLoad = false
+          } catch {
+            // File no longer exists — skip this tab
+            continue
+          }
+        }
+
+        tabs.push({
+          id: generateId(),
+          type: savedTab.type || 'file',
+          path: savedTab.path,
+          title: getFileName(savedTab.path),
+          isDirty: false,
+          content,
+          cursorLine: savedTab.cursorLine,
+          cursorColumn: savedTab.cursorColumn,
+          scrollTop: savedTab.scrollTop,
+          needsLoad
+        })
+      }
+
+      // Clamp activeTabIndex
+      const activeIdx = Math.min(savedPane.activeTabIndex, tabs.length - 1)
+      restoredPanes[pi] = { tabs, activeTabIndex: tabs.length > 0 ? Math.max(0, activeIdx) : -1 }
+    }
+
+    set({
+      panes: restoredPanes,
+      activePaneIndex: (wsState.activePaneIndex === 1 && restoredPanes[1]) ? 1 : 0,
+      isSplit: wsState.isSplit && restoredPanes[1] !== null && restoredPanes[1].tabs.length > 0
+    })
   }
 }))

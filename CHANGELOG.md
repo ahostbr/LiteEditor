@@ -2,6 +2,36 @@
 
 All notable changes to LiteEditor are documented in this file.
 
+## [1.1.0] - 2026-02-22
+
+### Workspace Integration
+
+Per-project workspace state stored in `<projectRoot>/.liteeditor/`, enabling full session restore and project isolation.
+
+#### Session Restore
+- Tabs, split pane layout, sidebar state, and app mode persist across restarts
+- Cursor positions and scroll positions saved and restored per tab
+- Active tab content loaded immediately; inactive tabs lazy-loaded on demand
+- Missing files silently skipped during restore
+
+#### Project Isolation
+- Switching folders saves current project's state and restores the new project's state
+- Each project maintains independent tab layout, UI configuration, and cursor positions
+- Auto-save workspace state on a 1-second debounce whenever tabs, panes, or UI changes
+
+#### Per-Workspace Settings
+- Override global settings (font size, tab size, word wrap, etc.) on a per-project basis
+- Workspace settings stored in `<projectRoot>/.liteeditor/settings.json`
+- Settings panel shows workspace override indicators (accent dot) and scope selector (Global/Project)
+- Reset individual settings to global defaults with one click
+
+#### Architecture
+- New `WorkspaceService` for reading/writing `.liteeditor/` files within project roots
+- Workspace IPC handlers consolidated into dedicated `workspace-handlers.ts` module
+- Settings and workspace IPC handlers moved out of main `index.ts` for cleaner organization
+
+---
+
 ## [1.0.0] - 2026-02-16
 
 ### Initial Release

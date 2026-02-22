@@ -1,4 +1,4 @@
-import React, { useEffect, Suspense } from 'react'
+import React, { useEffect, useRef, Suspense } from 'react'
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels'
 import { Titlebar } from './components/titlebar/Titlebar'
 import { ActivityBar } from './components/activity-bar/ActivityBar'
@@ -18,8 +18,38 @@ import { useGitStore } from './stores/git-store'
 import { useSettingsStore } from './stores/settings-store'
 import { useLayoutStore } from './stores/layout-store'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
+import { useWorkspacePersistence } from './hooks/useWorkspacePersistence'
 import { getLanguageFromPath, getLanguageDisplayName } from './lib/language-map'
 import { ConfirmDialog } from './components/shared/ConfirmDialog'
+
+async function loadWorkspaceForProject(projectRoot: string): Promise<void> {
+  try {
+    const data = await window.api.workspace.loadState(projectRoot) as { editor?: unknown; ui?: unknown } | null
+    if (!data) return
+
+    // Restore editor state (tabs, panes)
+    if (data.editor && typeof data.editor === 'object') {
+      await useEditorStore.getState().restoreWorkspaceState(
+        data.editor as any,
+        (path: string) => window.api.fs.readFile(path)
+      )
+    }
+
+    // Restore UI state (sidebar, terminal, app mode)
+    if (data.ui && typeof data.ui === 'object') {
+      useUiStore.getState().restoreUIState(data.ui as any)
+    }
+  } catch { /* workspace file missing or corrupt — start fresh */ }
+}
+
+async function saveWorkspaceForProject(projectRoot: string): Promise<void> {
+  try {
+    const editorState = useEditorStore.getState().getWorkspaceState()
+    const uiState = useUiStore.getState().getUIState()
+    const workspace = { editor: editorState, ui: uiState }
+    await window.api.workspace.saveState(projectRoot, JSON.stringify(workspace, null, 2))
+  } catch { /* ignore */ }
+}
 
 function SidebarContent() {
   const panel = useUiStore((s) => s.activeSidebarPanel)
@@ -75,26 +105,36 @@ function StatusBar() {
 
 export default function App() {
   useKeyboardShortcuts()
+  useWorkspacePersistence()
 
   const sidebarVisible = useUiStore((s) => s.sidebarVisible)
   const terminalPanelVisible = useUiStore((s) => s.terminalPanelVisible)
   const appMode = useUiStore((s) => s.appMode)
+  const prevProjectRootRef = useRef<string | null>(null)
 
+  // Initial load: settings, layout, global workspace, then project workspace
   useEffect(() => {
-    useSettingsStore.getState().loadSettings()
-    useLayoutStore.getState().loadLayout()
-    // Restore last workspace
-    window.api.workspace.load().then((data: unknown) => {
-      if (data && typeof data === 'object') {
-        const ws = data as Record<string, unknown>
-        if (ws.projectRoot && typeof ws.projectRoot === 'string') {
-          useEditorStore.getState().setProjectRoot(ws.projectRoot)
+    async function init() {
+      await useSettingsStore.getState().loadSettings()
+      useLayoutStore.getState().loadLayout()
+
+      // Restore last workspace (global — projectRoot + zoomLevel)
+      const data = await window.api.workspace.load() as Record<string, unknown> | null
+      if (data) {
+        if (typeof data.zoomLevel === 'number') {
+          window.api.window.setZoomLevel(data.zoomLevel)
         }
-        if (typeof ws.zoomLevel === 'number') {
-          window.api.window.setZoomLevel(ws.zoomLevel)
+        if (data.projectRoot && typeof data.projectRoot === 'string') {
+          useEditorStore.getState().setProjectRoot(data.projectRoot)
+          // Load per-project workspace state
+          await loadWorkspaceForProject(data.projectRoot)
+          // Load per-project settings overlay
+          await useSettingsStore.getState().loadWorkspaceSettings(data.projectRoot)
+          prevProjectRootRef.current = data.projectRoot
         }
       }
-    }).catch(() => {})
+    }
+    init().catch(() => {})
   }, [])
 
   // Listen for files opened from OS (file associations / second instance)
@@ -120,22 +160,45 @@ export default function App() {
     document.documentElement.style.setProperty('--accent', accentColor)
   }, [accentColor])
 
-  // Initialize git and search when project root changes, and persist workspace
+  // Initialize git and search when project root changes, handle project switch
   const projectRoot = useEditorStore((s) => s.projectRoot)
   useEffect(() => {
-    if (projectRoot) {
+    if (!projectRoot) return
+
+    async function onProjectChange() {
+      const oldRoot = prevProjectRootRef.current
+
+      // Save old project's workspace state before switching
+      if (oldRoot && oldRoot !== projectRoot) {
+        await saveWorkspaceForProject(oldRoot)
+
+        // Clear workspace settings from old project
+        useSettingsStore.getState().clearWorkspaceSettings()
+
+        // Load new project's workspace state
+        await loadWorkspaceForProject(projectRoot!)
+
+        // Load new project's settings overlay
+        await useSettingsStore.getState().loadWorkspaceSettings(projectRoot!)
+      }
+
+      prevProjectRootRef.current = projectRoot!
+
       // Defer non-critical init so it doesn't compete with tree load
       setTimeout(() => {
-        window.api.git.init(projectRoot).catch(() => {})
-        window.api.search.setRoot(projectRoot).catch(() => {})
+        window.api.git.init(projectRoot!).catch(() => {})
+        window.api.search.setRoot(projectRoot!).catch(() => {})
       }, 0)
-      // Save projectRoot (merge with existing workspace data to preserve zoomLevel etc.)
+
+      // Save projectRoot to global workspace (merge to preserve zoomLevel etc.)
       window.api.workspace.load().then((data: unknown) => {
         const ws = (data && typeof data === 'object') ? data as Record<string, unknown> : {}
         ws.projectRoot = projectRoot
         window.api.workspace.save(JSON.stringify(ws))
       }).catch(() => {})
     }
+
+    onProjectChange().catch(() => {})
   }, [projectRoot])
 
   return (

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { launchApp } from './helpers/electron-app'
+import { launchApp, quitApp } from './helpers/electron-app'
 import type { ElectronApplication, Page } from 'playwright'
 
 let app: ElectronApplication
@@ -12,37 +12,41 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
-  await app.close()
+  await quitApp(app)
 })
 
-test('settings panel renders', async () => {
+// Ensures the Settings panel is open by clicking Explorer first then Settings.
+// This avoids the toggle-off behavior when Settings is already the active panel.
+async function openSettings() {
+  await page.locator('[title="Explorer"]').click()
+  await page.waitForTimeout(200)
   await page.locator('[title="Settings"]').click()
   await page.waitForTimeout(500)
+}
 
-  // Settings heading
+test('settings panel renders', async () => {
+  await openSettings()
+
   const heading = page.locator('text=Settings').first()
-  await expect(heading).toBeVisible()
+  await expect(heading).toBeVisible({ timeout: 5000 })
 })
 
 test('settings has editor section', async () => {
-  await page.locator('[title="Settings"]').click()
-  await page.waitForTimeout(300)
+  await openSettings()
 
   const editorSection = page.locator('text=Editor').first()
-  await expect(editorSection).toBeVisible()
+  await expect(editorSection).toBeVisible({ timeout: 5000 })
 })
 
 test('settings has terminal section', async () => {
-  await page.locator('[title="Settings"]').click()
-  await page.waitForTimeout(300)
+  await openSettings()
 
   const terminalSection = page.locator('text=Terminal').first()
-  await expect(terminalSection).toBeVisible()
+  await expect(terminalSection).toBeVisible({ timeout: 5000 })
 })
 
 test('settings has appearance section', async () => {
-  await page.locator('[title="Settings"]').click()
-  await page.waitForTimeout(500)
+  await openSettings()
 
   // Scroll down in settings panel to find Appearance
   const settingsScroll = page.locator('.overflow-y-auto').last()
@@ -54,11 +58,10 @@ test('settings has appearance section', async () => {
 })
 
 test('font size setting has a number input', async () => {
-  await page.locator('[title="Settings"]').click()
-  await page.waitForTimeout(300)
+  await openSettings()
 
   const fontSizeInput = page.locator('input[type="number"]').first()
-  await expect(fontSizeInput).toBeVisible()
+  await expect(fontSizeInput).toBeVisible({ timeout: 5000 })
 
   const value = await fontSizeInput.inputValue()
   expect(Number(value)).toBeGreaterThanOrEqual(8)
@@ -66,8 +69,7 @@ test('font size setting has a number input', async () => {
 })
 
 test('accent color picker is present', async () => {
-  await page.locator('[title="Settings"]').click()
-  await page.waitForTimeout(500)
+  await openSettings()
 
   // Scroll down to find the color input in the Appearance section
   const settingsScroll = page.locator('.overflow-y-auto').last()
@@ -79,7 +81,11 @@ test('accent color picker is present', async () => {
 })
 
 test('accent color change updates CSS variable', async () => {
-  await page.locator('[title="Settings"]').click()
+  await openSettings()
+
+  // Scroll down to find color input
+  const settingsScroll = page.locator('.overflow-y-auto').last()
+  await settingsScroll.evaluate((el) => el.scrollTop = el.scrollHeight)
   await page.waitForTimeout(300)
 
   // Get initial accent
@@ -109,7 +115,6 @@ test('accent color change updates CSS variable', async () => {
   })
 
   // The accent should have changed (or at minimum the mechanism exists)
-  // Note: the exact color format may vary
   expect(typeof newAccent).toBe('string')
   expect(newAccent.length).toBeGreaterThan(0)
 })
