@@ -202,10 +202,11 @@ export function WindowLayout({ panels }: WindowLayoutProps) {
               setActivePanel(panel.id)
             }}
           >
-            <div onMouseDown={(e) => handleWindowMouseDown(e, panel.id)}>
+            <div className="flex-1 min-h-0 flex flex-col" onMouseDown={(e) => handleWindowMouseDown(e, panel.id)}>
               <PanelRenderer
                 panel={panel}
                 isActive={panel.id === activePanelId}
+                visible={panel.id === activePanelId}
                 onFocus={() => setActivePanel(panel.id)}
               />
             </div>

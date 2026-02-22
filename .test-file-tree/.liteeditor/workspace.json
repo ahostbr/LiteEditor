@@ -10,10 +10,10 @@
     "isSplit": false
   },
   "ui": {
-    "sidebarVisible": false,
+    "sidebarVisible": true,
     "activeSidebarPanel": "files",
     "sidebarWidth": 260,
     "terminalPanelVisible": false,
-    "appMode": "zen"
+    "appMode": "editor"
   }
 }

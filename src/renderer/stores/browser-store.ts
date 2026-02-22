@@ -21,6 +21,7 @@ export const useBrowserStore = create<BrowserState>((set, get) => ({
   sessions: new Map(),
 
   registerSession: (id, url) => {
+    if (get().sessions.has(id)) return
     set((state) => {
       const sessions = new Map(state.sessions)
       sessions.set(id, {

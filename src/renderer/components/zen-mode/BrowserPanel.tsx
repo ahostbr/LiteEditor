@@ -15,62 +15,66 @@ export function BrowserPanel({ panelId, initialUrl, visible = true }: BrowserPan
   visibleRef.current = visible
 
   const registerSession = useBrowserStore((s) => s.registerSession)
-  const removeSession = useBrowserStore((s) => s.removeSession)
   const updateSession = useBrowserStore((s) => s.updateSession)
 
-  // Create view and wire up bounds reporting + state updates
+  // Create or reuse view, wire up state updates
   useEffect(() => {
-    let destroyed = false
+    let cancelled = false
 
     const init = async () => {
-      const sessionId = await window.api.browser.createView(initialUrl)
-      if (destroyed) {
-        window.api.browser.destroyView(sessionId)
-        return
-      }
+      // Check if zen panel already has a session from a previous mount
+      const zenPanel = useZenStore.getState().panels.find((p) => p.id === panelId)
+      let sessionId = zenPanel?.browserSessionId || null
 
-      sessionIdRef.current = sessionId
-      registerSession(sessionId, initialUrl)
-
-      // Store sessionId on zen panel
-      useZenStore.setState((state) => ({
-        panels: state.panels.map((p) =>
-          p.id === panelId ? { ...p, browserSessionId: sessionId } : p
-        )
-      }))
-
-      // Send initial bounds if visible, otherwise hide
-      if (visibleRef.current) {
-        const rect = containerRef.current?.getBoundingClientRect()
-        if (rect) {
-          window.api.browser.setBounds(sessionId, {
-            x: Math.round(rect.x),
-            y: Math.round(rect.y),
-            width: Math.round(rect.width),
-            height: Math.round(rect.height)
-          })
+      if (sessionId) {
+        // Reuse existing session — just show/hide based on visibility
+        sessionIdRef.current = sessionId
+        registerSession(sessionId, initialUrl)
+        if (visibleRef.current) {
+          window.api.browser.showView(sessionId)
+          sendBounds(sessionId)
+        } else {
+          window.api.browser.hideView(sessionId)
         }
       } else {
-        window.api.browser.hideView(sessionId)
+        // Create a new session
+        sessionId = await window.api.browser.createView(initialUrl)
+        if (cancelled) {
+          window.api.browser.destroyView(sessionId)
+          return
+        }
+
+        sessionIdRef.current = sessionId
+        registerSession(sessionId, initialUrl)
+
+        // Store sessionId on zen panel
+        useZenStore.setState((state) => ({
+          panels: state.panels.map((p) =>
+            p.id === panelId ? { ...p, browserSessionId: sessionId } : p
+          )
+        }))
+
+        if (visibleRef.current) {
+          sendBounds(sessionId)
+        } else {
+          window.api.browser.hideView(sessionId)
+        }
+      }
+    }
+
+    function sendBounds(sessionId: string) {
+      const rect = containerRef.current?.getBoundingClientRect()
+      if (rect) {
+        window.api.browser.setBounds(sessionId, {
+          x: Math.round(rect.x),
+          y: Math.round(rect.y),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height)
+        })
       }
     }
 
     init()
-
-    // ResizeObserver reports bounds to main process
-    const observer = new ResizeObserver(() => {
-      if (!sessionIdRef.current || !containerRef.current || !visibleRef.current) return
-      const rect = containerRef.current.getBoundingClientRect()
-      window.api.browser.setBounds(sessionIdRef.current, {
-        x: Math.round(rect.x),
-        y: Math.round(rect.y),
-        width: Math.round(rect.width),
-        height: Math.round(rect.height)
-      })
-    })
-    if (containerRef.current) {
-      observer.observe(containerRef.current)
-    }
 
     // State updates from main process
     const unsub = window.api.browser.onStateUpdate((_event, data) => {
@@ -86,13 +90,52 @@ export function BrowserPanel({ panelId, initialUrl, visible = true }: BrowserPan
     })
 
     return () => {
-      destroyed = true
-      observer.disconnect()
+      cancelled = true
       unsub()
+      // Hide but don't destroy — session survives layout switches.
+      // Destruction happens in zen-store.removePanel().
       if (sessionIdRef.current) {
-        window.api.browser.destroyView(sessionIdRef.current)
-        removeSession(sessionIdRef.current)
+        window.api.browser.hideView(sessionIdRef.current)
       }
+    }
+  }, [])
+
+  // rAF bounds tracking — handles drag, resize, splitter, and window moves
+  useEffect(() => {
+    let rafId: number | null = null
+    let lastX = 0
+    let lastY = 0
+    let lastW = 0
+    let lastH = 0
+
+    function tick() {
+      const sid = sessionIdRef.current
+      if (!sid || !containerRef.current || !visibleRef.current) {
+        rafId = requestAnimationFrame(tick)
+        return
+      }
+
+      const rect = containerRef.current.getBoundingClientRect()
+      const x = Math.round(rect.x)
+      const y = Math.round(rect.y)
+      const w = Math.round(rect.width)
+      const h = Math.round(rect.height)
+
+      if (x !== lastX || y !== lastY || w !== lastW || h !== lastH) {
+        lastX = x
+        lastY = y
+        lastW = w
+        lastH = h
+        window.api.browser.setBounds(sid, { x, y, width: w, height: h })
+      }
+
+      rafId = requestAnimationFrame(tick)
+    }
+
+    rafId = requestAnimationFrame(tick)
+
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId)
     }
   }, [])
 
@@ -101,16 +144,6 @@ export function BrowserPanel({ panelId, initialUrl, visible = true }: BrowserPan
     if (!sessionIdRef.current) return
     if (visible) {
       window.api.browser.showView(sessionIdRef.current)
-      // Re-send bounds when becoming visible
-      const rect = containerRef.current?.getBoundingClientRect()
-      if (rect) {
-        window.api.browser.setBounds(sessionIdRef.current, {
-          x: Math.round(rect.x),
-          y: Math.round(rect.y),
-          width: Math.round(rect.width),
-          height: Math.round(rect.height)
-        })
-      }
     } else {
       window.api.browser.hideView(sessionIdRef.current)
     }
