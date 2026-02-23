@@ -189,6 +189,7 @@ export default function App() {
   const terminalPanelVisible = useUiStore((s) => s.terminalPanelVisible)
   const appMode = useUiStore((s) => s.appMode)
   const prevProjectRootRef = useRef<string | null>(null)
+  const prevAppModeRef = useRef(appMode)
 
   // Initial load: settings, layout, global workspace, then project workspace
   useEffect(() => {
@@ -231,6 +232,31 @@ export default function App() {
     })
     return unsub
   }, [])
+
+  // Extra hardening: when leaving Zen mode, force-hide and zero native views.
+  useEffect(() => {
+    const previousMode = prevAppModeRef.current
+    if (previousMode === 'zen' && appMode !== 'zen') {
+      const ZERO_BOUNDS = { x: 0, y: 0, width: 0, height: 0 }
+      const panels = useZenStore.getState().panels
+      for (const panel of panels) {
+        if (panel.browserSessionId) {
+          window.api.browser.hideView(panel.browserSessionId)
+          window.api.browser.setBounds(panel.browserSessionId, ZERO_BOUNDS)
+        }
+        if (panel.claudeSessionId) {
+          window.api.claude.hideView(panel.claudeSessionId)
+          window.api.claude.setBounds(panel.claudeSessionId, ZERO_BOUNDS)
+        }
+        if (panel.codexSessionId) {
+          window.api.codex.hideView(panel.codexSessionId)
+          window.api.codex.setBounds(panel.codexSessionId, ZERO_BOUNDS)
+        }
+      }
+    }
+
+    prevAppModeRef.current = appMode
+  }, [appMode])
 
   // Claude host-op bridge: main process requests renderer-side editor/terminal/git actions.
   useEffect(() => {

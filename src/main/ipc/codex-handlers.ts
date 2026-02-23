@@ -13,7 +13,7 @@ export function registerCodexHandlers(mainWindow: BrowserWindow): void {
 
   // Lifecycle: destroy session
   ipcMain.on('codex:destroy-session', (_e, sessionId: string) => {
-    codexBridge.shutdown()
+    codexBridge.removeSession(sessionId)
     codexManager.destroySession(sessionId)
   })
 

@@ -281,6 +281,15 @@ export class CodexBridge {
     }
   }
 
+  removeSession(sessionId: string): void {
+    for (const [key, subscribers] of Array.from(this.sharedObjectSubscribers.entries())) {
+      subscribers.delete(sessionId)
+      if (subscribers.size === 0) {
+        this.sharedObjectSubscribers.delete(key)
+      }
+    }
+  }
+
   shutdown(): void {
     this.sharedObjectSubscribers.clear()
   }

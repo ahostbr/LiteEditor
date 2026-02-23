@@ -53,6 +53,7 @@ export function GridLayout({ panels }: GridLayoutProps) {
           <PanelRenderer
             panel={panel}
             isActive={panel.id === activePanelId}
+            visible
             onFocus={() => setActivePanel(panel.id)}
             draggable
             onDragStart={(e) => handleDragStart(e, index)}

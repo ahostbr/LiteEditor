@@ -158,6 +158,7 @@ interface ClaudeBridgeDeps {
 
 interface PendingWebviewRequest {
   requestType: string
+  sessionId?: string
   resolve: (response: Record<string, unknown>) => void
   reject: (error: Error) => void
   timer: NodeJS.Timeout
@@ -165,10 +166,15 @@ interface PendingWebviewRequest {
   abortHandler?: () => void
 }
 
+interface IncomingRequestController {
+  sessionId: string
+  controller: AbortController
+}
+
 export class ClaudeBridge {
   private claudeManager: ClaudeManager
   private channels = new Map<string, ChannelProcess>()
-  private incomingRequestControllers = new Map<string, AbortController>()
+  private incomingRequestControllers = new Map<string, IncomingRequestController>()
   private pendingWebviewRequests = new Map<string, PendingWebviewRequest>()
   private claudeExePath: string | null = null
   private cachedCredentials: ClaudeCredentials | null = null
@@ -347,6 +353,7 @@ export class ClaudeBridge {
           suggestions: params.suggestions ?? []
         },
         {
+          sessionId,
           channelId: params.channelId,
           timeoutMs: params.timeoutMs ?? 120000,
           signal: params.signal
@@ -392,10 +399,10 @@ export class ClaudeBridge {
     const targetRequestId = typeof message?.targetRequestId === 'string' ? message.targetRequestId : ''
     if (!targetRequestId) return
 
-    const controller = this.incomingRequestControllers.get(targetRequestId)
-    if (!controller) return
+    const entry = this.incomingRequestControllers.get(targetRequestId)
+    if (!entry) return
 
-    controller.abort()
+    entry.controller.abort()
     this.incomingRequestControllers.delete(targetRequestId)
   }
 
@@ -421,6 +428,7 @@ export class ClaudeBridge {
     wc: WebContents,
     request: Record<string, unknown>,
     options: {
+      sessionId?: string
       channelId?: string
       timeoutMs?: number
       signal?: AbortSignal
@@ -446,6 +454,7 @@ export class ClaudeBridge {
 
       const pending: PendingWebviewRequest = {
         requestType,
+        sessionId: options.sessionId,
         resolve,
         reject,
         timer,
@@ -495,7 +504,7 @@ export class ClaudeBridge {
     }
 
     const abortController = new AbortController()
-    this.incomingRequestControllers.set(requestId, abortController)
+    this.incomingRequestControllers.set(requestId, { sessionId, controller: abortController })
 
     try {
       if (!KNOWN_HOST_REQUEST_TYPES.has(requestType as HostRequestType)) {
@@ -1265,8 +1274,31 @@ export class ClaudeBridge {
     }
   }
 
+  shutdownSession(sessionId: string): void {
+    for (const [requestId, entry] of Array.from(this.incomingRequestControllers.entries())) {
+      if (entry.sessionId !== sessionId) continue
+      entry.controller.abort()
+      this.incomingRequestControllers.delete(requestId)
+    }
+
+    for (const [requestId, pending] of Array.from(this.pendingWebviewRequests.entries())) {
+      if (pending.sessionId !== sessionId) continue
+      clearTimeout(pending.timer)
+      if (pending.abortSignal && pending.abortHandler) {
+        pending.abortSignal.removeEventListener('abort', pending.abortHandler)
+      }
+      pending.reject(new Error(`Claude session '${sessionId}' closed`))
+      this.pendingWebviewRequests.delete(requestId)
+    }
+
+    for (const [channelId, channel] of Array.from(this.channels.entries())) {
+      if (channel.sessionId !== sessionId) continue
+      this.closeChannel(channelId)
+    }
+  }
+
   shutdown(): void {
-    this.incomingRequestControllers.forEach((controller) => controller.abort())
+    this.incomingRequestControllers.forEach((entry) => entry.controller.abort())
     this.incomingRequestControllers.clear()
 
     this.pendingWebviewRequests.forEach((pending) => {

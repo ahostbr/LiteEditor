@@ -82,6 +82,7 @@ export function SplitterLayout({ panels }: SplitterLayoutProps) {
             <PanelRenderer
               panel={panel}
               isActive={panel.id === activePanelId}
+              visible
               onFocus={() => setActivePanel(panel.id)}
             />
           </div>

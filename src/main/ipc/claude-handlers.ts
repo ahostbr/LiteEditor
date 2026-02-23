@@ -51,7 +51,7 @@ export function registerClaudeHandlers(mainWindow: BrowserWindow): void {
 
   // Lifecycle: destroy session
   ipcMain.on('claude:destroy-session', (_e, sessionId: string) => {
-    claudeBridge.shutdown() // kill any subprocesses for this session
+    claudeBridge.shutdownSession(sessionId)
     claudeManager.destroySession(sessionId)
   })
 
