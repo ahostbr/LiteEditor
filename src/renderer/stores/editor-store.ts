@@ -1,26 +1,42 @@
 import { create } from 'zustand'
 
+/** Build the correct Monaco URI for a given path or synthetic untitled key. */
+function toMonacoUri(key: string): any {
+  const monaco = (window as any).__monaco
+  if (!monaco) return null
+  return key.startsWith('untitled:') ? monaco.Uri.parse(key) : monaco.Uri.file(key)
+}
+
+/** Get the Monaco model key for a tab (file path or synthetic untitled URI). */
+function tabModelKey(tab: Tab): string | undefined {
+  return tab.path || (tab.type === 'file' ? `untitled:${tab.title}` : undefined)
+}
+
 /** Read current file content from Monaco model (source of truth).
  *  Returns undefined if Monaco hasn't loaded yet or model not found. */
 export function getMonacoContent(filePath: string): string | undefined {
   try {
     const monaco = (window as any).__monaco
     if (!monaco) return undefined
-    const model = monaco.editor.getModel(monaco.Uri.file(filePath))
+    const uri = toMonacoUri(filePath)
+    if (!uri) return undefined
+    const model = monaco.editor.getModel(uri)
     return model?.getValue()
   } catch { return undefined }
 }
 
 /** Dispose a Monaco model if no remaining tab references it. */
-function disposeMonacoModel(path: string, allPanes: [PaneState, PaneState | null]): void {
+function disposeMonacoModel(key: string, allPanes: [PaneState, PaneState | null]): void {
   for (const pane of allPanes) {
     if (!pane) continue
-    if (pane.tabs.some(t => t.path === path)) return
+    if (pane.tabs.some(t => tabModelKey(t) === key)) return
   }
   try {
     const monaco = (window as any).__monaco
     if (!monaco) return
-    const model = monaco.editor.getModel(monaco.Uri.file(path))
+    const uri = toMonacoUri(key)
+    if (!uri) return
+    const model = monaco.editor.getModel(uri)
     model?.dispose()
   } catch { /* ignore */ }
 }
@@ -67,7 +83,10 @@ interface EditorState {
   activePaneIndex: 0 | 1
   isSplit: boolean
   projectRoot: string | null
+  untitledCounter: number
 
+  newFile: () => void
+  setTabPath: (paneIndex: number, tabIndex: number, path: string) => void
   openFile: (path: string, content: string, paneIndex?: number) => void
   closeTab: (paneIndex: number, tabIndex: number) => void
   closeOtherTabs: (paneIndex: number, tabIndex: number) => void
@@ -106,6 +125,51 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   activePaneIndex: 0,
   isSplit: false,
   projectRoot: null,
+  untitledCounter: 0,
+
+  newFile: () => {
+    set((state) => {
+      const counter = state.untitledCounter + 1
+      const pi = state.activePaneIndex
+      const pane = state.panes[pi]
+      if (!pane) return { untitledCounter: counter }
+
+      const tab: Tab = {
+        id: generateId(),
+        type: 'file',
+        title: `Untitled-${counter}`,
+        isDirty: false,
+        content: ''
+      }
+
+      const newTabs = [...pane.tabs, tab]
+      const newPanes = [...state.panes] as [PaneState, PaneState | null]
+      newPanes[pi] = { tabs: newTabs, activeTabIndex: newTabs.length - 1 }
+      return { panes: newPanes, untitledCounter: counter }
+    })
+  },
+
+  setTabPath: (paneIndex, tabIndex, path) => {
+    set((state) => {
+      const pane = state.panes[paneIndex]
+      if (!pane || !pane.tabs[tabIndex]) return state
+
+      const oldTab = pane.tabs[tabIndex]
+      const oldKey = tabModelKey(oldTab)
+
+      const newTabs = [...pane.tabs]
+      newTabs[tabIndex] = { ...newTabs[tabIndex], path, title: getFileName(path) }
+      const newPanes = [...state.panes] as [PaneState, PaneState | null]
+      newPanes[paneIndex] = { ...pane, tabs: newTabs }
+
+      // Dispose old untitled model since the tab now has a real path
+      if (oldKey && oldKey.startsWith('untitled:')) {
+        disposeMonacoModel(oldKey, newPanes)
+      }
+
+      return { panes: newPanes }
+    })
+  },
 
   openFile: (path, content, paneIndex) => {
     set((state) => {
@@ -161,13 +225,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       newPanes[paneIndex] = { tabs: newTabs, activeTabIndex: newActiveIndex }
 
       // Auto-close split if second pane is empty
+      const closedKey = closedTab ? tabModelKey(closedTab) : undefined
       if (paneIndex === 1 && newTabs.length === 0) {
         const result = { panes: [newPanes[0]!, null] as [PaneState, PaneState | null], isSplit: false, activePaneIndex: 0 as const }
-        if (closedTab?.path) disposeMonacoModel(closedTab.path, result.panes)
+        if (closedKey) disposeMonacoModel(closedKey, result.panes)
         return result
       }
 
-      if (closedTab?.path) disposeMonacoModel(closedTab.path, newPanes)
+      if (closedKey) disposeMonacoModel(closedKey, newPanes)
       return { panes: newPanes }
     })
   },
@@ -182,7 +247,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const newPanes = [...state.panes] as [PaneState, PaneState | null]
       newPanes[paneIndex] = { tabs: kept, activeTabIndex: 0 }
       for (const tab of closed) {
-        if (tab.path) disposeMonacoModel(tab.path, newPanes)
+        const key = tabModelKey(tab)
+        if (key) disposeMonacoModel(key, newPanes)
       }
       return { panes: newPanes }
     })
@@ -198,13 +264,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       if (paneIndex === 1) {
         const result = { panes: [newPanes[0]!, null] as [PaneState, PaneState | null], isSplit: false, activePaneIndex: 0 as const }
         for (const tab of closedTabs) {
-          if (tab.path) disposeMonacoModel(tab.path, result.panes)
+          const key = tabModelKey(tab)
+          if (key) disposeMonacoModel(key, result.panes)
         }
         return result
       }
 
       for (const tab of closedTabs) {
-        if (tab.path) disposeMonacoModel(tab.path, newPanes)
+        const key = tabModelKey(tab)
+        if (key) disposeMonacoModel(key, newPanes)
       }
       return { panes: newPanes }
     })

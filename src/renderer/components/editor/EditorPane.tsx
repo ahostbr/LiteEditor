@@ -46,12 +46,12 @@ export function EditorPane({ paneIndex }: EditorPaneProps) {
       <TabBar paneIndex={paneIndex} />
       <div className="flex-1 overflow-hidden" style={{ backgroundColor: 'var(--bg-base)' }}>
         {!activeTab && <EmptyState />}
-        {activeTab?.type === 'file' && activeTab.path && !activeTab.needsLoad && (
+        {activeTab?.type === 'file' && !activeTab.needsLoad && (
           <Suspense fallback={<div className="w-full h-full" style={{ backgroundColor: 'var(--bg-base)' }} />}>
             <MonacoEditor
               key={activeTab.id}
               content={activeTab.content || ''}
-              path={activeTab.path}
+              path={activeTab.path || `untitled:${activeTab.title}`}
               paneIndex={paneIndex}
               tabIndex={pane.activeTabIndex}
             />

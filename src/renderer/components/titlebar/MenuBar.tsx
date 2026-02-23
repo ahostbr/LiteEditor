@@ -23,18 +23,46 @@ function useMenuActions(onShowAbout: () => void) {
   const toggleTerminalPanel = useUiStore((s) => s.toggleTerminalPanel)
   const setProjectRoot = useEditorStore((s) => s.setProjectRoot)
 
+  const saveAs = useCallback(async () => {
+    const state = useEditorStore.getState()
+    const pane = state.panes[state.activePaneIndex]
+    if (!pane) return
+    const tab = pane.tabs[pane.activeTabIndex]
+    if (!tab || tab.type !== 'file') return
+
+    const modelKey = tab.path || `untitled:${tab.title}`
+    const content = getMonacoContent(modelKey)
+    if (content === undefined) return
+
+    const defaultName = tab.path ? tab.path.split(/[\\/]/).pop() : tab.title
+    const filePath = await window.api.dialog.saveFile(defaultName)
+    if (!filePath) return
+
+    await window.api.fs.writeFile(filePath, content)
+    state.setTabPath(state.activePaneIndex, pane.activeTabIndex, filePath)
+    state.markSaved(state.activePaneIndex, pane.activeTabIndex)
+  }, [])
+
   const saveActiveFile = useCallback(async () => {
     const state = useEditorStore.getState()
     const pane = state.panes[state.activePaneIndex]
     if (!pane) return
     const tab = pane.tabs[pane.activeTabIndex]
-    if (tab?.type === 'file' && tab.path && tab.isDirty) {
+    if (!tab || tab.type !== 'file') return
+
+    // Untitled file — redirect to Save As
+    if (!tab.path) {
+      await saveAs()
+      return
+    }
+
+    if (tab.isDirty) {
       const content = getMonacoContent(tab.path)
       if (content === undefined) return
       await window.api.fs.writeFile(tab.path, content)
       state.markSaved(state.activePaneIndex, pane.activeTabIndex)
     }
-  }, [])
+  }, [saveAs])
 
   const exitApp = useCallback(async () => {
     const state = useEditorStore.getState()
@@ -62,12 +90,18 @@ function useMenuActions(onShowAbout: () => void) {
     {
       label: 'File',
       items: [
-        { label: 'New File', disabled: true },
-        { label: 'Open File...', disabled: true },
+        { label: 'New File', shortcut: 'Ctrl+N', action: () => useEditorStore.getState().newFile() },
+        { label: 'Open File...', action: async () => {
+          const path = await window.api.dialog.openFile()
+          if (path) {
+            const content = await window.api.fs.readFile(path)
+            useEditorStore.getState().openFile(path, content)
+          }
+        }},
         { label: 'Open Folder...', shortcut: 'Ctrl+Shift+O', action: openFolder },
         { separator: true, label: '' },
         { label: 'Save', shortcut: 'Ctrl+S', action: saveActiveFile },
-        { label: 'Save As...', disabled: true },
+        { label: 'Save As...', action: saveAs },
         { separator: true, label: '' },
         { label: 'Close Tab', shortcut: 'Ctrl+W', action: closeActiveTab },
         { separator: true, label: '' },

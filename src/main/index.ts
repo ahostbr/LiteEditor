@@ -281,6 +281,16 @@ function createWindow(): void {
     return result.filePaths[0]
   })
 
+  // Save file dialog
+  ipcMain.handle('dialog:save-file', async (_e, defaultName?: string) => {
+    const result = await dialog.showSaveDialog(mainWindow!, {
+      defaultPath: defaultName,
+      properties: ['showOverwriteConfirmation']
+    })
+    if (result.canceled) return null
+    return result.filePath ?? null
+  })
+
   // Message box dialog
   ipcMain.handle('dialog:show-message-box', async (_e, options: Electron.MessageBoxOptions) => {
     const result = await dialog.showMessageBox(mainWindow!, options)

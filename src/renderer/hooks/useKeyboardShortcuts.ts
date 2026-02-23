@@ -26,6 +26,13 @@ export function useKeyboardShortcuts() {
       const ctrl = e.ctrlKey || e.metaKey
       const shift = e.shiftKey
 
+      // Ctrl+N: New file
+      if (ctrl && !shift && e.key === 'n') {
+        e.preventDefault()
+        useEditorStore.getState().newFile()
+        return
+      }
+
       // Ctrl+S: Save active file
       if (ctrl && !shift && e.key === 's') {
         e.preventDefault()
@@ -33,7 +40,22 @@ export function useKeyboardShortcuts() {
         const pane = state.panes[state.activePaneIndex]
         if (!pane) return
         const tab = pane.tabs[pane.activeTabIndex]
-        if (tab?.type === 'file' && tab.path && tab.isDirty) {
+        if (!tab || tab.type !== 'file') return
+
+        // Untitled file — redirect to Save As
+        if (!tab.path) {
+          const modelKey = `untitled:${tab.title}`
+          const content = getMonacoContent(modelKey)
+          if (content === undefined) return
+          const filePath = await window.api.dialog.saveFile(tab.title)
+          if (!filePath) return
+          await window.api.fs.writeFile(filePath, content)
+          state.setTabPath(state.activePaneIndex, pane.activeTabIndex, filePath)
+          state.markSaved(state.activePaneIndex, pane.activeTabIndex)
+          return
+        }
+
+        if (tab.isDirty) {
           const content = getMonacoContent(tab.path)
           if (content === undefined) return
           await window.api.fs.writeFile(tab.path, content)

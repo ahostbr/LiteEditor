@@ -1,6 +1,6 @@
 {
   "name": "liteeditor",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Lightweight code editor built with Electron + Monaco",
   "type": "module",
   "main": "./out/main/index.js",

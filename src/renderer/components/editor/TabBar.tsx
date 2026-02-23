@@ -38,19 +38,29 @@ export function TabBar({ paneIndex }: TabBarProps) {
     closeAllTabs(paneIndex)
   }, [pane, paneIndex, closeAllTabs])
 
-  if (!pane || pane.tabs.length === 0) return null
+  if (!pane) return null
 
   const handleContextMenu = (e: React.MouseEvent, tabIndex: number) => {
     e.preventDefault()
+    e.stopPropagation()
     setContextMenu({ x: e.clientX, y: e.clientY, tabIndex })
   }
 
+  const handleBarContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setContextMenu({ x: e.clientX, y: e.clientY, tabIndex: -1 })
+  }
+
   const contextItems: ContextMenuItem[] = contextMenu
-    ? [
-        { label: 'Close', onClick: () => handleClose(contextMenu.tabIndex) },
-        { label: 'Close Others', onClick: () => handleCloseOthers(contextMenu.tabIndex) },
-        { label: 'Close All', onClick: () => handleCloseAll() }
-      ]
+    ? contextMenu.tabIndex >= 0
+      ? [
+          { label: 'Close', onClick: () => handleClose(contextMenu.tabIndex) },
+          { label: 'Close Others', onClick: () => handleCloseOthers(contextMenu.tabIndex) },
+          { label: 'Close All', onClick: () => handleCloseAll() }
+        ]
+      : [
+          { label: 'New File', onClick: () => useEditorStore.getState().newFile() }
+        ]
     : []
 
   return (
@@ -63,6 +73,7 @@ export function TabBar({ paneIndex }: TabBarProps) {
           borderBottom: '1px solid var(--border)',
           scrollbarWidth: 'none'
         }}
+        onContextMenu={handleBarContextMenu}
       >
         {pane.tabs.map((tab, i) => (
           <Tab

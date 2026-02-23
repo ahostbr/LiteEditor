@@ -52,10 +52,11 @@ export function MonacoEditor({ content, path, paneIndex, tabIndex }: MonacoEdito
   useEffect(() => {
     if (!containerRef.current) return
 
-    const language = getLanguageFromPath(path)
+    const isUntitled = path.startsWith('untitled:')
+    const language = isUntitled ? 'plaintext' : getLanguageFromPath(path)
 
     // Create or get model
-    const uri = monaco.Uri.file(path)
+    const uri = isUntitled ? monaco.Uri.parse(path) : monaco.Uri.file(path)
     let model = monaco.editor.getModel(uri)
     if (!model) {
       model = monaco.editor.createModel(content, language, uri)

@@ -217,6 +217,8 @@ const api = {
       ipcRenderer.invoke('dialog:open-folder'),
     openFile: (): Promise<string | null> =>
       ipcRenderer.invoke('dialog:open-file'),
+    saveFile: (defaultName?: string): Promise<string | null> =>
+      ipcRenderer.invoke('dialog:save-file', defaultName),
     showMessageBox: (options: { type?: string; title?: string; message: string; detail?: string; buttons?: string[]; defaultId?: number; cancelId?: number }): Promise<number> =>
       ipcRenderer.invoke('dialog:show-message-box', options)
   },
