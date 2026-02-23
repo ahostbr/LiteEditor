@@ -15,6 +15,25 @@ export function TerminalTab({ sessionId }: TerminalTabProps) {
   const termRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const settings = useSettingsStore()
+  const updateSessionMeta = useTerminalStore((s) => s.updateSessionMeta)
+
+  useEffect(() => {
+    let cancelled = false
+    window.api.pty.getSessionInfo(sessionId)
+      .then((info) => {
+        if (!info || cancelled) return
+        updateSessionMeta(sessionId, {
+          shell: info.shell,
+          cwd: info.cwd,
+          createdAt: info.createdAt
+        })
+      })
+      .catch(() => {})
+
+    return () => {
+      cancelled = true
+    }
+  }, [sessionId, updateSessionMeta])
 
   useEffect(() => {
     if (!containerRef.current) return

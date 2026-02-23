@@ -401,6 +401,14 @@ export default function App() {
             if (!exists) {
               terminalStore.createSession(sessionId, shell, cwd)
             }
+            const info = await window.api.pty.getSessionInfo(sessionId).catch(() => null)
+            if (info) {
+              terminalStore.updateSessionMeta(sessionId, {
+                shell: info.shell,
+                cwd: info.cwd,
+                createdAt: info.createdAt
+              })
+            }
             terminalStore.setActiveSession(sessionId)
             const ui = useUiStore.getState()
             if (!ui.terminalPanelVisible) ui.toggleTerminalPanel()

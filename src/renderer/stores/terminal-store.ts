@@ -6,13 +6,15 @@ export interface TerminalSession {
   title: string
   shell?: string
   cwd?: string
+  createdAt?: number
 }
 
 interface TerminalState {
   sessions: TerminalSession[]
   activeSessionId: string | null
 
-  createSession: (id: string, shell?: string, cwd?: string) => void
+  createSession: (id: string, shell?: string, cwd?: string, createdAt?: number) => void
+  updateSessionMeta: (id: string, meta: { shell?: string; cwd?: string; createdAt?: number }) => void
   killSession: (id: string) => void
   renameSession: (id: string, title: string) => void
   addTerminal: (shell?: string, cwd?: string) => Promise<void>
@@ -26,16 +28,50 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   sessions: [],
   activeSessionId: null,
 
-  createSession: (id, shell, cwd) => {
+  createSession: (id, shell, cwd, createdAt) => {
     set((state) => {
-      const sessions = [...state.sessions, {
-        id,
-        title: `Terminal ${state.sessions.length + 1}`,
-        shell,
-        cwd
-      }]
+      const existing = state.sessions.find((session) => session.id === id)
+      if (existing) {
+        const sessions = state.sessions.map((session) =>
+          session.id === id
+            ? {
+                ...session,
+                ...(shell !== undefined ? { shell } : {}),
+                ...(cwd !== undefined ? { cwd } : {}),
+                ...(createdAt !== undefined ? { createdAt } : {})
+              }
+            : session
+        )
+        return { sessions, activeSessionId: id }
+      }
+
+      const sessions = [
+        ...state.sessions,
+        {
+          id,
+          title: `Terminal ${state.sessions.length + 1}`,
+          shell,
+          cwd,
+          createdAt
+        }
+      ]
       return { sessions, activeSessionId: id }
     })
+  },
+
+  updateSessionMeta: (id, meta) => {
+    set((state) => ({
+      sessions: state.sessions.map((session) =>
+        session.id === id
+          ? {
+              ...session,
+              ...(meta.shell !== undefined ? { shell: meta.shell } : {}),
+              ...(meta.cwd !== undefined ? { cwd: meta.cwd } : {}),
+              ...(meta.createdAt !== undefined ? { createdAt: meta.createdAt } : {})
+            }
+          : session
+      )
+    }))
   },
 
   killSession: (id) => {
@@ -55,6 +91,14 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     try {
       const sessionId = await window.api.pty.create(shell || undefined, fallbackCwd)
       get().createSession(sessionId, shell, fallbackCwd)
+      const info = await window.api.pty.getSessionInfo(sessionId)
+      if (info) {
+        get().updateSessionMeta(sessionId, {
+          shell: info.shell,
+          cwd: info.cwd,
+          createdAt: info.createdAt
+        })
+      }
     } catch (err) {
       console.error('Failed to create terminal:', err)
     }
@@ -98,6 +142,14 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
         ),
         activeSessionId: state.activeSessionId === id ? newId : state.activeSessionId
       }))
+      const info = await window.api.pty.getSessionInfo(newId)
+      if (info) {
+        get().updateSessionMeta(newId, {
+          shell: info.shell,
+          cwd: info.cwd,
+          createdAt: info.createdAt
+        })
+      }
     } catch (err) {
       console.error('Failed to restart terminal:', err)
     }

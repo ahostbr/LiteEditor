@@ -15,6 +15,10 @@ export function TerminalPanel() {
   const toggleTerminalPanel = useUiStore((s) => s.toggleTerminalPanel)
 
   const sessionList = sessions
+  const activeSession = sessionList.find((session) => session.id === activeSessionId) || sessionList[0]
+  const activeShellName = activeSession?.shell
+    ? activeSession.shell.split(/[\\/]/).pop()?.replace(/\.(exe|cmd)$/i, '') ?? activeSession.shell
+    : null
 
   // Auto-create a terminal if panel is open but empty
   React.useEffect(() => {
@@ -27,12 +31,25 @@ export function TerminalPanel() {
     <div className="flex flex-col h-full" style={{ backgroundColor: 'var(--bg-surface)' }}>
       {/* Header */}
       <div
-        className="flex items-center justify-between px-3 h-9 shrink-0"
+        className="flex items-center justify-between px-3 h-10 shrink-0"
         style={{ borderBottom: '1px solid var(--border)' }}
       >
-        <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-          Terminal
-        </span>
+        <div className="flex flex-col min-w-0">
+          <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+            Terminal
+          </span>
+          {activeSession && (
+            <button
+              type="button"
+              className="text-[11px] font-mono text-left truncate hover:text-[var(--text-secondary)] transition-colors"
+              style={{ color: 'var(--text-muted)', maxWidth: 320 }}
+              onClick={() => navigator.clipboard.writeText(activeSession.id)}
+              title={`Session ID: ${activeSession.id}${activeShellName ? ` · ${activeShellName}` : ''} (click to copy)`}
+            >
+              {activeSession.id}{activeShellName ? ` · ${activeShellName}` : ''}
+            </button>
+          )}
+        </div>
         <div className="flex items-center gap-1">
           <button
             onClick={() => addTerminal()}

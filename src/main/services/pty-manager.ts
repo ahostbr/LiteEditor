@@ -4,9 +4,16 @@ import { platform } from 'os'
 let counter = 0
 const MAX_BUFFER_SIZE = 32768
 
-interface PtySession {
-  process: pty.IPty
+export interface PtySessionInfo {
   id: string
+  pid: number
+  shell: string
+  cwd: string
+  createdAt: number
+}
+
+interface PtySession extends PtySessionInfo {
+  process: pty.IPty
 }
 
 export class PtyManager {
@@ -23,16 +30,25 @@ export class PtyManager {
     const defaultShell = platform() === 'win32'
       ? 'powershell.exe'
       : process.env.SHELL || '/bin/bash'
+    const resolvedShell = shell || defaultShell
+    const resolvedCwd = cwd || process.env.HOME || process.cwd()
 
-    const proc = pty.spawn(shell || defaultShell, [], {
+    const proc = pty.spawn(resolvedShell, [], {
       name: 'xterm-256color',
       cols: 80,
       rows: 24,
-      cwd: cwd || process.env.HOME || process.cwd(),
+      cwd: resolvedCwd,
       env: process.env as Record<string, string>
     })
 
-    const session: PtySession = { process: proc, id }
+    const session: PtySession = {
+      process: proc,
+      id,
+      pid: proc.pid,
+      shell: resolvedShell,
+      cwd: resolvedCwd,
+      createdAt: Date.now()
+    }
     this.sessions.set(id, session)
     this.outputBuffers.set(id, '')
 
@@ -86,7 +102,25 @@ export class PtyManager {
     return this.outputBuffers.get(sessionId) ?? null
   }
 
-  listSessions(): Array<{ id: string; pid: number }> {
-    return Array.from(this.sessions.values()).map((s) => ({ id: s.id, pid: s.process.pid }))
+  getSessionInfo(sessionId: string): PtySessionInfo | null {
+    const session = this.sessions.get(sessionId)
+    if (!session) return null
+    return {
+      id: session.id,
+      pid: session.process.pid,
+      shell: session.shell,
+      cwd: session.cwd,
+      createdAt: session.createdAt
+    }
+  }
+
+  listSessions(): PtySessionInfo[] {
+    return Array.from(this.sessions.values()).map((session) => ({
+      id: session.id,
+      pid: session.process.pid,
+      shell: session.shell,
+      cwd: session.cwd,
+      createdAt: session.createdAt
+    }))
   }
 }

@@ -47,6 +47,10 @@ export function TerminalHeader({
     ? shell.split(/[\\/]/).pop()?.replace(/\.(exe|cmd)$/i, '') ?? shell
     : null
 
+  const handleCopyId = () => {
+    navigator.clipboard.writeText(sessionId)
+  }
+
   useEffect(() => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus()
@@ -136,7 +140,19 @@ export function TerminalHeader({
           className="flex items-center gap-1.5 text-[15px] leading-none mt-1"
           style={{ color: 'var(--text-muted)' }}
         >
-          {shellName && <span className="truncate">{shellName}</span>}
+          <span
+            className="font-mono truncate cursor-pointer hover:text-[var(--text-primary)] transition-colors"
+            title={`Session ID: ${sessionId} (click to copy)`}
+            onClick={(e) => { e.stopPropagation(); handleCopyId() }}
+          >
+            {sessionId}
+          </span>
+          {shellName && (
+            <>
+              <span className="opacity-40">·</span>
+              <span className="truncate">{shellName}</span>
+            </>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-1">

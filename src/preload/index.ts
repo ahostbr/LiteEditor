@@ -12,6 +12,14 @@ type NativeViewBounds = {
   viewportHeight?: number
 }
 
+type PtySessionInfo = {
+  id: string
+  pid: number
+  shell: string
+  cwd: string
+  createdAt: number
+}
+
 const api = {
   appInfo: {
     version: '1.0.0',
@@ -90,6 +98,8 @@ const api = {
   pty: {
     create: (shell?: string, cwd?: string): Promise<string> =>
       ipcRenderer.invoke('pty:create', shell, cwd),
+    getSessionInfo: (sessionId: string): Promise<PtySessionInfo | null> =>
+      ipcRenderer.invoke('pty:get-session-info', sessionId),
     write: (sessionId: string, data: string): void =>
       ipcRenderer.send('pty:write', sessionId, data),
     resize: (sessionId: string, cols: number, rows: number): void =>

@@ -316,14 +316,25 @@ def _write_to_pty(pty_session_id: str, pid: int, data: str, auto_submit: bool = 
 
 def _resolve_pid_from_bridge(pty_session_id: str) -> int:
     """Query the PTY bridge for the PID of a given session."""
+    session = _get_bridge_session_info(pty_session_id)
+    if not session:
+        return 0
+    try:
+        return int(session.get("pid", 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _get_bridge_session_info(pty_session_id: str) -> dict[str, Any] | None:
+    """Return one PTY session payload from the bridge by ID."""
     try:
         result = _bridge_request("GET", "/pty/list")
         for s in result.get("sessions", []):
-            if s["id"] == pty_session_id:
-                return s.get("pid", 0)
+            if s.get("id") == pty_session_id:
+                return s
     except Exception:
         pass
-    return 0
+    return None
 
 
 def _list_bridge_sessions() -> str:
@@ -335,8 +346,18 @@ def _list_bridge_sessions() -> str:
             return "No active PTY sessions in the bridge."
         lines = [f"Active PTY sessions ({len(sessions)}):"]
         for s in sessions:
-            pid_info = f"  pid={s['pid']}" if s.get('pid') else ""
-            lines.append(f"  - {s['id']}{pid_info}")
+            parts = [f"  - {s.get('id', '<unknown>')}"]
+            if s.get("pid"):
+                parts.append(f"pid={s['pid']}")
+            if s.get("shell"):
+                parts.append(f"shell={s['shell']}")
+            if s.get("cwd"):
+                parts.append(f"cwd={s['cwd']}")
+            created_at = s.get("createdAt")
+            if isinstance(created_at, (int, float)):
+                started = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(created_at / 1000))
+                parts.append(f"started={started}")
+            lines.append("  ".join(parts))
         return "\n".join(lines)
     except urllib.error.URLError:
         return (
@@ -467,8 +488,19 @@ def _pty_action_register(
     if not pty_session_id:
         return "Error: 'pty_session_id' is required for register."
 
+    bridge_session = _get_bridge_session_info(pty_session_id)
+
     if not pid or pid == 0:
         pid = _resolve_pid_from_bridge(pty_session_id)
+
+    enriched_meta: dict[str, Any] = dict(meta) if isinstance(meta, dict) else {}
+    if bridge_session:
+        if bridge_session.get("shell") and "shell" not in enriched_meta:
+            enriched_meta["shell"] = bridge_session["shell"]
+        if bridge_session.get("cwd") and "cwd" not in enriched_meta:
+            enriched_meta["cwd"] = bridge_session["cwd"]
+        if bridge_session.get("createdAt") and "createdAt" not in enriched_meta:
+            enriched_meta["createdAt"] = bridge_session["createdAt"]
 
     entry: dict[str, Any] = {
         "agent_id": agent_id,
@@ -477,8 +509,8 @@ def _pty_action_register(
         "registered_at": time.time(),
         "registered_iso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
-    if meta:
-        entry["meta"] = meta
+    if enriched_meta:
+        entry["meta"] = enriched_meta
 
     _write_agent(agent_id, entry)
     return (

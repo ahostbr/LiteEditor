@@ -32,4 +32,8 @@ export function registerPtyHandlers(): void {
   ipcMain.on('pty:kill', (_e, sessionId: string) => {
     ptyManager.kill(sessionId)
   })
+
+  ipcMain.handle('pty:get-session-info', async (_e, sessionId: string) => {
+    return ptyManager.getSessionInfo(sessionId)
+  })
 }
