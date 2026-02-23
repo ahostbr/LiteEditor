@@ -156,9 +156,20 @@ interface ClaudeBridgeDeps {
   invokeRendererOp?: RendererHostOpInvoker
 }
 
+interface PendingWebviewRequest {
+  requestType: string
+  resolve: (response: Record<string, unknown>) => void
+  reject: (error: Error) => void
+  timer: NodeJS.Timeout
+  abortSignal?: AbortSignal
+  abortHandler?: () => void
+}
+
 export class ClaudeBridge {
   private claudeManager: ClaudeManager
   private channels = new Map<string, ChannelProcess>()
+  private incomingRequestControllers = new Map<string, AbortController>()
+  private pendingWebviewRequests = new Map<string, PendingWebviewRequest>()
   private claudeExePath: string | null = null
   private cachedCredentials: ClaudeCredentials | null = null
   private ptyManager?: PtyManager
@@ -212,6 +223,12 @@ export class ClaudeBridge {
     if (!wc) return
 
     switch (message.type) {
+      case 'response':
+        this.handleWebviewResponse(message)
+        break
+      case 'cancel_request':
+        this.handleCancelRequest(message)
+        break
       case 'request':
         void this.handleRequest(sessionId, wc, message)
         break
@@ -220,6 +237,12 @@ export class ClaudeBridge {
         break
       case 'io_message':
         this.handleIoMessage(message.channelId, message.message)
+        break
+      case 'start_speech_to_text':
+        this.handleSpeechToTextNotSupported(wc, message.channelId)
+        break
+      case 'stop_speech_to_text':
+        this.handleSpeechToTextNotSupported(wc, message.channelId)
         break
       case 'interrupt_claude':
         this.interruptClaude(message.channelId)
@@ -234,25 +257,224 @@ export class ClaudeBridge {
     const wc = this.claudeManager.getWebContents(sessionId)
     if (!wc) return
 
-    this.sendToWebview(wc, {
-      type: 'request',
-      request: {
-        type: 'visibility_changed',
-        isVisible
-      }
-    })
+    this.emitWebviewRequest(wc, { type: 'visibility_changed', isVisible })
   }
 
   notifySelectionChanged(sessionId: string, selection: unknown): void {
     const wc = this.claudeManager.getWebContents(sessionId)
     if (!wc) return
 
+    this.emitWebviewRequest(wc, { type: 'selection_changed', selection })
+  }
+
+  emitUpdateState(sessionId: string, channelId?: string): void {
+    const wc = this.claudeManager.getWebContents(sessionId)
+    if (!wc) return
+
+    this.emitWebviewRequest(wc, {
+      type: 'update_state',
+      state: this.buildInitState(),
+      config: this.buildClaudeConfig()
+    }, channelId)
+  }
+
+  emitUsageUpdate(sessionId: string, utilization: unknown = null, error: unknown = null, channelId?: string): void {
+    const wc = this.claudeManager.getWebContents(sessionId)
+    if (!wc) return
+
+    this.emitWebviewRequest(wc, {
+      type: 'usage_update',
+      utilization,
+      error
+    }, channelId)
+  }
+
+  emitAuthUrl(sessionId: string, url: string, channelId?: string): void {
+    const wc = this.claudeManager.getWebContents(sessionId)
+    if (!wc) return
+
+    this.emitWebviewRequest(wc, {
+      type: 'auth_url',
+      url
+    }, channelId)
+  }
+
+  emitCreateNewConversation(sessionId: string, channelId?: string): void {
+    const wc = this.claudeManager.getWebContents(sessionId)
+    if (!wc) return
+
+    this.emitWebviewRequest(wc, { type: 'create_new_conversation' }, channelId)
+  }
+
+  emitOpenPluginsDialog(
+    sessionId: string,
+    payload: { pluginName?: string; marketplaceSource?: string } = {},
+    channelId?: string
+  ): void {
+    const wc = this.claudeManager.getWebContents(sessionId)
+    if (!wc) return
+
+    this.emitWebviewRequest(wc, {
+      type: 'open_plugins_dialog',
+      ...(payload.pluginName ? { pluginName: payload.pluginName } : {}),
+      ...(payload.marketplaceSource ? { marketplaceSource: payload.marketplaceSource } : {})
+    }, channelId)
+  }
+
+  async requestToolPermission(
+    sessionId: string,
+    params: {
+      channelId: string
+      toolName: string
+      inputs?: Record<string, unknown>
+      suggestions?: unknown[]
+      timeoutMs?: number
+      signal?: AbortSignal
+    }
+  ): Promise<Record<string, unknown>> {
+    const wc = this.claudeManager.getWebContents(sessionId)
+    if (!wc) {
+      return { type: 'tool_permission_response', result: { behavior: 'deny', message: 'Session is not available', interrupt: false } }
+    }
+
+    try {
+      const response = await this.requestWebviewResponse(
+        wc,
+        {
+          type: 'tool_permission_request',
+          toolName: params.toolName,
+          inputs: params.inputs ?? {},
+          suggestions: params.suggestions ?? []
+        },
+        {
+          channelId: params.channelId,
+          timeoutMs: params.timeoutMs ?? 120000,
+          signal: params.signal
+        }
+      )
+      return response
+    } catch (err) {
+      const errorText = err instanceof Error ? err.message : String(err)
+      return { type: 'tool_permission_response', result: { behavior: 'deny', message: errorText, interrupt: false } }
+    }
+  }
+
+  private handleWebviewResponse(message: any): void {
+    const requestId = typeof message?.requestId === 'string' ? message.requestId : ''
+    if (!requestId) return
+
+    const pending = this.pendingWebviewRequests.get(requestId)
+    if (!pending) return
+
+    clearTimeout(pending.timer)
+    this.pendingWebviewRequests.delete(requestId)
+
+    if (pending.abortSignal && pending.abortHandler) {
+      pending.abortSignal.removeEventListener('abort', pending.abortHandler)
+    }
+
+    const response = (message?.response && typeof message.response === 'object')
+      ? message.response as Record<string, unknown>
+      : {}
+
+    if (response.type === 'error') {
+      const errorText = typeof response.error === 'string'
+        ? response.error
+        : `Webview request '${pending.requestType}' failed`
+      pending.reject(new Error(errorText))
+      return
+    }
+
+    pending.resolve(response)
+  }
+
+  private handleCancelRequest(message: any): void {
+    const targetRequestId = typeof message?.targetRequestId === 'string' ? message.targetRequestId : ''
+    if (!targetRequestId) return
+
+    const controller = this.incomingRequestControllers.get(targetRequestId)
+    if (!controller) return
+
+    controller.abort()
+    this.incomingRequestControllers.delete(targetRequestId)
+  }
+
+  private handleSpeechToTextNotSupported(wc: WebContents, channelId: unknown): void {
+    if (typeof channelId !== 'string' || !channelId) return
+
+    this.sendToWebview(wc, {
+      type: 'close_channel',
+      channelId,
+      error: 'Speech-to-text is not supported in LiteEditor yet.'
+    })
+  }
+
+  private emitWebviewRequest(wc: WebContents, request: Record<string, unknown>, channelId?: string): void {
     this.sendToWebview(wc, {
       type: 'request',
-      request: {
-        type: 'selection_changed',
-        selection
+      ...(channelId ? { channelId } : {}),
+      request
+    })
+  }
+
+  private requestWebviewResponse(
+    wc: WebContents,
+    request: Record<string, unknown>,
+    options: {
+      channelId?: string
+      timeoutMs?: number
+      signal?: AbortSignal
+    } = {}
+  ): Promise<Record<string, unknown>> {
+    const requestType = typeof request.type === 'string' ? request.type : 'unknown'
+    const requestId = `claude-host-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const timeoutMs = options.timeoutMs ?? 30000
+
+    if (wc.isDestroyed()) {
+      return Promise.reject(new Error(`Webview is destroyed; cannot send '${requestType}'`))
+    }
+
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        const pending = this.pendingWebviewRequests.get(requestId)
+        if (pending?.abortSignal && pending.abortHandler) {
+          pending.abortSignal.removeEventListener('abort', pending.abortHandler)
+        }
+        this.pendingWebviewRequests.delete(requestId)
+        reject(new Error(`Timed out waiting for webview response to '${requestType}'`))
+      }, timeoutMs)
+
+      const pending: PendingWebviewRequest = {
+        requestType,
+        resolve,
+        reject,
+        timer,
+        abortSignal: options.signal
       }
+
+      if (options.signal) {
+        const abortHandler = () => {
+          clearTimeout(timer)
+          this.pendingWebviewRequests.delete(requestId)
+          this.sendToWebview(wc, { type: 'cancel_request', targetRequestId: requestId })
+          reject(new Error(`Webview request '${requestType}' aborted`))
+        }
+        pending.abortHandler = abortHandler
+        if (options.signal.aborted) {
+          abortHandler()
+          return
+        }
+        options.signal.addEventListener('abort', abortHandler, { once: true })
+      }
+
+      this.pendingWebviewRequests.set(requestId, pending)
+
+      this.sendToWebview(wc, {
+        type: 'request',
+        requestId,
+        ...(options.channelId ? { channelId: options.channelId } : {}),
+        request
+      })
     })
   }
 
@@ -272,6 +494,9 @@ export class ClaudeBridge {
       return
     }
 
+    const abortController = new AbortController()
+    this.incomingRequestControllers.set(requestId, abortController)
+
     try {
       if (!KNOWN_HOST_REQUEST_TYPES.has(requestType as HostRequestType)) {
         console.warn(`[claude-bridge] Unknown request type '${requestType}'`, { channelId })
@@ -284,22 +509,31 @@ export class ClaudeBridge {
         sessionId,
         wc,
         request,
-        channelId
+        channelId,
+        abortController.signal
       )
+      if (abortController.signal.aborted) return
       this.sendResponseOk(wc, requestId, response)
     } catch (err) {
+      if (abortController.signal.aborted) {
+        console.warn(`[claude-bridge] Request '${requestType}' was cancelled`, { requestId, channelId })
+        return
+      }
       const error = err instanceof Error ? err.message : String(err)
       console.error(`[claude-bridge] Failed request '${requestType}'`, { error, channelId })
       this.sendResponseError(wc, requestId, error)
+    } finally {
+      this.incomingRequestControllers.delete(requestId)
     }
   }
 
   private async handleKnownRequest(
     requestType: HostRequestType,
     sessionId: string,
-    wc: WebContents,
+    _wc: WebContents,
     request: Record<string, unknown>,
-    channelId?: string
+    channelId?: string,
+    _signal?: AbortSignal
   ): Promise<Record<string, unknown>> {
     switch (requestType) {
       case 'init':
@@ -307,7 +541,7 @@ export class ClaudeBridge {
       case 'get_claude_state':
         return { config: this.buildClaudeConfig() }
       case 'request_usage_update':
-        this.sendUsageUpdate(wc)
+        this.emitUsageUpdate(sessionId, null, null, channelId)
         return {}
       case 'list_sessions_request':
         return { sessions: await this.listSessions() }
@@ -322,13 +556,13 @@ export class ClaudeBridge {
       case 'set_model': {
         const model = typeof request.model === 'string' ? request.model : null
         if (model) this.modelSetting = model
-        this.sendUpdateState(wc, channelId)
+        this.emitUpdateState(sessionId, channelId)
         return { success: true }
       }
       case 'set_thinking_level': {
         const thinkingLevel = typeof request.thinkingLevel === 'string' ? request.thinkingLevel : null
         if (thinkingLevel) this.thinkingLevel = thinkingLevel
-        this.sendUpdateState(wc, channelId)
+        this.emitUpdateState(sessionId, channelId)
         return { success: true }
       }
       case 'set_permission_mode': {
@@ -484,11 +718,11 @@ export class ClaudeBridge {
         authenticated: hasAuth
       },
       models: [
-        { value: 'default', displayName: 'Default (recommended)', description: 'Opus 4.6 · Most capable for complex work' },
-        { value: 'claude-opus-4-6-max-1m', displayName: 'Opus (1M context)', description: 'Opus 4.6 with 1M context · Billed as extra usage · $10/$37.50 per Mtok' },
-        { value: 'sonnet', displayName: 'Sonnet', description: 'Sonnet 4.6 · Best for everyday tasks' },
-        { value: 'claude-sonnet-4-6-max-1m', displayName: 'Sonnet (1M context)', description: 'Sonnet 4.6 with 1M context · Billed as extra usage · $6/$22.50 per Mtok' },
-        { value: 'haiku', displayName: 'Haiku', description: 'Haiku 4.5 · Fastest for quick answers' }
+        { value: 'default', displayName: 'Default (recommended)', description: 'Opus 4.6 - Most capable for complex work' },
+        { value: 'claude-opus-4-6-max-1m', displayName: 'Opus (1M context)', description: 'Opus 4.6 with 1M context - Billed as extra usage - $10/$37.50 per Mtok' },
+        { value: 'sonnet', displayName: 'Sonnet', description: 'Sonnet 4.6 - Best for everyday tasks' },
+        { value: 'claude-sonnet-4-6-max-1m', displayName: 'Sonnet (1M context)', description: 'Sonnet 4.6 with 1M context - Billed as extra usage - $6/$22.50 per Mtok' },
+        { value: 'haiku', displayName: 'Haiku', description: 'Haiku 4.5 - Fastest for quick answers' }
       ],
       commands: [
         { id: 'fast', label: '/fast', description: 'Toggle fast mode (Opus 4.6 only)' },
@@ -508,29 +742,6 @@ export class ClaudeBridge {
       subscriptionType: creds?.claudeAiOauth?.subscriptionType || null,
       rateLimitTier: creds?.claudeAiOauth?.rateLimitTier || null
     }
-  }
-
-  private sendUpdateState(wc: WebContents, channelId?: string): void {
-    this.sendToWebview(wc, {
-      type: 'request',
-      request: {
-        type: 'update_state',
-        state: this.buildInitState(),
-        config: this.buildClaudeConfig(),
-        ...(channelId ? { channelId } : {})
-      }
-    })
-  }
-
-  private sendUsageUpdate(wc: WebContents): void {
-    this.sendToWebview(wc, {
-      type: 'request',
-      request: {
-        type: 'usage_update',
-        utilization: null,
-        error: null
-      }
-    })
   }
 
   private async getSessionMessages(sessionId: string): Promise<Record<string, unknown>> {
@@ -1055,8 +1266,21 @@ export class ClaudeBridge {
   }
 
   shutdown(): void {
+    this.incomingRequestControllers.forEach((controller) => controller.abort())
+    this.incomingRequestControllers.clear()
+
+    this.pendingWebviewRequests.forEach((pending) => {
+      clearTimeout(pending.timer)
+      if (pending.abortSignal && pending.abortHandler) {
+        pending.abortSignal.removeEventListener('abort', pending.abortHandler)
+      }
+      pending.reject(new Error('Claude bridge shutdown'))
+    })
+    this.pendingWebviewRequests.clear()
+
     for (const channelId of Array.from(this.channels.keys())) {
       this.closeChannel(channelId)
     }
   }
 }
+

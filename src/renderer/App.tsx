@@ -18,6 +18,7 @@ import { useGitStore } from './stores/git-store'
 import { useTerminalStore } from './stores/terminal-store'
 import { useSettingsStore } from './stores/settings-store'
 import { useLayoutStore } from './stores/layout-store'
+import { useZenStore } from './stores/zen-store'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useWorkspacePersistence } from './hooks/useWorkspacePersistence'
 import { getLanguageFromPath, getLanguageDisplayName } from './lib/language-map'
@@ -92,6 +93,40 @@ function getActiveSelectionText(): string {
   } catch {
     return ''
   }
+}
+
+async function ensureClaudePanelSession(): Promise<string | null> {
+  const ui = useUiStore.getState()
+  if (ui.appMode !== 'zen') {
+    ui.setAppMode('zen')
+  }
+
+  useZenStore.getState().addClaudePanel()
+
+  for (let i = 0; i < 80; i++) {
+    const zen = useZenStore.getState()
+    const panel = zen.panels.find((item) => item.type === 'claude' && item.claudeSessionId)
+    if (panel?.claudeSessionId) {
+      zen.setActivePanel(panel.id)
+      return panel.claudeSessionId
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25))
+  }
+
+  return null
+}
+
+function renameClaudePanel(title: string): boolean {
+  const zen = useZenStore.getState()
+  const activePanel = zen.activePanelId
+    ? zen.panels.find((panel) => panel.id === zen.activePanelId && panel.type === 'claude')
+    : undefined
+  const fallbackPanel = zen.panels.find((panel) => panel.type === 'claude')
+  const target = activePanel ?? fallbackPanel
+  if (!target) return false
+
+  zen.renamePanel(target.id, title)
+  return true
 }
 
 function SidebarContent() {
@@ -281,10 +316,20 @@ export default function App() {
           }
           case 'get_current_selection':
             return { selection: getActiveSelectionText() }
-          case 'new_conversation_tab':
-            return { success: true }
-          case 'rename_tab':
-            return { success: true }
+          case 'new_conversation_tab': {
+            const sessionId = await ensureClaudePanelSession()
+            return { success: !!sessionId, ...(sessionId ? { sessionId } : {}) }
+          }
+          case 'rename_tab': {
+            const title = typeof requestPayload.title === 'string' ? requestPayload.title.trim() : ''
+            if (!title) return { success: false }
+            return { success: renameClaudePanel(title) }
+          }
+          case 'fork_conversation': {
+            const sessionId = await ensureClaudePanelSession()
+            const fallback = typeof requestPayload.forkedFromSession === 'string' ? requestPayload.forkedFromSession : ''
+            return { sessionId: sessionId ?? fallback }
+          }
           case 'check_git_status': {
             try {
               const files = await window.api.git.status() as unknown[]
