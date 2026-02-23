@@ -2,6 +2,92 @@
 
 All notable changes to LiteEditor are documented in this file.
 
+## [1.2.0] - 2026-02-22
+
+### Zen Mode
+
+Distraction-free workspace with four switchable layout modes and multi-panel support.
+
+#### Layout Modes
+- **Grid** — Automatic responsive grid with manual presets (Auto, 2x2, 3x3); drag-and-drop panel reordering
+- **Splitter** — Horizontal split with draggable dividers; minimum 10% width per panel
+- **Window** — Free-floating overlapping panels with drag, resize, snap zones (edges + center), and z-order management
+- **Tabs** — Single-view tabbed interface with drag-to-reorder tabs and add menu
+
+#### Panel Types
+- **Editor panels** — Per-file Monaco instances with dirty state, save button, and file icon headers
+- **Terminal panels** — Independent xterm.js sessions with auto-numbering and focus management
+- **Browser panels** — Embedded Chromium webview with address bar, back/forward/reload, and keyboard navigation
+- **Unified editor panel** — Single tabbed editor (identical to normal mode) as an alternative to separate panels
+
+#### Unified Editor Mode
+- New `zenEditorMode` setting: choose between "Separate Panels" (one editor per file) or "Unified Editor" (single tabbed editor with split pane support)
+- Live toggle: switching the setting while in zen mode swaps editor panels in-place, preserving terminals and browsers
+- "Open File..." in tab layout routes to the unified editor's tab bar when in unified mode
+- Settings panel dropdown under new "Zen Mode" section
+
+#### Multi-Monitor
+- Span zen mode across all connected displays via titlebar button
+- Restore to single monitor with the same button
+
+#### Browser Panel Features
+- Browser sessions persist across layout mode switches (hidden, not destroyed)
+- Efficient bounds tracking via requestAnimationFrame for smooth resize/drag
+- Auto-updates panel title from page content
+- User agent modified to remove Electron tokens for site compatibility
+
+#### Zen Mode Integration
+- Auto-creates panels from normal mode's open tabs on zen entry
+- Layout mode buttons in titlebar (only visible in zen mode)
+- Files opened from file explorer create zen panels when in zen mode
+- Panel add menu: "New Terminal" and "Open File..." from titlebar "+" button
+
+---
+
+### Agent Bridge & MCP Server
+
+Local HTTP bridge and MCP server enabling external AI agents to control LiteEditor.
+
+#### Agent Bridge (HTTP API)
+- Local server on `127.0.0.1:7423` with PTY and browser endpoints
+- **PTY:** list sessions, read output, write data, submit commands
+- **Browser:** navigate, screenshot, read page DOM, click, type, scroll, select options, execute JS, read console logs
+- Auto-focuses terminal window when external agent sends input
+
+#### MCP Server
+- Bundled FastMCP Python server exposing `pty` and `browser` tools
+- Terminal output filtering: strips ANSI codes, spinner characters, progress bars, and CLI artifacts
+- Agent registry at `~/.liteeditor/agents/` for multi-agent coordination
+- Ctrl+key support for sending interrupt signals
+
+---
+
+### App Improvements
+
+#### About Dialog
+- Version, commit hash, build date, Electron/Node versions, and platform info
+- GitHub link to project repository
+- Build metadata auto-injected at build time via Vite define config
+
+#### Graceful Quit
+- Window close minimizes instead of exiting (prevents accidental quit)
+- Exit menu item prompts to save dirty files: "Save All" / "Don't Save" / "Cancel"
+
+#### Performance
+- In-memory SQLite file-tree cache (better-sqlite3) replacing repeated filesystem scans
+- Lazy-loaded directory contents with targeted invalidation on file changes
+- React.lazy + Suspense for Terminal, Monaco Editor, and DiffViewer components
+- V8 heap capped at 512MB to prevent memory bloat
+
+#### Developer & Testing
+- Confirm dialog component and dialog store for centralized modal management
+- F12 toggles DevTools
+- Test fixtures: three project templates for E2E testing (`.test-diag-tree/`, `.test-file-tree/`, `.test-diag/`)
+- `window.__test` exposes editor, dialog, and UI stores for Playwright automation
+- README with screenshots, LICENSE (GPL v3), and project documentation
+
+---
+
 ## [1.1.0] - 2026-02-22
 
 ### Workspace Integration
