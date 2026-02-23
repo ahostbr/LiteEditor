@@ -1,6 +1,17 @@
 import { useEffect, useRef } from 'react'
 import { useZenStore } from '../../stores/zen-store'
 
+function toNativeBounds(rect: DOMRect | { x: number; y: number; width: number; height: number }) {
+  return {
+    x: Math.round(rect.x),
+    y: Math.round(rect.y),
+    width: Math.round(rect.width),
+    height: Math.round(rect.height),
+    viewportWidth: window.innerWidth,
+    viewportHeight: window.innerHeight
+  }
+}
+
 interface CodexPanelProps {
   panelId: string
   visible?: boolean
@@ -58,12 +69,7 @@ export function CodexPanel({ panelId, visible = true }: CodexPanelProps) {
     function sendBounds(sessionId: string) {
       const rect = containerRef.current?.getBoundingClientRect()
       if (rect) {
-        window.api.codex.setBounds(sessionId, {
-          x: Math.round(rect.x),
-          y: Math.round(rect.y),
-          width: Math.round(rect.width),
-          height: Math.round(rect.height)
-        })
+        window.api.codex.setBounds(sessionId, toNativeBounds(rect))
       }
     }
 
@@ -95,17 +101,25 @@ export function CodexPanel({ panelId, visible = true }: CodexPanelProps) {
       }
 
       const rect = containerRef.current.getBoundingClientRect()
-      const x = Math.round(rect.x)
-      const y = Math.round(rect.y)
-      const w = Math.round(rect.width)
-      const h = Math.round(rect.height)
+      const bounds = toNativeBounds(rect)
+      const x = bounds.x
+      const y = bounds.y
+      const w = bounds.width
+      const h = bounds.height
 
       if (x !== lastX || y !== lastY || w !== lastW || h !== lastH) {
         lastX = x
         lastY = y
         lastW = w
         lastH = h
-        window.api.codex.setBounds(sid, { x, y, width: w, height: h })
+        window.api.codex.setBounds(sid, {
+          x,
+          y,
+          width: w,
+          height: h,
+          viewportWidth: window.innerWidth,
+          viewportHeight: window.innerHeight
+        })
       }
 
       rafId = requestAnimationFrame(tick)

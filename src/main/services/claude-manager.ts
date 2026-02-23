@@ -1,6 +1,8 @@
 import { WebContentsView, BrowserWindow, app } from 'electron'
 import { join } from 'path'
 import { readdirSync, existsSync, writeFileSync, mkdirSync } from 'fs'
+import { type NativeViewBounds, toContentBounds } from './native-view-bounds'
+import { buildWebviewThemeCss } from './webview-theme'
 
 let counter = 0
 
@@ -57,6 +59,7 @@ export class ClaudeManager {
 
     const cssUrl = `file:///${extPath.replace(/\\/g, '/')}/webview/index.css`
     const jsUrl = `file:///${extPath.replace(/\\/g, '/')}/webview/index.js`
+    const themeCss = buildWebviewThemeCss()
 
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -66,56 +69,7 @@ export class ClaudeManager {
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' file: data: blob: https:; img-src 'self' file: data: blob: https:; style-src 'self' 'unsafe-inline' file:; script-src 'self' 'unsafe-inline' 'unsafe-eval' file:; connect-src 'self' https: wss:; font-src 'self' file: data:;" />
   <title>Claude Code</title>
   <link rel="stylesheet" href="${cssUrl}" />
-  <style>
-    :root {
-      --vscode-editor-background: #0c0c0f;
-      --vscode-editor-foreground: #cccccc;
-      --vscode-sideBar-background: #111114;
-      --vscode-sideBar-foreground: #cccccc;
-      --vscode-sideBarSectionHeader-background: #18181b;
-      --vscode-panel-background: #0c0c0f;
-      --vscode-panel-border: #2a2a2e;
-      --vscode-input-background: #18181b;
-      --vscode-input-foreground: #cccccc;
-      --vscode-input-border: #2a2a2e;
-      --vscode-input-placeholderForeground: #666666;
-      --vscode-button-background: #6366f1;
-      --vscode-button-foreground: #ffffff;
-      --vscode-button-hoverBackground: #818cf8;
-      --vscode-button-secondaryBackground: #2a2a2e;
-      --vscode-button-secondaryForeground: #cccccc;
-      --vscode-focusBorder: #6366f1;
-      --vscode-foreground: #cccccc;
-      --vscode-descriptionForeground: #888888;
-      --vscode-errorForeground: #f87171;
-      --vscode-textLink-foreground: #818cf8;
-      --vscode-textLink-activeForeground: #a5b4fc;
-      --vscode-font-family: system-ui, -apple-system, sans-serif;
-      --vscode-font-size: 13px;
-      --vscode-editor-font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
-      --vscode-editor-font-size: 13px;
-      --vscode-list-activeSelectionBackground: #2a2a2e;
-      --vscode-list-activeSelectionForeground: #ffffff;
-      --vscode-list-hoverBackground: #1e1e22;
-      --vscode-scrollbarSlider-background: rgba(255,255,255,0.1);
-      --vscode-scrollbarSlider-hoverBackground: rgba(255,255,255,0.15);
-      --vscode-scrollbarSlider-activeBackground: rgba(255,255,255,0.2);
-      --vscode-badge-background: #6366f1;
-      --vscode-badge-foreground: #ffffff;
-      --vscode-progressBar-background: #6366f1;
-    }
-    html, body {
-      margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
-      background: var(--vscode-editor-background);
-      color: var(--vscode-editor-foreground);
-      font-family: var(--vscode-font-family);
-      font-size: var(--vscode-font-size);
-    }
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--vscode-scrollbarSlider-background); border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--vscode-scrollbarSlider-hoverBackground); }
-  </style>
+${themeCss}
   <script>
     window.initialConfiguration = {};
     window.IS_SIDEBAR = false;
@@ -177,10 +131,10 @@ export class ClaudeManager {
     return id
   }
 
-  setBounds(sessionId: string, bounds: { x: number; y: number; width: number; height: number }): void {
+  setBounds(sessionId: string, bounds: NativeViewBounds): void {
     const session = this.sessions.get(sessionId)
     if (!session || session.hidden) return
-    session.view.setBounds(bounds)
+    session.view.setBounds(toContentBounds(session.mainWindow, bounds))
   }
 
   showView(sessionId: string): void {

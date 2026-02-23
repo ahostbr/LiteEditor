@@ -2,6 +2,7 @@ import { ipcMain, BrowserWindow } from 'electron'
 import { ClaudeManager } from '../services/claude-manager'
 import { ClaudeBridge } from '../services/claude-bridge'
 import { ptyManager } from './pty-handlers'
+import { type NativeViewBounds } from '../services/native-view-bounds'
 
 const claudeManager = new ClaudeManager()
 let activeMainWindow: BrowserWindow | null = null
@@ -56,7 +57,7 @@ export function registerClaudeHandlers(mainWindow: BrowserWindow): void {
   })
 
   // Lifecycle: set view bounds (from renderer rAF loop)
-  ipcMain.on('claude:set-bounds', (_e, sessionId: string, bounds: { x: number; y: number; width: number; height: number }) => {
+  ipcMain.on('claude:set-bounds', (_e, sessionId: string, bounds: NativeViewBounds) => {
     claudeManager.setBounds(sessionId, bounds)
   })
 

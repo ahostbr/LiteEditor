@@ -3,6 +3,15 @@ import { contextBridge, ipcRenderer, webFrame } from 'electron'
 declare const __COMMIT_HASH__: string
 declare const __BUILD_DATE__: string
 
+type NativeViewBounds = {
+  x: number
+  y: number
+  width: number
+  height: number
+  viewportWidth?: number
+  viewportHeight?: number
+}
+
 const api = {
   appInfo: {
     version: '1.0.0',
@@ -114,7 +123,7 @@ const api = {
       ipcRenderer.invoke('browser:create-view', initialUrl),
     destroyView: (sessionId: string): void =>
       ipcRenderer.send('browser:destroy-view', sessionId),
-    setBounds: (sessionId: string, bounds: { x: number; y: number; width: number; height: number }): void =>
+    setBounds: (sessionId: string, bounds: NativeViewBounds): void =>
       ipcRenderer.send('browser:set-bounds', sessionId, bounds),
     showView: (sessionId: string): void =>
       ipcRenderer.send('browser:show-view', sessionId),
@@ -162,7 +171,7 @@ const api = {
       ipcRenderer.invoke('claude:create-session'),
     destroySession: (sessionId: string): void =>
       ipcRenderer.send('claude:destroy-session', sessionId),
-    setBounds: (sessionId: string, bounds: { x: number; y: number; width: number; height: number }): void =>
+    setBounds: (sessionId: string, bounds: NativeViewBounds): void =>
       ipcRenderer.send('claude:set-bounds', sessionId, bounds),
     showView: (sessionId: string): void =>
       ipcRenderer.send('claude:show-view', sessionId),
@@ -182,7 +191,7 @@ const api = {
       ipcRenderer.invoke('codex:create-session'),
     destroySession: (sessionId: string): void =>
       ipcRenderer.send('codex:destroy-session', sessionId),
-    setBounds: (sessionId: string, bounds: { x: number; y: number; width: number; height: number }): void =>
+    setBounds: (sessionId: string, bounds: NativeViewBounds): void =>
       ipcRenderer.send('codex:set-bounds', sessionId, bounds),
     showView: (sessionId: string): void =>
       ipcRenderer.send('codex:show-view', sessionId),

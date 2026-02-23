@@ -1,4 +1,5 @@
 import { WebContentsView, BrowserWindow } from 'electron'
+import { type NativeViewBounds, toContentBounds } from './native-view-bounds'
 
 let counter = 0
 
@@ -114,10 +115,10 @@ export class BrowserManager {
     } catch { /* already destroyed */ }
   }
 
-  setBounds(sessionId: string, bounds: { x: number; y: number; width: number; height: number }): void {
+  setBounds(sessionId: string, bounds: NativeViewBounds): void {
     const session = this.sessions.get(sessionId)
     if (!session || session.hidden) return
-    session.view.setBounds(bounds)
+    session.view.setBounds(toContentBounds(session.mainWindow, bounds))
   }
 
   showView(sessionId: string): void {

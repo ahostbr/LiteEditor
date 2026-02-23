@@ -1,5 +1,6 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import { BrowserManager } from '../services/browser-manager'
+import { type NativeViewBounds } from '../services/native-view-bounds'
 import {
   DOM_INDEX_SCRIPT,
   getClickScript,
@@ -24,7 +25,7 @@ export function registerBrowserHandlers(mainWindow: BrowserWindow): void {
   })
 
   // Lifecycle: set view bounds (from renderer ResizeObserver)
-  ipcMain.on('browser:set-bounds', (_e, sessionId: string, bounds: { x: number; y: number; width: number; height: number }) => {
+  ipcMain.on('browser:set-bounds', (_e, sessionId: string, bounds: NativeViewBounds) => {
     browserManager.setBounds(sessionId, bounds)
   })
 

@@ -8,3 +8,4 @@ dist/
 /test-results
 /tests
 /.liteeditor
+/dist-modelfix

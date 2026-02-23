@@ -1,6 +1,7 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import { CodexManager } from '../services/codex-manager'
 import { CodexBridge } from '../services/codex-bridge'
+import { type NativeViewBounds } from '../services/native-view-bounds'
 
 const codexManager = new CodexManager()
 const codexBridge = new CodexBridge(codexManager)
@@ -18,7 +19,7 @@ export function registerCodexHandlers(mainWindow: BrowserWindow): void {
   })
 
   // Lifecycle: set view bounds (from renderer rAF loop)
-  ipcMain.on('codex:set-bounds', (_e, sessionId: string, bounds: { x: number; y: number; width: number; height: number }) => {
+  ipcMain.on('codex:set-bounds', (_e, sessionId: string, bounds: NativeViewBounds) => {
     codexManager.setBounds(sessionId, bounds)
   })
 

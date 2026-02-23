@@ -539,7 +539,7 @@ export class ClaudeBridge {
   private async handleKnownRequest(
     requestType: HostRequestType,
     sessionId: string,
-    _wc: WebContents,
+    wc: WebContents,
     request: Record<string, unknown>,
     channelId?: string,
     _signal?: AbortSignal
@@ -563,16 +563,28 @@ export class ClaudeBridge {
         return this.getSessionMessages(targetSessionId)
       }
       case 'set_model': {
-        const model = typeof request.model === 'string' ? request.model : null
-        if (model) this.modelSetting = model
+        const model = this.resolveModelValue(request.model)
+        if (!model) {
+          return { type: 'set_model_response', success: false, error: 'Missing model value' }
+        }
+
+        this.modelSetting = model
+
+        // The LiteEditor bridge cannot hot-swap model on a live claude.exe stream.
+        // Close the current channel so the next user send relaunches Claude with the new model.
+        if (channelId && this.channels.has(channelId)) {
+          this.closeChannel(channelId)
+          this.sendToWebview(wc, { type: 'close_channel', channelId })
+        }
+
         this.emitUpdateState(sessionId, channelId)
-        return { success: true }
+        return { type: 'set_model_response', success: true }
       }
       case 'set_thinking_level': {
         const thinkingLevel = typeof request.thinkingLevel === 'string' ? request.thinkingLevel : null
         if (thinkingLevel) this.thinkingLevel = thinkingLevel
         this.emitUpdateState(sessionId, channelId)
-        return { success: true }
+        return { type: 'set_thinking_level_response', success: true }
       }
       case 'set_permission_mode': {
         const mode = typeof request.mode === 'string' ? request.mode : null
@@ -822,6 +834,19 @@ export class ClaudeBridge {
       requestType,
       ...payload
     }
+  }
+
+  private resolveModelValue(model: unknown): string | null {
+    if (typeof model === 'string' && model.trim().length > 0) {
+      return model.trim()
+    }
+    if (model && typeof model === 'object') {
+      const value = (model as { value?: unknown }).value
+      if (typeof value === 'string' && value.trim().length > 0) {
+        return value.trim()
+      }
+    }
+    return null
   }
 
   private async invokeRendererHostOp(op: string, payload: Record<string, unknown> = {}): Promise<RendererHostOpResult> {
