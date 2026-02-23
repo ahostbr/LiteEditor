@@ -114,7 +114,7 @@ export function Titlebar() {
       <div className="flex items-center shrink-0 h-full">
         {/* Zen mode layout controls */}
         {appMode === 'zen' && (
-          <div className="flex items-center gap-1 mr-1" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+          <div className="flex items-center gap-2 mr-1" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
             {/* Layout mode buttons */}
             <div className="flex items-center gap-[2px] bg-[var(--bg-overlay)] rounded-[4px] p-[2px]">
               {LAYOUT_OPTIONS.map(({ mode, icon, label }) => (
@@ -141,7 +141,7 @@ export function Titlebar() {
 
             {/* Grid layout selector (only in grid mode) */}
             {layoutMode === 'grid' && (
-              <div className="flex items-center gap-[2px] ml-1">
+              <div className="flex items-center gap-[2px]">
                 {GRID_OPTIONS.map(({ value, label }) => (
                   <button
                     key={value}
@@ -166,7 +166,7 @@ export function Titlebar() {
             )}
 
             {/* Add panel button */}
-            <div className="relative ml-1">
+            <div className="relative">
               <button
                 ref={addBtnRef}
                 onClick={() => setShowAddMenu((v) => !v)}
@@ -218,7 +218,7 @@ export function Titlebar() {
         {appMode === 'zen' && <TitlebarSeparator />}
 
         {/* Panel toggles */}
-        <div className="flex items-center gap-[2px] mx-1" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+        <div className="flex items-center gap-1" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
           <LayoutToggleButton
             onClick={toggleSidebar}
             active={sidebarVisible}
@@ -277,7 +277,7 @@ export function Titlebar() {
 function TitlebarSeparator() {
   return (
     <div
-      className="w-[1px] h-[16px] mx-[4px] shrink-0"
+      className="w-[1px] h-[16px] mx-[10px] shrink-0"
       style={{ backgroundColor: 'var(--border)' }}
     />
   )
