@@ -13,7 +13,6 @@ interface BrowserSession {
   view: WebContentsView
   mainWindow: BrowserWindow
   hidden: boolean
-  attached: boolean
   consoleLogs: ConsoleLogEntry[]
 }
 
@@ -41,13 +40,13 @@ export class BrowserManager {
 
     // Start at zero bounds until the renderer reports real bounds
     view.setBounds({ x: 0, y: 0, width: 0, height: 0 })
+    mainWindow.contentView.addChildView(view)
 
     const session: BrowserSession = {
       id,
       view,
       mainWindow,
-      hidden: true,
-      attached: false,
+      hidden: false,
       consoleLogs: []
     }
     this.sessions.set(id, session)
@@ -107,14 +106,9 @@ export class BrowserManager {
     const session = this.sessions.get(sessionId)
     if (!session) return
     this.sessions.delete(sessionId)
-    session.hidden = true
-    session.view.setBounds({ x: 0, y: 0, width: 0, height: 0 })
     try {
-      if (session.attached) {
-        session.mainWindow.contentView.removeChildView(session.view)
-      }
+      session.mainWindow.contentView.removeChildView(session.view)
     } catch { /* window may already be closed */ }
-    session.attached = false
     try {
       session.view.webContents.close()
     } catch { /* already destroyed */ }
@@ -122,34 +116,26 @@ export class BrowserManager {
 
   setBounds(sessionId: string, bounds: { x: number; y: number; width: number; height: number }): void {
     const session = this.sessions.get(sessionId)
-    if (!session) return
+    if (!session || session.hidden) return
     session.view.setBounds(bounds)
   }
 
   showView(sessionId: string): void {
     const session = this.sessions.get(sessionId)
-    if (!session) return
-    if (session.attached) {
-      session.hidden = false
-      return
-    }
+    if (!session || !session.hidden) return
     session.hidden = false
     try {
       session.mainWindow.contentView.addChildView(session.view)
-      session.attached = true
     } catch { /* window may be closed */ }
   }
 
   hideView(sessionId: string): void {
     const session = this.sessions.get(sessionId)
-    if (!session) return
+    if (!session || session.hidden) return
     session.hidden = true
-    session.view.setBounds({ x: 0, y: 0, width: 0, height: 0 })
-    if (!session.attached) return
     try {
       session.mainWindow.contentView.removeChildView(session.view)
     } catch { /* window may be closed */ }
-    session.attached = false
   }
 
   getWebContents(sessionId: string) {
