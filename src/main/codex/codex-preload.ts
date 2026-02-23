@@ -35,5 +35,5 @@ contextBridge.exposeInMainWorld('acquireVsCodeApi', () => ({
 
 // Host -> Webview: dispatch messages from the extension host
 ipcRenderer.on('codex:host-message', (_e, message: any) => {
-  window.postMessage({ type: 'from-extension', message }, '*')
+  window.postMessage(message, '*')
 })

@@ -115,11 +115,7 @@ export class CodexBridge {
   }
 
   private handleReady(wc: WebContents): void {
-    // Push initial state to the webview
-    this.sendToWebview(wc, {
-      type: 'persisted-atom-sync',
-      state: this.persistedAtomState
-    })
+    // Order matches real Codex extension: font → prompts → state
     this.sendToWebview(wc, {
       type: 'chat-font-settings',
       chatFontSize: 13,
@@ -130,7 +126,8 @@ export class CodexBridge {
       prompts: []
     })
     this.sendToWebview(wc, {
-      type: 'active-workspace-roots-updated'
+      type: 'persisted-atom-sync',
+      state: this.persistedAtomState
     })
   }
 
