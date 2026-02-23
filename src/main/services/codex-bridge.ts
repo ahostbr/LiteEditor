@@ -17,6 +17,8 @@ export class CodexBridge {
   // codex.exe process management
   private proc: ChildProcess | null = null
   private pendingRequests = new Map<string, WebContents>()
+  private rpcCallbacks = new Map<string, { resolve: (v: any) => void; reject: (e: any) => void }>()
+  private rpcCounter = 0
   private lineBuffer = ''
   private connectedWebContents = new Map<string, WebContents>()
 
@@ -204,6 +206,11 @@ export class CodexBridge {
         })
       }
       this.pendingRequests.clear()
+      // Reject all internal RPC callbacks so fetch handlers don't hang
+      for (const [, cb] of this.rpcCallbacks) {
+        cb.reject(new Error('codex.exe process exited'))
+      }
+      this.rpcCallbacks.clear()
       this.lineBuffer = ''
     })
 
@@ -244,16 +251,26 @@ export class CodexBridge {
       )
 
       if (msg.id && (msg.result !== undefined || msg.error !== undefined)) {
-        // Response to a previous request
-        const wc = this.pendingRequests.get(msg.id)
-        this.pendingRequests.delete(msg.id)
-        if (wc) {
-          this.sendToWebview(wc, {
-            type: 'mcp-response',
-            message: { id: msg.id, result: msg.result, error: msg.error }
-          })
-        } else if (msg.id === 'initialize') {
-          console.log('[codex-bridge] Initialize response:', msg.result ? 'success' : 'error')
+        // Response to a previous request — check internal RPC callbacks first
+        const cb = this.rpcCallbacks.get(msg.id)
+        if (cb) {
+          this.rpcCallbacks.delete(msg.id)
+          if (msg.error) {
+            cb.reject(msg.error)
+          } else {
+            cb.resolve(msg.result)
+          }
+        } else {
+          const wc = this.pendingRequests.get(msg.id)
+          this.pendingRequests.delete(msg.id)
+          if (wc) {
+            this.sendToWebview(wc, {
+              type: 'mcp-response',
+              message: { id: msg.id, result: msg.result, error: msg.error }
+            })
+          } else if (msg.id === 'initialize') {
+            console.log('[codex-bridge] Initialize response:', msg.result ? 'success' : 'error')
+          }
         }
       } else if (msg.id && msg.method) {
         // Server-initiated request → forward to webview
@@ -321,6 +338,34 @@ export class CodexBridge {
     this.writeToServer({ id, method, params })
   }
 
+  /**
+   * Send a JSON-RPC request to codex.exe and return a Promise for the result.
+   * Used internally by handleFetch for ipc-request / account-info routing.
+   * Times out after 30 seconds, falling back to the caller's catch handler.
+   */
+  private sendRpcRequest(method: string, params: any): Promise<any> {
+    return new Promise((resolve, reject) => {
+      if (!this.proc) {
+        this.startServer()
+      }
+      if (!this.proc) {
+        reject(new Error('codex.exe server not available'))
+        return
+      }
+
+      const id = `ipc-${++this.rpcCounter}`
+      this.rpcCallbacks.set(id, { resolve, reject })
+      this.writeToServer({ id, method, params })
+
+      setTimeout(() => {
+        if (this.rpcCallbacks.has(id)) {
+          this.rpcCallbacks.delete(id)
+          reject(new Error('RPC timeout'))
+        }
+      }, 30_000)
+    })
+  }
+
   // Fallback mock results for the vscode://codex/ipc-request fetch path
   private getMcpResult(method: string, _params: any): any {
     switch (method) {
@@ -353,9 +398,6 @@ export class CodexBridge {
       case 'extension-info':
         return { version: '0.5.76', name: 'openai.chatgpt' }
 
-      case 'account-info':
-        return null
-
       case 'os-info':
         return { platform: process.platform }
 
@@ -367,17 +409,6 @@ export class CodexBridge {
 
       case 'mcp-codex-config':
         return { servers: [] }
-
-      case 'ipc-request': {
-        // Generic IPC dispatch — parse the body and respond based on method
-        // Uses mock fallback since this path is synchronous
-        try {
-          const parsed = body ? JSON.parse(body) : {}
-          return this.getMcpResult(parsed.method, parsed.params) ?? { error: `unsupported: ${parsed.method}` }
-        } catch {
-          return { error: 'invalid ipc-request body' }
-        }
-      }
 
       default:
         // Return empty object for unknown internal endpoints rather than failing
@@ -393,8 +424,57 @@ export class CodexBridge {
     const headers: Record<string, string> = message.headers || {}
     const body: string | undefined = message.body || undefined
 
-    // Handle vscode://codex/* internal RPC URLs with mock responses
+    // Handle vscode://codex/* internal RPC URLs
     if (url.startsWith('vscode://')) {
+      const path = url.replace(/^vscode:\/\/codex\//, '')
+
+      // Route ipc-request through codex.exe
+      if (path === 'ipc-request' && body) {
+        let result: any
+        try {
+          const parsed = JSON.parse(body)
+          result = await this.sendRpcRequest(parsed.method, parsed.params)
+        } catch {
+          // Fallback to mock if server unavailable or timed out
+          try {
+            const parsed = JSON.parse(body)
+            result = this.getMcpResult(parsed.method, parsed.params) ?? { error: `unsupported: ${parsed.method}` }
+          } catch {
+            result = { error: 'invalid ipc-request body' }
+          }
+        }
+        this.sendToWebview(wc, {
+          type: 'fetch-response',
+          requestId,
+          responseType: 'success',
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+          bodyJsonString: JSON.stringify(result)
+        })
+        return
+      }
+
+      // Route account-info through codex.exe
+      if (path === 'account-info') {
+        let result: any = null
+        try {
+          const rpcResult = await this.sendRpcRequest('account/read', {})
+          result = rpcResult?.account ?? null
+        } catch {
+          // Fallback to null if server unavailable
+        }
+        this.sendToWebview(wc, {
+          type: 'fetch-response',
+          requestId,
+          responseType: 'success',
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+          bodyJsonString: JSON.stringify(result)
+        })
+        return
+      }
+
+      // All other vscode:// URLs use sync mocks
       const result = this.getInternalUrlResponse(url, body)
       this.sendToWebview(wc, {
         type: 'fetch-response',
@@ -454,6 +534,54 @@ export class CodexBridge {
 
     // Internal URLs — send a single event + complete
     if (url.startsWith('vscode://')) {
+      const path = url.replace(/^vscode:\/\/codex\//, '')
+
+      // Route ipc-request through codex.exe
+      if (path === 'ipc-request' && body) {
+        let result: any
+        try {
+          const parsed = JSON.parse(body)
+          result = await this.sendRpcRequest(parsed.method, parsed.params)
+        } catch {
+          try {
+            const parsed = JSON.parse(body)
+            result = this.getMcpResult(parsed.method, parsed.params) ?? { error: `unsupported: ${parsed.method}` }
+          } catch {
+            result = { error: 'invalid ipc-request body' }
+          }
+        }
+        this.sendToWebview(wc, {
+          type: 'fetch-stream-event',
+          requestId,
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+          data: JSON.stringify(result)
+        })
+        this.sendToWebview(wc, { type: 'fetch-stream-complete', requestId })
+        return
+      }
+
+      // Route account-info through codex.exe
+      if (path === 'account-info') {
+        let result: any = null
+        try {
+          const rpcResult = await this.sendRpcRequest('account/read', {})
+          result = rpcResult?.account ?? null
+        } catch {
+          // Fallback to null
+        }
+        this.sendToWebview(wc, {
+          type: 'fetch-stream-event',
+          requestId,
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+          data: JSON.stringify(result)
+        })
+        this.sendToWebview(wc, { type: 'fetch-stream-complete', requestId })
+        return
+      }
+
+      // All other vscode:// URLs use sync mocks
       const result = this.getInternalUrlResponse(url, body)
       this.sendToWebview(wc, {
         type: 'fetch-stream-event',
@@ -462,10 +590,7 @@ export class CodexBridge {
         headers: { 'content-type': 'application/json' },
         data: JSON.stringify(result)
       })
-      this.sendToWebview(wc, {
-        type: 'fetch-stream-complete',
-        requestId
-      })
+      this.sendToWebview(wc, { type: 'fetch-stream-complete', requestId })
       return
     }
 
@@ -603,6 +728,10 @@ export class CodexBridge {
       this.proc = null
     }
     this.pendingRequests.clear()
+    for (const [, cb] of this.rpcCallbacks) {
+      cb.reject(new Error('shutdown'))
+    }
+    this.rpcCallbacks.clear()
     this.lineBuffer = ''
     this.connectedWebContents.clear()
     this.sharedObjectSubscribers.clear()
