@@ -92,7 +92,9 @@ export class CodexBridge {
         break
 
       case 'log-message':
-        console.log('[codex-webview]', message.level || 'info', message.message || message.text || '')
+        if (message.level === 'error' || message.level === 'warning' || message.level === 'warn') {
+          console.log('[codex-webview]', message.level, message.message || message.text || '')
+        }
         break
 
       case 'view-focused':
@@ -296,14 +298,6 @@ export class CodexBridge {
   }
 
   private handleServerMessage(msg: any): void {
-    console.log(
-      '[codex-bridge] <- server:',
-      msg.id ? `id=${msg.id}` : '',
-      msg.method || '',
-      msg.result !== undefined ? '(result)' : '',
-      msg.error !== undefined ? '(error)' : ''
-    )
-
     if (msg.id && (msg.result !== undefined || msg.error !== undefined)) {
       const cb = this.rpcCallbacks.get(msg.id)
       if (cb) {
@@ -349,7 +343,6 @@ export class CodexBridge {
 
     try {
       const payload = `${JSON.stringify(msg)}\n`
-      console.log('[codex-bridge] -> server:', msg.id ? `id=${msg.id}` : '', msg.method || '')
       this.proc.stdin.write(payload)
     } catch (err) {
       console.error('[codex-bridge] Failed to write to server:', err)
@@ -374,7 +367,6 @@ export class CodexBridge {
     }
 
     const { id, method, params } = request
-    console.log('[codex-bridge] mcp-request:', method)
 
     if (!this.proc) {
       this.startServer()
