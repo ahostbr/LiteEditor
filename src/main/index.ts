@@ -7,6 +7,7 @@ import { registerPtyHandlers, ptyManager } from './ipc/pty-handlers'
 import { registerSearchHandlers } from './ipc/search-handlers'
 import { registerBrowserHandlers, shutdownBrowserHandlers, browserManager } from './ipc/browser-handlers'
 import { registerClaudeHandlers, shutdownClaudeHandlers } from './ipc/claude-handlers'
+import { registerCodexHandlers, shutdownCodexHandlers } from './ipc/codex-handlers'
 import { registerWorkspaceHandlers } from './ipc/workspace-handlers'
 import { AgentBridge } from './services/agent-bridge'
 
@@ -314,6 +315,7 @@ function createWindow(): void {
   try { registerSearchHandlers() } catch (e) { console.error('Failed to register search handlers:', e) }
   try { registerBrowserHandlers(mainWindow!) } catch (e) { console.error('Failed to register browser handlers:', e) }
   try { registerClaudeHandlers(mainWindow!) } catch (e) { console.error('Failed to register claude handlers:', e) }
+  try { registerCodexHandlers(mainWindow!) } catch (e) { console.error('Failed to register codex handlers:', e) }
 
   // Load renderer
   if (process.env['ELECTRON_RENDERER_URL']) {
@@ -339,6 +341,7 @@ app.on('before-quit', () => {
   shutdownFsHandlers()
   shutdownBrowserHandlers()
   shutdownClaudeHandlers()
+  shutdownCodexHandlers()
   agentBridge.stop()
   stopMcpServer()
 })

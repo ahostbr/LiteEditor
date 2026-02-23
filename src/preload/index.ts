@@ -177,6 +177,19 @@ const api = {
       ipcRenderer.send('claude:host-op-result', result)
   },
 
+  codex: {
+    createSession: (): Promise<string> =>
+      ipcRenderer.invoke('codex:create-session'),
+    destroySession: (sessionId: string): void =>
+      ipcRenderer.send('codex:destroy-session', sessionId),
+    setBounds: (sessionId: string, bounds: { x: number; y: number; width: number; height: number }): void =>
+      ipcRenderer.send('codex:set-bounds', sessionId, bounds),
+    showView: (sessionId: string): void =>
+      ipcRenderer.send('codex:show-view', sessionId),
+    hideView: (sessionId: string): void =>
+      ipcRenderer.send('codex:hide-view', sessionId)
+  },
+
   shell: {
     openExternal: (url: string): void =>
       ipcRenderer.send('shell:open-external', url),

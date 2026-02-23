@@ -9,6 +9,8 @@ import { BrowserPanel } from './BrowserPanel'
 import { BrowserHeader } from './BrowserHeader'
 import { ClaudePanel } from './ClaudePanel'
 import { ClaudeHeader } from './ClaudeHeader'
+import { CodexPanel } from './CodexPanel'
+import { CodexHeader } from './CodexHeader'
 import { useZenStore, type ZenPanel } from '../../stores/zen-store'
 import { cn } from '../../lib/cn'
 import type { Terminal } from '@xterm/xterm'
@@ -174,6 +176,26 @@ export function PanelRenderer({
         />
         <div className="flex-1 min-h-0 overflow-hidden">
           <ClaudePanel panelId={panel.id} visible={visible} />
+        </div>
+      </>
+    )
+  }
+
+  if (panel.type === 'codex') {
+    return (
+      <>
+        <CodexHeader
+          panelId={panel.id}
+          title={panel.title}
+          isActive={isActive}
+          onFocus={onFocus}
+          draggable={draggable}
+          onDragStart={onDragStart}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+        />
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <CodexPanel panelId={panel.id} visible={visible} />
         </div>
       </>
     )

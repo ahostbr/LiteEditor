@@ -7,6 +7,7 @@ import { useZenStore } from '../../stores/zen-store'
 import { MenuBar } from './MenuBar'
 import { CommandCenter } from './CommandCenter'
 import claudeIcon from '../../../../assets/img/claude.png'
+import codexIcon from '../../../../assets/img/codex.png'
 
 const LAYOUT_OPTIONS: { mode: LayoutMode; icon: React.ReactNode; label: string }[] = [
   { mode: 'grid', icon: <LayoutGrid size={15} />, label: 'Grid Layout' },
@@ -41,6 +42,7 @@ export function Titlebar() {
   const addEditorPanel = useZenStore((s) => s.addEditorPanel)
   const addBrowserPanel = useZenStore((s) => s.addBrowserPanel)
   const addClaudePanel = useZenStore((s) => s.addClaudePanel)
+  const addCodexPanel = useZenStore((s) => s.addCodexPanel)
 
   useEffect(() => {
     window.api.window.isMaximized().then(setIsMaximized)
@@ -76,6 +78,11 @@ export function Titlebar() {
 
   const handleAddClaude = () => {
     addClaudePanel()
+    setShowAddMenu(false)
+  }
+
+  const handleAddCodex = () => {
+    addCodexPanel()
     setShowAddMenu(false)
   }
 
@@ -221,6 +228,13 @@ export function Titlebar() {
                     style={{ color: 'var(--text-primary)' }}
                   >
                     <img src={claudeIcon} alt="" width={14} height={14} style={{ imageRendering: 'pixelated' }} /> Claude Code
+                  </button>
+                  <button
+                    onClick={handleAddCodex}
+                    className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-[var(--bg-overlay)] transition-colors"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    <img src={codexIcon} alt="" width={14} height={14} style={{ imageRendering: 'pixelated' }} /> Codex
                   </button>
                 </div>
               )}

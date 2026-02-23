@@ -3,7 +3,7 @@ import { useTerminalStore } from './terminal-store'
 import { useEditorStore } from './editor-store'
 import { useBrowserStore } from './browser-store'
 
-export type ZenPanelType = 'terminal' | 'editor' | 'browser' | 'unified-editor' | 'claude'
+export type ZenPanelType = 'terminal' | 'editor' | 'browser' | 'unified-editor' | 'claude' | 'codex'
 
 export interface ZenPanel {
   id: string
@@ -19,6 +19,8 @@ export interface ZenPanel {
   browserUrl?: string
   // Claude panels
   claudeSessionId?: string
+  // Codex panels
+  codexSessionId?: string
 }
 
 interface ZenState {
@@ -30,6 +32,7 @@ interface ZenState {
   addBrowserPanel: (url?: string) => void
   addUnifiedEditorPanel: () => void
   addClaudePanel: () => void
+  addCodexPanel: () => void
   clearEditorPanels: () => void
   removePanel: (id: string) => void
   setActivePanel: (id: string) => void
@@ -91,6 +94,23 @@ export const useZenStore = create<ZenState>((set, get) => ({
         id,
         type: 'claude',
         title: 'Claude Code'
+      }],
+      activePanelId: id
+    }))
+  },
+
+  addCodexPanel: () => {
+    const existing = get().panels.find((p) => p.type === 'codex')
+    if (existing) {
+      set({ activePanelId: existing.id })
+      return
+    }
+    const id = `zen-codex-${++panelCounter}`
+    set((state) => ({
+      panels: [...state.panels, {
+        id,
+        type: 'codex',
+        title: 'Codex'
       }],
       activePanelId: id
     }))
@@ -172,6 +192,10 @@ export const useZenStore = create<ZenState>((set, get) => ({
 
     if (panel.type === 'claude' && panel.claudeSessionId) {
       window.api.claude.destroySession(panel.claudeSessionId)
+    }
+
+    if (panel.type === 'codex' && panel.codexSessionId) {
+      window.api.codex.destroySession(panel.codexSessionId)
     }
 
     set((state) => {

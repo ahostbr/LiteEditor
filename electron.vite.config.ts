@@ -32,7 +32,8 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve('src/preload/index.ts'),
-          'claude-preload': resolve('src/main/claude/claude-preload.ts')
+          'claude-preload': resolve('src/main/claude/claude-preload.ts'),
+          'codex-preload': resolve('src/main/codex/codex-preload.ts')
         }
       }
     }

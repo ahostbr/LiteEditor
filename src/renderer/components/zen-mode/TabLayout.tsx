@@ -7,6 +7,7 @@ import { useSettingsStore } from '../../stores/settings-store'
 import { cn } from '../../lib/cn'
 import type { Terminal as XTerminal } from '@xterm/xterm'
 import claudeIcon from '../../../../assets/img/claude.png'
+import codexIcon from '../../../../assets/img/codex.png'
 
 interface TabLayoutProps {
   panels: ZenPanel[]
@@ -201,6 +202,13 @@ export function TabLayout({ panels }: TabLayoutProps) {
                 style={{ color: 'var(--text-primary)' }}
               >
                 <img src={claudeIcon} alt="" width={14} height={14} style={{ imageRendering: 'pixelated' }} /> Claude Code
+              </button>
+              <button
+                onClick={() => { useZenStore.getState().addCodexPanel(); setShowAddMenu(false) }}
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-[var(--bg-overlay)] transition-colors"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                <img src={codexIcon} alt="" width={14} height={14} style={{ imageRendering: 'pixelated' }} /> Codex
               </button>
             </div>
           )}
