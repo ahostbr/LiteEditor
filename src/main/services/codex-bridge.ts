@@ -1,4 +1,4 @@
-import { WebContents, shell } from 'electron'
+import { WebContents, shell, dialog } from 'electron'
 import { ChildProcess, spawn } from 'child_process'
 import { join } from 'path'
 import { existsSync } from 'fs'
@@ -13,6 +13,11 @@ export class CodexBridge {
   private persistedAtomState: Record<string, unknown> = {}
   private sharedObjects: SharedObjectStore = {}
   private sharedObjectSubscribers = new Map<string, Set<string>>()
+
+  // Workspace onboarding state
+  private workspaceRootOptions: { roots: string[]; labels: Record<string, string> } = { roots: [], labels: {} }
+  private activeWorkspaceRoot: string | null = null
+  private globalState = new Map<string, unknown>()
 
   // codex.exe process management
   private proc: ChildProcess | null = null
@@ -126,6 +131,43 @@ export class CodexBridge {
         const notif = message.notification || message
         if (notif?.method && this.proc) {
           this.writeToServer({ method: notif.method, params: notif.params })
+        }
+        break
+      }
+
+      case 'electron-update-workspace-root-options': {
+        const roots = message.roots
+        if (Array.isArray(roots)) {
+          this.workspaceRootOptions.roots = roots
+        }
+        // Broadcast so React Query invalidates its cache
+        this.broadcastToWebviews({ type: 'workspace-root-options-updated' })
+        break
+      }
+
+      case 'electron-set-active-workspace-root':
+        this.activeWorkspaceRoot = message.root ?? null
+        break
+
+      case 'electron-onboarding-skip-workspace':
+        this.sendToWebview(wc, {
+          type: 'electron-onboarding-skip-workspace-result',
+          success: true
+        })
+        break
+
+      case 'electron-set-window-mode':
+        console.log('[codex-bridge] electron-set-window-mode:', message.mode)
+        break
+
+      case 'electron-pick-workspace-root-option':
+        void this.handlePickWorkspaceRoot(sessionId, wc)
+        break
+
+      case 'electron-rename-workspace-root-option': {
+        const { root, label } = message
+        if (root && label != null) {
+          this.workspaceRootOptions.labels[root] = label
         }
         break
       }
@@ -402,13 +444,37 @@ export class CodexBridge {
         return { platform: process.platform }
 
       case 'active-workspace-roots':
-        return { roots: [] }
+        return { roots: this.activeWorkspaceRoot ? [this.activeWorkspaceRoot] : [] }
+
+      case 'workspace-root-options':
+        return this.workspaceRootOptions
 
       case 'get-copilot-api-proxy-info':
         return null
 
       case 'mcp-codex-config':
         return { servers: [] }
+
+      case 'get-global-state': {
+        try {
+          const parsed = body ? JSON.parse(body) : {}
+          return { value: this.globalState.get(parsed.key) ?? null }
+        } catch {
+          return { value: null }
+        }
+      }
+
+      case 'set-global-state': {
+        try {
+          const parsed = body ? JSON.parse(body) : {}
+          if (parsed.key !== undefined) {
+            this.globalState.set(parsed.key, parsed.value)
+          }
+          return { success: true }
+        } catch {
+          return { success: false }
+        }
+      }
 
       default:
         // Return empty object for unknown internal endpoints rather than failing
@@ -636,6 +702,27 @@ export class CodexBridge {
         requestId,
         error: err instanceof Error ? err.message : String(err)
       })
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Workspace root picker (Electron dialog)
+  // ---------------------------------------------------------------------------
+
+  private async handlePickWorkspaceRoot(sessionId: string, wc: WebContents): Promise<void> {
+    const mainWindow = this.codexManager.getMainWindow(sessionId)
+    if (!mainWindow) return
+
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory']
+    })
+
+    if (!result.canceled && result.filePaths.length > 0) {
+      const root = result.filePaths[0]
+      if (!this.workspaceRootOptions.roots.includes(root)) {
+        this.workspaceRootOptions.roots.push(root)
+      }
+      this.sendToWebview(wc, { type: 'workspace-root-option-picked', root })
     }
   }
 

@@ -72,6 +72,9 @@ export class CodexManager {
       )
       // Strip crossorigin attributes — they break file:// module loading in Electron
       .replace(/\s+crossorigin/g, '')
+      // Set window type to "electron" so the webview uses the proper onboarding flow
+      // instead of the extension NUX carousel that loops infinitely
+      .replace('<html lang="en">', '<html lang="en" data-codex-window-type="electron">')
 
     // Inject VS Code CSS variables for dark theme (before </head>)
     const cssVars = buildWebviewThemeCss()
