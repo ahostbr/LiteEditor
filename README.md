@@ -2,8 +2,7 @@
 
 A lightweight, fast desktop code editor built with Electron, React, and Monaco Editor.
 
-<!-- Screenshots go here — see "Adding Images" section below -->
-<!-- ![LiteEditor Screenshot](screenshots/editor.png) -->
+![Editor](assets/screenshots/editor.jpg)
 
 ## Features
 
@@ -18,6 +17,12 @@ A lightweight, fast desktop code editor built with Electron, React, and Monaco E
 - **Per-Workspace Settings** — Override global settings on a per-project basis with visual indicators and one-click reset
 - **Built-in Browser** — Embedded browser panels in zen mode for web development workflows
 - **Custom Titlebar** — VS Code-style three-section layout with menu bar, command center search, and layout toggles
+
+### Zen Mode
+
+| Grid Layout | Splitter Layout |
+|---|---|
+| ![Zen Grid](assets/screenshots/zen-grid.jpg) | ![Zen Splitter](assets/screenshots/zen-splitter.jpg) |
 
 ## Install
 
