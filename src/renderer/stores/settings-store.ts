@@ -4,6 +4,7 @@ import { DEFAULT_SETTINGS } from '../lib/constants'
 type AutoSave = 'off' | 'afterDelay' | 'onFocusChange'
 type WordWrap = 'on' | 'off'
 type LineNumbers = 'on' | 'off' | 'relative'
+type ZenEditorMode = 'separate' | 'unified'
 
 // Keys that can be overridden per-workspace
 type SettingKey = keyof typeof DEFAULT_SETTINGS
@@ -21,6 +22,7 @@ interface SettingsState {
   autoSave: AutoSave
   autoSaveDelay: number
   defaultTerminalCwd: string
+  zenEditorMode: ZenEditorMode
   isLoaded: boolean
 
   // Workspace settings overlay
@@ -51,7 +53,8 @@ function getGlobalSettingsObject(state: SettingsState): Record<string, unknown> 
     terminalFontSize: state.terminalFontSize,
     autoSave: state.autoSave,
     autoSaveDelay: state.autoSaveDelay,
-    defaultTerminalCwd: state.defaultTerminalCwd
+    defaultTerminalCwd: state.defaultTerminalCwd,
+    zenEditorMode: state.zenEditorMode
   }
 }
 

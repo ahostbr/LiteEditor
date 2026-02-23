@@ -10,7 +10,8 @@ export const DEFAULT_SETTINGS = {
   terminalFontSize: 13,
   autoSave: 'off' as const,
   autoSaveDelay: 1000,
-  defaultTerminalCwd: ''
+  defaultTerminalCwd: '',
+  zenEditorMode: 'separate' as const
 }
 
 export const KEYBOARD_SHORTCUTS = {

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { X, Plus, Terminal, FileCode } from 'lucide-react'
 import { PanelRenderer } from './PanelRenderer'
 import { useZenStore, type ZenPanel } from '../../stores/zen-store'
+import { useEditorStore } from '../../stores/editor-store'
+import { useSettingsStore } from '../../stores/settings-store'
 import { cn } from '../../lib/cn'
 import type { Terminal as XTerminal } from '@xterm/xterm'
 
@@ -89,7 +91,12 @@ export function TabLayout({ panels }: TabLayoutProps) {
       const path = await window.api.dialog.openFile()
       if (path) {
         const content = await window.api.fs.readFile(path)
-        addEditorPanel(path, content)
+        const zenMode = useSettingsStore.getState().zenEditorMode
+        if (zenMode === 'unified') {
+          useEditorStore.getState().openFile(path, content)
+        } else {
+          addEditorPanel(path, content)
+        }
       }
     } catch { /* ignore */ }
   }

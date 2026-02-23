@@ -1,11 +1,14 @@
 import { useRef } from 'react'
+import { GripHorizontal, X } from 'lucide-react'
 import { TerminalInstance } from './TerminalInstance'
 import { TerminalHeader } from './TerminalHeader'
 import { ZenMonacoEditor } from './ZenMonacoEditor'
 import { EditorPanelHeader } from './EditorPanelHeader'
+import { ZenUnifiedEditor } from './ZenUnifiedEditor'
 import { BrowserPanel } from './BrowserPanel'
 import { BrowserHeader } from './BrowserHeader'
 import { useZenStore, type ZenPanel } from '../../stores/zen-store'
+import { cn } from '../../lib/cn'
 import type { Terminal } from '@xterm/xterm'
 
 interface PanelRendererProps {
@@ -78,6 +81,51 @@ export function PanelRenderer({
         />
         <div className="flex-1 min-h-0 overflow-hidden">
           <ZenMonacoEditor filePath={panel.filePath} panelId={panel.id} />
+        </div>
+      </>
+    )
+  }
+
+  if (panel.type === 'unified-editor') {
+    return (
+      <>
+        <div
+          className={cn(
+            'flex items-center justify-between px-3 h-[36px] shrink-0 cursor-default',
+            isActive ? 'border-t-2' : 'border-t-2 border-transparent'
+          )}
+          style={{
+            backgroundColor: 'var(--bg-surface)',
+            borderTopColor: isActive ? 'var(--accent)' : 'transparent',
+            borderBottom: '1px solid var(--border)'
+          }}
+          onClick={onFocus}
+          draggable={draggable}
+          onDragStart={onDragStart}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+        >
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <GripHorizontal size={14} style={{ color: 'var(--text-muted)' }} />
+            <span
+              className="text-sm truncate"
+              style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-muted)' }}
+            >
+              Editor
+            </span>
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              useZenStore.getState().removePanel(panel.id)
+            }}
+            className="p-1 rounded hover:bg-[var(--bg-muted)] opacity-50 hover:opacity-100 transition-opacity"
+          >
+            <X size={14} style={{ color: 'var(--text-muted)' }} />
+          </button>
+        </div>
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <ZenUnifiedEditor />
         </div>
       </>
     )

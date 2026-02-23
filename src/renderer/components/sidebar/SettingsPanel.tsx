@@ -158,6 +158,23 @@ export function SettingsPanel() {
           />
         </SettingsSection>
 
+        {/* Zen Mode */}
+        <SettingsSection title="Zen Mode">
+          <SelectSetting
+            label="Editor Mode"
+            settingKey="zenEditorMode"
+            value={settings.zenEditorMode}
+            options={[
+              { value: 'separate', label: 'Separate Panels' },
+              { value: 'unified', label: 'Unified Editor' }
+            ]}
+            onChange={handleChange}
+            onReset={handleResetToGlobal}
+            hasOverride={settings.hasWorkspaceOverride('zenEditorMode')}
+            hasProject={!!projectRoot}
+          />
+        </SettingsSection>
+
         {/* Appearance */}
         <SettingsSection title="Appearance">
           <ColorSetting

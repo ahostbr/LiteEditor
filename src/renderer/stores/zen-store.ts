@@ -3,7 +3,7 @@ import { useTerminalStore } from './terminal-store'
 import { useEditorStore } from './editor-store'
 import { useBrowserStore } from './browser-store'
 
-export type ZenPanelType = 'terminal' | 'editor' | 'browser'
+export type ZenPanelType = 'terminal' | 'editor' | 'browser' | 'unified-editor'
 
 export interface ZenPanel {
   id: string
@@ -26,6 +26,8 @@ interface ZenState {
   addTerminalPanel: (shell?: string, cwd?: string) => Promise<void>
   addEditorPanel: (filePath: string, content: string) => void
   addBrowserPanel: (url?: string) => void
+  addUnifiedEditorPanel: () => void
+  clearEditorPanels: () => void
   removePanel: (id: string) => void
   setActivePanel: (id: string) => void
   reorderPanels: (fromIndex: number, toIndex: number) => void
@@ -72,6 +74,34 @@ export const useZenStore = create<ZenState>((set, get) => ({
       }],
       activePanelId: id
     }))
+  },
+
+  addUnifiedEditorPanel: () => {
+    const existing = get().panels.find((p) => p.type === 'unified-editor')
+    if (existing) {
+      set({ activePanelId: existing.id })
+      return
+    }
+    const id = `zen-unified-${++panelCounter}`
+    set((state) => ({
+      panels: [...state.panels, {
+        id,
+        type: 'unified-editor',
+        title: 'Editor'
+      }],
+      activePanelId: id
+    }))
+  },
+
+  clearEditorPanels: () => {
+    set((state) => {
+      const panels = state.panels.filter((p) => p.type !== 'editor' && p.type !== 'unified-editor')
+      let activePanelId = state.activePanelId
+      if (activePanelId && !panels.find((p) => p.id === activePanelId)) {
+        activePanelId = panels.length > 0 ? panels[panels.length - 1].id : null
+      }
+      return { panels, activePanelId }
+    })
   },
 
   addEditorPanel: (filePath: string, content: string) => {

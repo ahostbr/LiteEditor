@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useZenStore } from '../../stores/zen-store'
 import { useLayoutStore } from '../../stores/layout-store'
 import { useEditorStore, getMonacoContent } from '../../stores/editor-store'
+import { useSettingsStore } from '../../stores/settings-store'
 import { GridLayout } from './GridLayout'
 import { SplitterLayout } from './SplitterLayout'
 import { WindowLayout } from './WindowLayout'
@@ -11,11 +12,41 @@ export function ZenArea() {
   const panels = useZenStore((s) => s.panels)
   const addTerminalPanel = useZenStore((s) => s.addTerminalPanel)
   const addEditorPanel = useZenStore((s) => s.addEditorPanel)
+  const addUnifiedEditorPanel = useZenStore((s) => s.addUnifiedEditorPanel)
+  const clearEditorPanels = useZenStore((s) => s.clearEditorPanels)
   const layoutMode = useLayoutStore((s) => s.layoutMode)
+  const zenEditorMode = useSettingsStore((s) => s.zenEditorMode)
+  const initializedRef = useRef(false)
 
-  // Auto-create editor panels from normal mode's open tabs + a terminal
+  // Auto-create panels on mount based on zenEditorMode setting
   useEffect(() => {
     if (panels.length === 0) {
+      initializedRef.current = true
+      if (zenEditorMode === 'unified') {
+        addUnifiedEditorPanel()
+      } else {
+        const editorState = useEditorStore.getState()
+        for (const pane of editorState.panes) {
+          if (!pane) continue
+          for (const tab of pane.tabs) {
+            if (tab.path && tab.type === 'file') {
+              const content = getMonacoContent(tab.path) || tab.content || ''
+              addEditorPanel(tab.path, content)
+            }
+          }
+        }
+      }
+      addTerminalPanel()
+    }
+  }, [])
+
+  // Live toggle: swap editor panels when setting changes after initial mount
+  useEffect(() => {
+    if (!initializedRef.current) return
+    clearEditorPanels()
+    if (zenEditorMode === 'unified') {
+      addUnifiedEditorPanel()
+    } else {
       const editorState = useEditorStore.getState()
       for (const pane of editorState.panes) {
         if (!pane) continue
@@ -26,9 +57,8 @@ export function ZenArea() {
           }
         }
       }
-      addTerminalPanel()
     }
-  }, [])
+  }, [zenEditorMode])
 
   if (panels.length === 0) {
     return (
