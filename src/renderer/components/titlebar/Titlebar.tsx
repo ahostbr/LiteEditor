@@ -8,10 +8,10 @@ import { MenuBar } from './MenuBar'
 import { CommandCenter } from './CommandCenter'
 
 const LAYOUT_OPTIONS: { mode: LayoutMode; icon: React.ReactNode; label: string }[] = [
-  { mode: 'grid', icon: <LayoutGrid size={15} />, label: 'Grid' },
-  { mode: 'splitter', icon: <GripVertical size={15} />, label: 'Splitter' },
-  { mode: 'window', icon: <Layers size={15} />, label: 'Window' },
-  { mode: 'tabs', icon: <PanelTop size={15} />, label: 'Tabs' }
+  { mode: 'grid', icon: <LayoutGrid size={15} />, label: 'Grid Layout' },
+  { mode: 'splitter', icon: <GripVertical size={15} />, label: 'Splitter Layout' },
+  { mode: 'window', icon: <Layers size={15} />, label: 'Floating Windows' },
+  { mode: 'tabs', icon: <PanelTop size={15} />, label: 'Tabbed Layout' }
 ]
 
 const GRID_OPTIONS: { value: GridLayout; label: string }[] = [
@@ -114,7 +114,7 @@ export function Titlebar() {
       <div className="flex items-center shrink-0 h-full">
         {/* Zen mode layout controls */}
         {appMode === 'zen' && (
-          <div className="flex items-center gap-1 mr-2" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+          <div className="flex items-center gap-1 mr-1" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
             {/* Layout mode buttons */}
             <div className="flex items-center gap-[2px] bg-[var(--bg-overlay)] rounded-[4px] p-[2px]">
               {LAYOUT_OPTIONS.map(({ mode, icon, label }) => (
@@ -157,7 +157,7 @@ export function Titlebar() {
                     onMouseLeave={(e) => {
                       if (gridLayout !== value) e.currentTarget.style.background = 'transparent'
                     }}
-                    title={`Grid: ${label}`}
+                    title={`Grid preset: ${label}`}
                   >
                     {label}
                   </button>
@@ -214,12 +214,15 @@ export function Titlebar() {
           </div>
         )}
 
-        {/* Layout toggles */}
-        <div className="flex items-center gap-[2px] mr-1" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+        {/* Separator between zen controls and panel toggles */}
+        {appMode === 'zen' && <TitlebarSeparator />}
+
+        {/* Panel toggles */}
+        <div className="flex items-center gap-[2px] mx-1" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
           <LayoutToggleButton
             onClick={toggleSidebar}
             active={sidebarVisible}
-            aria-label="Toggle Sidebar"
+            title={sidebarVisible ? 'Hide Sidebar (Ctrl+B)' : 'Show Sidebar (Ctrl+B)'}
           >
             <PanelLeft size={15} />
           </LayoutToggleButton>
@@ -227,7 +230,7 @@ export function Titlebar() {
             <LayoutToggleButton
               onClick={toggleTerminalPanel}
               active={terminalPanelVisible}
-              aria-label="Toggle Terminal"
+              title={terminalPanelVisible ? 'Hide Terminal Panel' : 'Show Terminal Panel'}
             >
               <PanelBottom size={15} />
             </LayoutToggleButton>
@@ -235,29 +238,32 @@ export function Titlebar() {
           <LayoutToggleButton
             onClick={toggleAppMode}
             active={appMode === 'zen'}
-            aria-label={appMode === 'editor' ? 'Enter Zen Mode' : 'Exit Zen Mode'}
+            title={appMode === 'editor' ? 'Enter Zen Mode (Ctrl+Shift+T)' : 'Exit Zen Mode (Ctrl+Shift+T)'}
           >
             {appMode === 'editor' ? <Terminal size={15} /> : <Code size={15} />}
           </LayoutToggleButton>
         </div>
 
+        {/* Separator between panel toggles and window controls */}
+        <TitlebarSeparator />
+
         {/* Window controls */}
         <div className="flex h-full" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-          <WindowButton onClick={() => window.api.window.minimize()} aria-label="Minimize">
+          <WindowButton onClick={() => window.api.window.minimize()} title="Minimize">
             <Minus size={16} />
           </WindowButton>
-          <WindowButton onClick={() => window.api.window.maximize()} aria-label="Maximize">
+          <WindowButton onClick={() => window.api.window.maximize()} title={isMaximized ? 'Restore Down' : 'Maximize'}>
             {isMaximized ? <Copy size={14} /> : <Square size={14} />}
           </WindowButton>
           <WindowButton
             onClick={() => isSpanned ? window.api.window.restoreSpan() : window.api.window.spanAllMonitors()}
-            aria-label={isSpanned ? 'Restore from span' : 'Span all monitors'}
+            title={isSpanned ? 'Restore from Multi-Monitor Span' : 'Span Across All Monitors'}
           >
             <Monitor size={14} style={{ color: isSpanned ? 'var(--accent)' : undefined }} />
           </WindowButton>
           <WindowButton
             onClick={() => window.api.window.close()}
-            aria-label="Close"
+            title="Close"
             isClose
           >
             <X size={16} />
@@ -268,15 +274,26 @@ export function Titlebar() {
   )
 }
 
+function TitlebarSeparator() {
+  return (
+    <div
+      className="w-[1px] h-[16px] mx-[4px] shrink-0"
+      style={{ backgroundColor: 'var(--border)' }}
+    />
+  )
+}
+
 function LayoutToggleButton({
   children,
   onClick,
   active,
+  title,
   ...props
 }: {
   children: React.ReactNode
   onClick: () => void
   active: boolean
+  title?: string
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
@@ -292,6 +309,7 @@ function LayoutToggleButton({
       onMouseLeave={(e) => {
         e.currentTarget.style.background = 'transparent'
       }}
+      title={title}
       {...props}
     >
       {children}
@@ -303,11 +321,13 @@ function WindowButton({
   children,
   onClick,
   isClose,
+  title,
   ...props
 }: {
   children: React.ReactNode
   onClick: () => void
   isClose?: boolean
+  title?: string
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
@@ -317,6 +337,7 @@ function WindowButton({
         isClose ? 'hover:bg-red-600' : 'hover:bg-[var(--bg-overlay)]'
       )}
       style={{ color: 'var(--text-secondary)' }}
+      title={title}
       {...props}
     >
       {children}

@@ -58,7 +58,7 @@ export function SearchPanel() {
             style={{ color: 'var(--text-primary)' }}
           />
           {query && (
-            <button onClick={clearResults} className="p-0.5 hover:bg-[var(--bg-muted)] rounded">
+            <button onClick={clearResults} className="p-0.5 hover:bg-[var(--bg-muted)] rounded" title="Clear Search">
               <X size={12} style={{ color: 'var(--text-muted)' }} />
             </button>
           )}

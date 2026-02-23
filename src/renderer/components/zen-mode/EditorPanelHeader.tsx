@@ -95,6 +95,7 @@ export function EditorPanelHeader({
             removePanel(panelId)
           }}
           className="p-1 rounded hover:bg-[var(--bg-muted)] opacity-50 hover:opacity-100 transition-opacity"
+          title="Close Panel"
         >
           <X size={14} style={{ color: 'var(--text-muted)' }} />
         </button>

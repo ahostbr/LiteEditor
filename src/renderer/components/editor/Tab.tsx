@@ -50,6 +50,7 @@ export function Tab({ tab, isActive, onClick, onClose, onContextMenu }: TabProps
           onClose()
         }}
         className="ml-1 p-0.5 rounded hover:bg-[var(--bg-muted)] opacity-60 hover:opacity-100 transition-opacity"
+        title="Close Tab"
       >
         <X size={12} />
       </button>

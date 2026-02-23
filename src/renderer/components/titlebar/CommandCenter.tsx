@@ -156,6 +156,7 @@ export function CommandCenter() {
           onClick={closeSearch}
           className="flex items-center justify-center shrink-0 rounded-sm hover:bg-[var(--bg-muted)] transition-colors"
           style={{ color: 'var(--text-muted)' }}
+          title="Close Search (Escape)"
         >
           <X size={12} />
         </button>

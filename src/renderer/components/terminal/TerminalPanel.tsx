@@ -75,6 +75,7 @@ export function TerminalPanel() {
                   removeTerminal(session.id)
                 }}
                 className="p-0.5 rounded hover:bg-[var(--bg-muted)] opacity-60 hover:opacity-100"
+                title="Close Terminal"
               >
                 <X size={10} />
               </button>

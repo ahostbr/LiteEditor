@@ -148,6 +148,7 @@ export function TabLayout({ panels }: TabLayoutProps) {
                     isActive && 'opacity-60'
                   )}
                   style={{ color: 'var(--text-muted)' }}
+                  title="Close Tab"
                 >
                   <X size={12} />
                 </button>

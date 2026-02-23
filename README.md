@@ -191,6 +191,12 @@ For direct integration without MCP, the Agent Bridge exposes a REST API on `127.
 | `/browser/execute-js` | POST | Run JavaScript |
 | `/browser/console-logs` | POST | Get console logs |
 
+## Multi-Monitor Support
+
+LiteEditor supports spanning across multiple monitors for maximum screen real estate. Click the **Span Across All Monitors** button in the titlebar (between Maximize and Close) to stretch the window across all connected displays. This is especially useful in zen mode — spread your editor, terminals, and browser panels across multiple screens with any layout (grid, splitter, tabs, or floating windows).
+
+To restore, click the same button again or use the **Restore from Multi-Monitor Span** tooltip button.
+
 ## Keyboard Shortcuts
 
 | Shortcut | Action |

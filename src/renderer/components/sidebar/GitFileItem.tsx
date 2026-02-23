@@ -50,6 +50,7 @@ export function GitFileItem({ file }: { file: ChangedFile }) {
             toggleStaged(file.path)
           }}
           className="shrink-0"
+          title={file.staged ? 'Unstage File' : 'Stage File'}
         >
           <StatusBadge status={file.status} />
         </button>

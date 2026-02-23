@@ -120,6 +120,7 @@ export function PanelRenderer({
               useZenStore.getState().removePanel(panel.id)
             }}
             className="p-1 rounded hover:bg-[var(--bg-muted)] opacity-50 hover:opacity-100 transition-opacity"
+            title="Close Editor Panel"
           >
             <X size={14} style={{ color: 'var(--text-muted)' }} />
           </button>

@@ -174,6 +174,7 @@ export function TerminalHeader({
               setShowCogMenu((v) => !v)
             }}
             className="p-1 rounded hover:bg-[var(--bg-muted)] opacity-50 hover:opacity-100 transition-opacity"
+            title="Terminal Settings"
           >
             <Settings size={18} style={{ color: 'var(--text-muted)' }} />
           </button>
@@ -210,6 +211,7 @@ export function TerminalHeader({
             removePanel(panelId)
           }}
           className="p-1 rounded hover:bg-[var(--bg-muted)] opacity-50 hover:opacity-100 transition-opacity"
+          title="Close Terminal Panel"
         >
           <X size={18} style={{ color: 'var(--text-muted)' }} />
         </button>
