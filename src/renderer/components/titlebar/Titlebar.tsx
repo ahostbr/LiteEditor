@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Minus, Square, X, Copy, PanelLeft, PanelBottom, Terminal, Code, Plus, LayoutGrid, GripVertical, Layers, PanelTop, ChevronDown, FileCode, Monitor, Globe, Sparkles } from 'lucide-react'
+import { Minus, Square, X, Copy, PanelLeft, PanelBottom, Terminal, Code, Plus, LayoutGrid, GripVertical, Layers, PanelTop, ChevronDown, FileCode, Monitor, Globe } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { useUiStore } from '../../stores/ui-store'
 import { useLayoutStore, type LayoutMode, type GridLayout } from '../../stores/layout-store'
 import { useZenStore } from '../../stores/zen-store'
 import { MenuBar } from './MenuBar'
 import { CommandCenter } from './CommandCenter'
+import claudeIcon from '../../../../assets/img/claude.png'
 
 const LAYOUT_OPTIONS: { mode: LayoutMode; icon: React.ReactNode; label: string }[] = [
   { mode: 'grid', icon: <LayoutGrid size={15} />, label: 'Grid Layout' },
@@ -219,7 +220,7 @@ export function Titlebar() {
                     className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-[var(--bg-overlay)] transition-colors"
                     style={{ color: 'var(--text-primary)' }}
                   >
-                    <Sparkles size={14} /> Claude Code
+                    <img src={claudeIcon} alt="" width={14} height={14} style={{ imageRendering: 'pixelated' }} /> Claude Code
                   </button>
                 </div>
               )}

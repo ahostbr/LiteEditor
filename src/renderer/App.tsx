@@ -15,6 +15,7 @@ const TerminalPanel = React.lazy(() => import('./components/terminal/TerminalPan
 const ZenArea = React.lazy(() => import('./components/zen-mode/ZenArea'))
 import { useEditorStore } from './stores/editor-store'
 import { useGitStore } from './stores/git-store'
+import { useTerminalStore } from './stores/terminal-store'
 import { useSettingsStore } from './stores/settings-store'
 import { useLayoutStore } from './stores/layout-store'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
@@ -49,6 +50,48 @@ async function saveWorkspaceForProject(projectRoot: string): Promise<void> {
     const workspace = { editor: editorState, ui: uiState }
     await window.api.workspace.saveState(projectRoot, JSON.stringify(workspace, null, 2))
   } catch { /* ignore */ }
+}
+
+function applyStringEdits(base: string, editsValue: unknown): string {
+  if (!Array.isArray(editsValue)) return base
+  let updated = base
+
+  for (const edit of editsValue) {
+    if (!edit || typeof edit !== 'object') continue
+    const oldString = typeof (edit as any).oldString === 'string' ? (edit as any).oldString : ''
+    const newString = typeof (edit as any).newString === 'string' ? (edit as any).newString : ''
+    const replaceAll = Boolean((edit as any).replaceAll)
+
+    if (!oldString) {
+      updated += newString
+      continue
+    }
+
+    if (replaceAll) {
+      updated = updated.split(oldString).join(newString)
+    } else {
+      updated = updated.replace(oldString, newString)
+    }
+  }
+
+  return updated
+}
+
+function getActiveSelectionText(): string {
+  const monacoAny = (window as any).__monaco as any
+  const editors = monacoAny?.editor?.getEditors?.() as any[] | undefined
+  if (!editors || editors.length === 0) return ''
+
+  const focused = editors.find((editor: any) => editor?.hasTextFocus?.()) || editors[0]
+  const model = focused?.getModel?.()
+  const selection = focused?.getSelection?.()
+  if (!model || !selection) return ''
+
+  try {
+    return String(model.getValueInRange(selection) ?? '')
+  } catch {
+    return ''
+  }
 }
 
 function SidebarContent() {
@@ -151,6 +194,160 @@ export default function App() {
         }
       } catch { /* ignore unreadable files */ }
     })
+    return unsub
+  }, [])
+
+  // Claude host-op bridge: main process requests renderer-side editor/terminal/git actions.
+  useEffect(() => {
+    const unsub = window.api.claude.onHostOp((request) => {
+      const requestPayload = (request.payload && typeof request.payload === 'object')
+        ? request.payload as Record<string, unknown>
+        : {}
+
+      const respond = (ok: boolean, payload?: Record<string, unknown>, error?: string) => {
+        window.api.claude.sendHostOpResult({
+          id: request.id,
+          ok,
+          ...(payload ? { payload } : {}),
+          ...(error ? { error } : {})
+        })
+      }
+
+      const handle = async (): Promise<Record<string, unknown>> => {
+        switch (request.op) {
+          case 'open_folder': {
+            const path = typeof requestPayload.path === 'string' ? requestPayload.path : null
+            if (!path) return { opened: false }
+            useEditorStore.getState().setProjectRoot(path)
+            useUiStore.getState().setAppMode('editor')
+            return { opened: true, path }
+          }
+          case 'open_file': {
+            const filePath = typeof requestPayload.filePath === 'string' ? requestPayload.filePath : null
+            if (!filePath) return {}
+            const content = await window.api.fs.readFile(filePath)
+            useUiStore.getState().setAppMode('editor')
+            useEditorStore.getState().openFile(filePath, content)
+            return {}
+          }
+          case 'open_content': {
+            const fileName = typeof requestPayload.fileName === 'string' ? requestPayload.fileName : 'Claude Content'
+            const content = typeof requestPayload.content === 'string' ? requestPayload.content : ''
+
+            useUiStore.getState().setAppMode('editor')
+            useEditorStore.getState().newFile()
+            useEditorStore.setState((state) => {
+              const pane = state.panes[state.activePaneIndex]
+              if (!pane || pane.activeTabIndex < 0) return state
+              const tabs = [...pane.tabs]
+              const current = tabs[pane.activeTabIndex]
+              tabs[pane.activeTabIndex] = { ...current, title: fileName, content, isDirty: false }
+              const panes = [...state.panes] as typeof state.panes
+              panes[state.activePaneIndex] = { ...pane, tabs }
+              return { panes }
+            })
+
+            return { updatedContent: content }
+          }
+          case 'open_diff': {
+            const originalFilePath = typeof requestPayload.originalFilePath === 'string' ? requestPayload.originalFilePath : ''
+            const newFilePath = typeof requestPayload.newFilePath === 'string' ? requestPayload.newFilePath : originalFilePath
+            let original = ''
+            try {
+              if (originalFilePath) original = await window.api.fs.readFile(originalFilePath)
+            } catch { /* ignore missing file */ }
+            const modified = applyStringEdits(original, requestPayload.edits)
+
+            useUiStore.getState().setAppMode('editor')
+            useEditorStore.getState().openDiff(newFilePath || originalFilePath || 'Claude Diff', original, modified)
+
+            return { newEdits: requestPayload.edits ?? [] }
+          }
+          case 'open_file_diffs': {
+            const fileDiffs = Array.isArray(requestPayload.fileDiffs) ? requestPayload.fileDiffs : []
+            for (const fileDiff of fileDiffs) {
+              if (!fileDiff || typeof fileDiff !== 'object') continue
+              const originalFilePath = typeof (fileDiff as any).originalFilePath === 'string' ? (fileDiff as any).originalFilePath : ''
+              const newFilePath = typeof (fileDiff as any).newFilePath === 'string' ? (fileDiff as any).newFilePath : originalFilePath
+              let original = ''
+              try {
+                if (originalFilePath) original = await window.api.fs.readFile(originalFilePath)
+              } catch { /* ignore */ }
+              const modified = applyStringEdits(original, (fileDiff as any).edits)
+              useUiStore.getState().setAppMode('editor')
+              useEditorStore.getState().openDiff(newFilePath || originalFilePath || 'Claude Diff', original, modified)
+            }
+            return {}
+          }
+          case 'get_current_selection':
+            return { selection: getActiveSelectionText() }
+          case 'new_conversation_tab':
+            return { success: true }
+          case 'rename_tab':
+            return { success: true }
+          case 'check_git_status': {
+            try {
+              const files = await window.api.git.status() as unknown[]
+              const branch = await window.api.git.currentBranch() as { name?: string } | null
+              return {
+                isClean: files.length === 0,
+                hasChanges: files.length > 0,
+                branch: branch?.name ?? null
+              }
+            } catch {
+              return { isClean: true, hasChanges: false, branch: null }
+            }
+          }
+          case 'checkout_branch': {
+            const branch = typeof requestPayload.branch === 'string' ? requestPayload.branch : ''
+            if (!branch) return { status: 'failed', branch: null }
+            try {
+              await window.api.git.checkout(branch)
+              return { status: 'checked_out', branch }
+            } catch (err) {
+              return {
+                status: 'failed',
+                branch,
+                error: err instanceof Error ? err.message : String(err)
+              }
+            }
+          }
+          case 'open_output_panel': {
+            const ui = useUiStore.getState()
+            if (!ui.terminalPanelVisible) ui.toggleTerminalPanel()
+            return { success: true }
+          }
+          case 'open_config':
+            useUiStore.getState().setActiveSidebarPanel('settings')
+            return { success: true }
+          case 'attach_terminal_session': {
+            const sessionId = typeof requestPayload.sessionId === 'string' ? requestPayload.sessionId : null
+            if (!sessionId) return {}
+            const shell = typeof requestPayload.shell === 'string' ? requestPayload.shell : undefined
+            const cwd = typeof requestPayload.cwd === 'string' ? requestPayload.cwd : undefined
+            const terminalStore = useTerminalStore.getState()
+            const exists = terminalStore.sessions.some((session) => session.id === sessionId)
+            if (!exists) {
+              terminalStore.createSession(sessionId, shell, cwd)
+            }
+            terminalStore.setActiveSession(sessionId)
+            const ui = useUiStore.getState()
+            if (!ui.terminalPanelVisible) ui.toggleTerminalPanel()
+            return { success: true }
+          }
+          default:
+            return {}
+        }
+      }
+
+      handle()
+        .then((payload) => respond(true, payload))
+        .catch((err) => {
+          const errorText = err instanceof Error ? err.message : String(err)
+          respond(false, undefined, errorText)
+        })
+    })
+
     return unsub
   }, [])
 

@@ -207,6 +207,11 @@ export class ClaudeManager {
     return session.view.webContents
   }
 
+  getMainWindow(sessionId: string): BrowserWindow | undefined {
+    const session = this.sessions.get(sessionId)
+    return session?.mainWindow
+  }
+
   destroySession(sessionId: string): void {
     const session = this.sessions.get(sessionId)
     if (!session) return

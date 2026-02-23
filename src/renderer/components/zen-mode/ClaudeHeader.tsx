@@ -1,6 +1,7 @@
-import { GripHorizontal, X, Sparkles } from 'lucide-react'
+import { GripHorizontal, X } from 'lucide-react'
 import { useZenStore } from '../../stores/zen-store'
 import { cn } from '../../lib/cn'
+import claudeIcon from '../../../../assets/img/claude.png'
 
 interface ClaudeHeaderProps {
   panelId: string
@@ -44,7 +45,7 @@ export function ClaudeHeader({
     >
       <div className="flex items-center gap-2 min-w-0 flex-1">
         <GripHorizontal size={14} style={{ color: 'var(--text-muted)' }} />
-        <Sparkles size={14} style={{ color: 'var(--accent)' }} />
+        <img src={claudeIcon} alt="" width={14} height={14} style={{ imageRendering: 'pixelated' }} />
         <span
           className="text-sm truncate"
           style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-muted)' }}

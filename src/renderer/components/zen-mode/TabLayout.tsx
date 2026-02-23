@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { X, Plus, Terminal, FileCode, Sparkles } from 'lucide-react'
+import { X, Plus, Terminal, FileCode } from 'lucide-react'
 import { PanelRenderer } from './PanelRenderer'
 import { useZenStore, type ZenPanel } from '../../stores/zen-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { useSettingsStore } from '../../stores/settings-store'
 import { cn } from '../../lib/cn'
 import type { Terminal as XTerminal } from '@xterm/xterm'
+import claudeIcon from '../../../../assets/img/claude.png'
 
 interface TabLayoutProps {
   panels: ZenPanel[]
@@ -199,7 +200,7 @@ export function TabLayout({ panels }: TabLayoutProps) {
                 className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-[var(--bg-overlay)] transition-colors"
                 style={{ color: 'var(--text-primary)' }}
               >
-                <Sparkles size={14} /> Claude Code
+                <img src={claudeIcon} alt="" width={14} height={14} style={{ imageRendering: 'pixelated' }} /> Claude Code
               </button>
             </div>
           )}

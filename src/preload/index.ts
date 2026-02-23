@@ -167,7 +167,14 @@ const api = {
     showView: (sessionId: string): void =>
       ipcRenderer.send('claude:show-view', sessionId),
     hideView: (sessionId: string): void =>
-      ipcRenderer.send('claude:hide-view', sessionId)
+      ipcRenderer.send('claude:hide-view', sessionId),
+    onHostOp: (callback: (request: { id: string; op: string; payload?: Record<string, unknown> }) => void): (() => void) => {
+      const handler = (_e: unknown, request: { id: string; op: string; payload?: Record<string, unknown> }) => callback(request)
+      ipcRenderer.on('claude:host-op', handler)
+      return () => ipcRenderer.removeListener('claude:host-op', handler)
+    },
+    sendHostOpResult: (result: { id: string; ok: boolean; payload?: Record<string, unknown>; error?: string }): void =>
+      ipcRenderer.send('claude:host-op-result', result)
   },
 
   shell: {
