@@ -7,6 +7,8 @@ import { EditorPanelHeader } from './EditorPanelHeader'
 import { ZenUnifiedEditor } from './ZenUnifiedEditor'
 import { BrowserPanel } from './BrowserPanel'
 import { BrowserHeader } from './BrowserHeader'
+import { ClaudePanel } from './ClaudePanel'
+import { ClaudeHeader } from './ClaudeHeader'
 import { useZenStore, type ZenPanel } from '../../stores/zen-store'
 import { cn } from '../../lib/cn'
 import type { Terminal } from '@xterm/xterm'
@@ -152,6 +154,26 @@ export function PanelRenderer({
             initialUrl={panel.browserUrl || 'https://www.google.com'}
             visible={visible}
           />
+        </div>
+      </>
+    )
+  }
+
+  if (panel.type === 'claude') {
+    return (
+      <>
+        <ClaudeHeader
+          panelId={panel.id}
+          title={panel.title}
+          isActive={isActive}
+          onFocus={onFocus}
+          draggable={draggable}
+          onDragStart={onDragStart}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+        />
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <ClaudePanel panelId={panel.id} visible={visible} />
         </div>
       </>
     )

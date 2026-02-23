@@ -30,6 +30,14 @@
   box-sizing: border-box;
 }
 
+button {
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
 html, body, #root {
   height: 100%;
   overflow: hidden;

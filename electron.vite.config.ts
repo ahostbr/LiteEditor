@@ -27,7 +27,15 @@ export default defineConfig({
   },
   preload: {
     plugins: [externalizeDepsPlugin()],
-    define: buildDefines
+    define: buildDefines,
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve('src/preload/index.ts'),
+          'claude-preload': resolve('src/main/claude/claude-preload.ts')
+        }
+      }
+    }
   },
   renderer: {
     resolve: {

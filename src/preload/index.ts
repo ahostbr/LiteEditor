@@ -157,6 +157,19 @@ const api = {
       ipcRenderer.invoke('browser:list-sessions')
   },
 
+  claude: {
+    createSession: (): Promise<string> =>
+      ipcRenderer.invoke('claude:create-session'),
+    destroySession: (sessionId: string): void =>
+      ipcRenderer.send('claude:destroy-session', sessionId),
+    setBounds: (sessionId: string, bounds: { x: number; y: number; width: number; height: number }): void =>
+      ipcRenderer.send('claude:set-bounds', sessionId, bounds),
+    showView: (sessionId: string): void =>
+      ipcRenderer.send('claude:show-view', sessionId),
+    hideView: (sessionId: string): void =>
+      ipcRenderer.send('claude:hide-view', sessionId)
+  },
+
   shell: {
     openExternal: (url: string): void =>
       ipcRenderer.send('shell:open-external', url),

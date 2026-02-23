@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { X, Plus, Terminal, FileCode } from 'lucide-react'
+import { X, Plus, Terminal, FileCode, Sparkles } from 'lucide-react'
 import { PanelRenderer } from './PanelRenderer'
 import { useZenStore, type ZenPanel } from '../../stores/zen-store'
 import { useEditorStore } from '../../stores/editor-store'
@@ -192,7 +192,14 @@ export function TabLayout({ panels }: TabLayoutProps) {
                 className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-[var(--bg-overlay)] transition-colors"
                 style={{ color: 'var(--text-primary)' }}
               >
-                <FileCode size={14} /> Open File...
+                <FileCode size={14} /> Add Editor
+              </button>
+              <button
+                onClick={() => { useZenStore.getState().addClaudePanel(); setShowAddMenu(false) }}
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-[var(--bg-overlay)] transition-colors"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                <Sparkles size={14} /> Claude Code
               </button>
             </div>
           )}

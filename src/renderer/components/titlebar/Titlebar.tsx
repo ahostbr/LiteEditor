@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Minus, Square, X, Copy, PanelLeft, PanelBottom, Terminal, Code, Plus, LayoutGrid, GripVertical, Layers, PanelTop, ChevronDown, FileCode, Monitor, Globe } from 'lucide-react'
+import { Minus, Square, X, Copy, PanelLeft, PanelBottom, Terminal, Code, Plus, LayoutGrid, GripVertical, Layers, PanelTop, ChevronDown, FileCode, Monitor, Globe, Sparkles } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { useUiStore } from '../../stores/ui-store'
 import { useLayoutStore, type LayoutMode, type GridLayout } from '../../stores/layout-store'
@@ -39,6 +39,7 @@ export function Titlebar() {
   const addTerminalPanel = useZenStore((s) => s.addTerminalPanel)
   const addEditorPanel = useZenStore((s) => s.addEditorPanel)
   const addBrowserPanel = useZenStore((s) => s.addBrowserPanel)
+  const addClaudePanel = useZenStore((s) => s.addClaudePanel)
 
   useEffect(() => {
     window.api.window.isMaximized().then(setIsMaximized)
@@ -69,6 +70,11 @@ export function Titlebar() {
 
   const handleAddBrowser = () => {
     addBrowserPanel()
+    setShowAddMenu(false)
+  }
+
+  const handleAddClaude = () => {
+    addClaudePanel()
     setShowAddMenu(false)
   }
 
@@ -199,7 +205,7 @@ export function Titlebar() {
                     className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-[var(--bg-overlay)] transition-colors"
                     style={{ color: 'var(--text-primary)' }}
                   >
-                    <FileCode size={14} /> Open File...
+                    <FileCode size={14} /> Add Editor
                   </button>
                   <button
                     onClick={handleAddBrowser}
@@ -207,6 +213,13 @@ export function Titlebar() {
                     style={{ color: 'var(--text-primary)' }}
                   >
                     <Globe size={14} /> New Browser
+                  </button>
+                  <button
+                    onClick={handleAddClaude}
+                    className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-[var(--bg-overlay)] transition-colors"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    <Sparkles size={14} /> Claude Code
                   </button>
                 </div>
               )}
