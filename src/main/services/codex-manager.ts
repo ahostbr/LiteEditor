@@ -202,8 +202,8 @@ export class CodexManager {
     if (!session.attached) return
     try {
       session.mainWindow.contentView.removeChildView(session.view)
-      session.attached = false
     } catch { /* window may be closed */ }
+    session.attached = false
   }
 
   getWebContents(sessionId: string) {
@@ -227,8 +227,8 @@ export class CodexManager {
       if (session.attached) {
         session.mainWindow.contentView.removeChildView(session.view)
       }
-      session.attached = false
     } catch { /* window may already be closed */ }
+    session.attached = false
     try {
       session.view.webContents.close()
     } catch { /* already destroyed */ }
