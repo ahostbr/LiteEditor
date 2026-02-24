@@ -2,6 +2,56 @@
 
 All notable changes to LiteEditor are documented in this file.
 
+## [Unreleased]
+
+### AI Integrations and Native Webviews
+
+- Added embedded Claude Code and Codex webview integrations in LiteEditor panels.
+- Added Claude/Codex bridge wiring for host request-response handling and panel hooks.
+- Added internal RPC handling and `vscode://` routing support used by extension webviews.
+- Improved bridge startup and message handling (init ordering, message unwrapping, response hardening).
+
+### Native View Lifecycle and Bounds
+
+- Refactored native panel view lifecycle and cleanup paths.
+- Added resilient attach-detach handling so session state is reset even on removal errors.
+- Added native view bounds conversion and requestAnimationFrame-driven bounds updates.
+- Persisted native panel view sessions to improve continuity across layout changes.
+
+### Integrations Setup and Update Flow
+
+- Added an integrations manager and Settings UI for Codex and Claude extension status/actions.
+- Added install/update/verify/reinstall flows for managed integrations.
+- Added managed-vs-external resolver behavior so LiteEditor can use managed installs first, then VS Code installs as fallback.
+- Added marketplace platform-aware version selection for extension downloads.
+- Added integration operation lock files and per-integration log files for better reliability and auditability.
+
+### Context, Workspace, and Terminal Plumbing
+
+- Added workspace onboarding and global state wiring for first-run project setup.
+- Added PTY session info API and related UI updates.
+- Added persisted project-root sync with Codex and VS-context store stubs for extension compatibility.
+
+---
+
+## [1.2.2] - 2026-02-22
+
+### File Commands
+
+- Added `New File`, `Open File`, and `Save As` workflows in the editor.
+- Bumped app version to `1.2.2`.
+
+---
+
+## [1.2.1] - 2026-02-22
+
+### UI Polish
+
+- Added titlebar tooltips and spacing/layout refinements.
+- Removed an accidental `.test-file-tree/.liteeditor` fixture artifact from the repository.
+
+---
+
 ## [1.2.0] - 2026-02-22
 
 ### Zen Mode
