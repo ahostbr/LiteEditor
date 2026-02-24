@@ -19,6 +19,7 @@ export class CodexBridge {
   private persistedAtomState: Record<string, unknown> = {}
   private sharedObjects: SharedObjectStore = {}
   private sharedObjectSubscribers = new Map<string, Set<string>>()
+  private vsContextState = new Map<string, unknown>()
 
   // Workspace onboarding state
   private workspaceRootOptions: { roots: string[]; labels: Record<string, string> } = { roots: [], labels: {} }
@@ -358,7 +359,8 @@ export class CodexBridge {
     if (msg.method) {
       this.broadcastToWebviews({
         type: 'mcp-notification',
-        notification: { method: msg.method, params: msg.params }
+        method: msg.method,
+        params: msg.params
       })
     }
   }
@@ -565,6 +567,82 @@ export class CodexBridge {
         if (stateKey) {
           this.globalState.set(stateKey, parsedBody.value ?? null)
         }
+        return { status: 200, body: { success: true } }
+
+      case 'set-vs-context':
+        if (typeof parsedBody.key === 'string') {
+          this.vsContextState.set(parsedBody.key, parsedBody.value ?? null)
+        }
+        return { status: 200, body: { success: true } }
+
+      case 'git-origins': {
+        const dirs = Array.isArray(parsedBody.dirs)
+          ? parsedBody.dirs.filter((value): value is string => typeof value === 'string')
+          : []
+        const origins = dirs.map((dir) => {
+          const normalized = dir.replace(/[\\/]+$/, '')
+          return {
+            dir: normalized,
+            root: normalized,
+            originUrl: null
+          }
+        })
+        return { status: 200, body: { origins } }
+      }
+
+      case 'git-merge-base':
+        return { status: 200, body: { mergeBaseSha: null } }
+
+      case 'openai-api-key':
+        return { status: 200, body: { value: null } }
+
+      case 'pick-files':
+        return { status: 200, body: { files: [] } }
+
+      case 'read-file-binary':
+        return { status: 200, body: { contentsBase64: null } }
+
+      case 'recommended-skills':
+        return { status: 200, body: { skills: [], error: null } }
+
+      case 'generate-thread-title': {
+        const prompt = typeof parsedBody.prompt === 'string' ? parsedBody.prompt.trim() : ''
+        const title = prompt.length > 80 ? `${prompt.slice(0, 80).trimEnd()}...` : prompt
+        return { status: 200, body: { title } }
+      }
+
+      case 'add-workspace-root-option': {
+        const root = this.normalizeRoot(parsedBody.root)
+        const setActive = parsedBody.setActive === true
+        const label = typeof parsedBody.label === 'string' ? parsedBody.label.trim() : ''
+
+        if (!root) {
+          return { status: 200, body: { success: false } }
+        }
+
+        if (label.length > 0) {
+          this.workspaceRootOptions.labels[root] = label
+        }
+
+        const existingRoots = this.getWorkspaceRoots()
+        const roots = existingRoots.includes(root) ? existingRoots : [root, ...existingRoots]
+        const activeRoot = setActive ? root : this.activeWorkspaceRoot
+        this.applyWorkspaceRoots(roots, activeRoot, true)
+        this.persistLiteEditorProjectRoot(activeRoot ?? root)
+
+        return { status: 200, body: { success: true } }
+      }
+
+      case 'set-thread-pinned':
+      case 'set-pinned-threads-order':
+      case 'automation-run-archive':
+      case 'cancel-trace-recording-start':
+      case 'confirm-trace-recording-start':
+      case 'feedback-create-sentry-issue':
+      case 'prepare-worktree-snapshot':
+      case 'submit-trace-recording-details':
+      case 'upload-worktree-snapshot':
+      case 'git-create-branch':
         return { status: 200, body: { success: true } }
 
       default:
