@@ -1,7 +1,7 @@
 import { WebContents, shell, dialog } from 'electron'
 import { ChildProcess, spawn } from 'child_process'
-import { join } from 'path'
-import { existsSync } from 'fs'
+import { basename, join } from 'path'
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { CodexManager } from './codex-manager'
 
 interface SharedObjectStore {
@@ -25,6 +25,7 @@ export class CodexBridge {
   private activeWorkspaceRoot: string | null = null
   private globalState = new Map<string, unknown>()
   private configurationState = new Map<string, unknown>()
+  private workspaceStateHydrated = false
 
   // codex.exe process management
   private proc: ChildProcess | null = null
@@ -36,6 +37,20 @@ export class CodexBridge {
 
   constructor(codexManager: CodexManager) {
     this.codexManager = codexManager
+    this.hydrateWorkspaceState()
+  }
+
+  setProjectRoot(root: string | null): void {
+    this.hydrateWorkspaceState()
+
+    const normalized = this.normalizeRoot(root)
+    if (!normalized) return
+
+    const existingRoots = this.getWorkspaceRoots()
+    const roots = [normalized, ...existingRoots.filter((item) => item !== normalized)]
+
+    this.applyWorkspaceRoots(roots, normalized, true)
+    this.persistLiteEditorProjectRoot(normalized)
   }
 
   handleWebviewMessage(sessionId: string, message: any): void {
@@ -145,17 +160,25 @@ export class CodexBridge {
       }
 
       case 'electron-update-workspace-root-options': {
-        const roots = message.roots
-        if (Array.isArray(roots)) {
-          this.workspaceRootOptions.roots = roots
+        const roots = Array.isArray(message.roots)
+          ? message.roots.filter((root): root is string => typeof root === 'string')
+          : []
+        const labels = message.labels && typeof message.labels === 'object'
+          ? message.labels as Record<string, unknown>
+          : {}
+
+        for (const [key, value] of Object.entries(labels)) {
+          if (typeof value === 'string') {
+            this.workspaceRootOptions.labels[key] = value
+          }
         }
-        // Broadcast so React Query invalidates its cache
-        this.broadcastToWebviews({ type: 'workspace-root-options-updated' })
+
+        this.applyWorkspaceRoots(roots, this.activeWorkspaceRoot, true)
         break
       }
 
       case 'electron-set-active-workspace-root':
-        this.activeWorkspaceRoot = message.root ?? null
+        this.setProjectRoot(typeof message.root === 'string' ? message.root : null)
         break
 
       case 'electron-onboarding-skip-workspace':
@@ -175,7 +198,7 @@ export class CodexBridge {
 
       case 'electron-rename-workspace-root-option': {
         const { root, label } = message
-        if (root && label != null) {
+        if (typeof root === 'string' && typeof label === 'string' && root.length > 0) {
           this.workspaceRootOptions.labels[root] = label
         }
         break
@@ -193,6 +216,8 @@ export class CodexBridge {
   }
 
   private handleReady(wc: WebContents): void {
+    this.hydrateWorkspaceState()
+
     // Order matches real Codex extension: font -> prompts -> state
     this.sendToWebview(wc, {
       type: 'chat-font-settings',
@@ -437,6 +462,8 @@ export class CodexBridge {
   }
 
   private getInternalUrlResponse(url: string, body: string | undefined): InternalUrlResponse {
+    this.hydrateWorkspaceState()
+
     const path = this.getInternalPath(url)
     const parsedBody = this.parseJsonBody(body)
     const homeDir = process.env.USERPROFILE || process.env.HOME || ''
@@ -465,11 +492,20 @@ export class CodexBridge {
       case 'locale-info':
         return { status: 200, body: { ideLocale: locale, systemLocale: locale } }
 
-      case 'active-workspace-roots':
-        return { status: 200, body: { roots: this.activeWorkspaceRoot ? [this.activeWorkspaceRoot] : [] } }
+      case 'active-workspace-roots': {
+        const roots = this.activeWorkspaceRoot ? [this.activeWorkspaceRoot] : []
+        return { status: 200, body: { roots } }
+      }
 
-      case 'workspace-root-options':
-        return { status: 200, body: this.workspaceRootOptions }
+      case 'workspace-root-options': {
+        const roots = this.getWorkspaceRoots()
+        const labels: Record<string, string> = {}
+        for (const root of roots) {
+          labels[root] = this.workspaceRootOptions.labels[root] ?? this.getRootLabel(root)
+        }
+        this.workspaceRootOptions.labels = { ...this.workspaceRootOptions.labels, ...labels }
+        return { status: 200, body: { roots, labels } }
+      }
 
       case 'get-copilot-api-proxy-info':
         return { status: 200, body: null }
@@ -478,7 +514,9 @@ export class CodexBridge {
         return { status: 200, body: { servers: [] } }
 
       case 'ide-context': {
-        const workspaceRoot = typeof parsedBody.workspaceRoot === 'string' ? parsedBody.workspaceRoot : this.activeWorkspaceRoot
+        const workspaceRoot = typeof parsedBody.workspaceRoot === 'string'
+          ? parsedBody.workspaceRoot
+          : this.activeWorkspaceRoot ?? this.getWorkspaceRoots()[0] ?? null
         return {
           status: 200,
           body: {
@@ -515,7 +553,7 @@ export class CodexBridge {
         return { status: 200, body: { processes: [] } }
 
       case 'open-in-targets':
-        return { status: 200, body: { preferredTarget: null, targets: [], availableTargets: [] } }
+        return { status: 200, body: this.buildOpenTargetsResponse(parsedBody) }
 
       case 'has-custom-cli-executable':
         return { status: 200, body: { hasCustomCliExecutable: false } }
@@ -854,10 +892,148 @@ export class CodexBridge {
 
     if (!result.canceled && result.filePaths.length > 0) {
       const root = result.filePaths[0]
-      if (!this.workspaceRootOptions.roots.includes(root)) {
-        this.workspaceRootOptions.roots.push(root)
-      }
+      this.setProjectRoot(root)
       this.sendToWebview(wc, { type: 'workspace-root-option-picked', root })
+    }
+  }
+
+  private hydrateWorkspaceState(): void {
+    if (this.workspaceStateHydrated) return
+    this.workspaceStateHydrated = true
+
+    const persistedRoot = this.readLiteEditorProjectRoot()
+    if (!persistedRoot) return
+
+    this.applyWorkspaceRoots([persistedRoot], persistedRoot, false)
+  }
+
+  private getWorkspaceRoots(): string[] {
+    const roots = this.normalizeRoots(this.workspaceRootOptions.roots)
+    if (this.activeWorkspaceRoot && !roots.includes(this.activeWorkspaceRoot)) {
+      roots.unshift(this.activeWorkspaceRoot)
+    }
+    return roots
+  }
+
+  private applyWorkspaceRoots(roots: string[], activeRoot: string | null | undefined, broadcast: boolean): void {
+    const normalizedRoots = this.normalizeRoots(roots)
+    const normalizedActive = activeRoot === undefined
+      ? this.normalizeRoot(this.activeWorkspaceRoot)
+      : this.normalizeRoot(activeRoot)
+
+    if (normalizedActive && !normalizedRoots.includes(normalizedActive)) {
+      normalizedRoots.unshift(normalizedActive)
+    }
+
+    this.workspaceRootOptions.roots = normalizedRoots
+    this.activeWorkspaceRoot = normalizedActive
+
+    const labels: Record<string, string> = {}
+    for (const root of normalizedRoots) {
+      labels[root] = this.workspaceRootOptions.labels[root] ?? this.getRootLabel(root)
+    }
+    this.workspaceRootOptions.labels = { ...this.workspaceRootOptions.labels, ...labels }
+
+    if (broadcast) {
+      this.broadcastToWebviews({ type: 'workspace-root-options-updated' })
+    }
+  }
+
+  private normalizeRoots(roots: string[]): string[] {
+    const seen = new Set<string>()
+    const normalized: string[] = []
+    for (const root of roots) {
+      const value = this.normalizeRoot(root)
+      if (!value || seen.has(value)) continue
+      seen.add(value)
+      normalized.push(value)
+    }
+    return normalized
+  }
+
+  private normalizeRoot(root: unknown): string | null {
+    if (typeof root !== 'string') return null
+    const trimmed = root.trim()
+    if (!trimmed || trimmed === '/') return null
+    return trimmed
+  }
+
+  private getRootLabel(root: string): string {
+    const trimmed = root.replace(/[\\/]+$/, '')
+    return basename(trimmed) || trimmed
+  }
+
+  private buildOpenTargetsResponse(parsedBody: Record<string, unknown>): {
+    preferredTarget: string | null
+    targets: Array<{ id: string; label: string; description: string; default: boolean; available: boolean }>
+    availableTargets: string[]
+  } {
+    const cwd = this.normalizeRoot(parsedBody.cwd)
+    const roots = this.getWorkspaceRoots()
+    const targetIds = cwd && !roots.includes(cwd)
+      ? [cwd, ...roots]
+      : roots
+
+    let preferredTarget = this.activeWorkspaceRoot
+    if (!preferredTarget && cwd && targetIds.includes(cwd)) preferredTarget = cwd
+    if (!preferredTarget && targetIds.length > 0) preferredTarget = targetIds[0]
+
+    const targets = targetIds.map((id) => ({
+      id,
+      label: this.workspaceRootOptions.labels[id] ?? this.getRootLabel(id),
+      description: id,
+      default: preferredTarget === id,
+      available: true
+    }))
+
+    return {
+      preferredTarget: preferredTarget ?? null,
+      targets,
+      availableTargets: targetIds
+    }
+  }
+
+  private readLiteEditorProjectRoot(): string | null {
+    const homeDir = process.env.USERPROFILE || process.env.HOME || ''
+    if (!homeDir) return null
+
+    const workspacePath = join(homeDir, '.liteeditor', 'workspace.json')
+    if (!existsSync(workspacePath)) return null
+
+    try {
+      const parsed = JSON.parse(readFileSync(workspacePath, 'utf-8')) as { projectRoot?: unknown }
+      return this.normalizeRoot(parsed.projectRoot)
+    } catch {
+      return null
+    }
+  }
+
+  private persistLiteEditorProjectRoot(root: string): void {
+    const homeDir = process.env.USERPROFILE || process.env.HOME || ''
+    if (!homeDir) return
+
+    const liteeditorDir = join(homeDir, '.liteeditor')
+    const workspacePath = join(liteeditorDir, 'workspace.json')
+
+    try {
+      mkdirSync(liteeditorDir, { recursive: true })
+      let existing: Record<string, unknown> = {}
+      if (existsSync(workspacePath)) {
+        try {
+          const parsed = JSON.parse(readFileSync(workspacePath, 'utf-8')) as Record<string, unknown>
+          if (parsed && typeof parsed === 'object') {
+            existing = parsed
+          }
+        } catch {
+          // Keep default empty object.
+        }
+      }
+
+      existing.projectRoot = root
+
+      writeFileSync(workspacePath, JSON.stringify(existing), 'utf-8')
+    } catch {
+      // Persistence failure should not block Codex runtime.
     }
   }
 

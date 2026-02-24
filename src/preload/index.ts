@@ -232,6 +232,8 @@ const api = {
       ipcRenderer.invoke('codex:create-session'),
     destroySession: (sessionId: string): void =>
       ipcRenderer.send('codex:destroy-session', sessionId),
+    setProjectRoot: (projectRoot: string | null): void =>
+      ipcRenderer.send('codex:set-project-root', projectRoot),
     setBounds: (sessionId: string, bounds: NativeViewBounds): void =>
       ipcRenderer.send('codex:set-bounds', sessionId, bounds),
     showView: (sessionId: string): void =>

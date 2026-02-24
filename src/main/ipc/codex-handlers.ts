@@ -32,6 +32,11 @@ export function registerCodexHandlers(mainWindow: BrowserWindow): void {
     codexManager.hideView(sessionId)
   })
 
+  // Workspace context sync from renderer (project root)
+  ipcMain.on('codex:set-project-root', (_e, projectRoot: string | null) => {
+    codexBridge.setProjectRoot(typeof projectRoot === 'string' ? projectRoot : null)
+  })
+
   // Message bridge: webview -> host
   ipcMain.on('codex:webview-message', (_e, sessionId: string, message: any) => {
     codexBridge.handleWebviewMessage(sessionId, message)

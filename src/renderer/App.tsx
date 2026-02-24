@@ -438,6 +438,12 @@ export default function App() {
 
   // Initialize git and search when project root changes, handle project switch
   const projectRoot = useEditorStore((s) => s.projectRoot)
+
+  // Keep Codex host bridge aligned with the active LiteEditor project root.
+  useEffect(() => {
+    window.api.codex.setProjectRoot(projectRoot ?? null)
+  }, [projectRoot])
+
   useEffect(() => {
     if (!projectRoot) return
 
