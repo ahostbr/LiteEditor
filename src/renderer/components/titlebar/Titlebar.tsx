@@ -31,6 +31,7 @@ export function Titlebar() {
   const sidebarVisible = useUiStore((s) => s.sidebarVisible)
   const terminalPanelVisible = useUiStore((s) => s.terminalPanelVisible)
   const appMode = useUiStore((s) => s.appMode)
+  const setNativeOverlayOpen = useUiStore((s) => s.setNativeOverlayOpen)
   const toggleSidebar = useUiStore((s) => s.toggleSidebar)
   const toggleTerminalPanel = useUiStore((s) => s.toggleTerminalPanel)
   const toggleAppMode = useUiStore((s) => s.toggleAppMode)
@@ -65,6 +66,11 @@ export function Titlebar() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showAddMenu])
+
+  useEffect(() => {
+    setNativeOverlayOpen(showAddMenu)
+    return () => setNativeOverlayOpen(false)
+  }, [showAddMenu, setNativeOverlayOpen])
 
   const handleAddTerminal = () => {
     addTerminalPanel()

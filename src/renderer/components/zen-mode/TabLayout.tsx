@@ -4,6 +4,7 @@ import { PanelRenderer } from './PanelRenderer'
 import { useZenStore, type ZenPanel } from '../../stores/zen-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { useSettingsStore } from '../../stores/settings-store'
+import { useUiStore } from '../../stores/ui-store'
 import { cn } from '../../lib/cn'
 import type { Terminal as XTerminal } from '@xterm/xterm'
 import claudeIcon from '../../../../assets/img/claude.png'
@@ -20,6 +21,7 @@ export function TabLayout({ panels }: TabLayoutProps) {
   const addTerminalPanel = useZenStore((s) => s.addTerminalPanel)
   const addEditorPanel = useZenStore((s) => s.addEditorPanel)
   const reorderPanels = useZenStore((s) => s.reorderPanels)
+  const setNativeOverlayOpen = useUiStore((s) => s.setNativeOverlayOpen)
   const termRefs = useRef<Map<string, XTerminal>>(new Map())
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [showAddMenu, setShowAddMenu] = useState(false)
@@ -39,6 +41,11 @@ export function TabLayout({ panels }: TabLayoutProps) {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showAddMenu])
+
+  useEffect(() => {
+    setNativeOverlayOpen(showAddMenu)
+    return () => setNativeOverlayOpen(false)
+  }, [showAddMenu, setNativeOverlayOpen])
 
   // Auto-focus active terminal when tab changes
   useEffect(() => {

@@ -18,6 +18,7 @@ interface UiState {
   sidebarWidth: number
   terminalPanelVisible: boolean
   appMode: AppMode
+  nativeOverlayOpen: boolean
 
   toggleSidebar: () => void
   setActiveSidebarPanel: (panel: SidebarPanel) => void
@@ -25,6 +26,7 @@ interface UiState {
   toggleTerminalPanel: () => void
   setAppMode: (mode: AppMode) => void
   toggleAppMode: () => void
+  setNativeOverlayOpen: (open: boolean) => void
   getUIState: () => WorkspaceUIState
   restoreUIState: (state: Partial<WorkspaceUIState>) => void
 }
@@ -35,6 +37,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   sidebarWidth: 260,
   terminalPanelVisible: false,
   appMode: 'editor',
+  nativeOverlayOpen: false,
 
   toggleSidebar: () => set((s) => ({ sidebarVisible: !s.sidebarVisible })),
 
@@ -52,6 +55,7 @@ export const useUiStore = create<UiState>((set, get) => ({
 
   setAppMode: (mode) => set({ appMode: mode }),
   toggleAppMode: () => set((s) => ({ appMode: s.appMode === 'editor' ? 'zen' : 'editor' })),
+  setNativeOverlayOpen: (open) => set({ nativeOverlayOpen: open }),
 
   getUIState: (): WorkspaceUIState => {
     const s = get()

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "liteeditor": {
+      "command": "python",
+      "args": ["src/mcp-server/server.py"]
+    }
+  }
+}

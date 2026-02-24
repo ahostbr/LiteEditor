@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useZenStore } from '../../stores/zen-store'
+import { useUiStore } from '../../stores/ui-store'
 
 function toNativeBounds(rect: DOMRect | { x: number; y: number; width: number; height: number }) {
   return {
@@ -20,8 +21,10 @@ interface CodexPanelProps {
 export function CodexPanel({ panelId, visible = true }: CodexPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const sessionIdRef = useRef<string | null>(null)
-  const visibleRef = useRef(visible)
-  visibleRef.current = visible
+  const nativeOverlayOpen = useUiStore((s) => s.nativeOverlayOpen)
+  const effectiveVisible = visible && !nativeOverlayOpen
+  const visibleRef = useRef(effectiveVisible)
+  visibleRef.current = effectiveVisible
 
   // Create or reuse session, manage lifecycle
   useEffect(() => {
@@ -135,12 +138,12 @@ export function CodexPanel({ panelId, visible = true }: CodexPanelProps) {
   // Show/hide view when visibility changes
   useEffect(() => {
     if (!sessionIdRef.current) return
-    if (visible) {
+    if (effectiveVisible) {
       window.api.codex.showView(sessionIdRef.current)
     } else {
       window.api.codex.hideView(sessionIdRef.current)
     }
-  }, [visible])
+  }, [effectiveVisible])
 
   return <div ref={containerRef} className="w-full h-full" />
 }

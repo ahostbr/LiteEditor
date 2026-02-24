@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useBrowserStore } from '../../stores/browser-store'
 import { useZenStore } from '../../stores/zen-store'
+import { useUiStore } from '../../stores/ui-store'
 
 function toNativeBounds(rect: DOMRect | { x: number; y: number; width: number; height: number }) {
   return {
@@ -22,8 +23,10 @@ interface BrowserPanelProps {
 export function BrowserPanel({ panelId, initialUrl, visible = true }: BrowserPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const sessionIdRef = useRef<string | null>(null)
-  const visibleRef = useRef(visible)
-  visibleRef.current = visible
+  const nativeOverlayOpen = useUiStore((s) => s.nativeOverlayOpen)
+  const effectiveVisible = visible && !nativeOverlayOpen
+  const visibleRef = useRef(effectiveVisible)
+  visibleRef.current = effectiveVisible
 
   const registerSession = useBrowserStore((s) => s.registerSession)
   const updateSession = useBrowserStore((s) => s.updateSession)
@@ -156,12 +159,12 @@ export function BrowserPanel({ panelId, initialUrl, visible = true }: BrowserPan
   // Show/hide view when visibility changes
   useEffect(() => {
     if (!sessionIdRef.current) return
-    if (visible) {
+    if (effectiveVisible) {
       window.api.browser.showView(sessionIdRef.current)
     } else {
       window.api.browser.hideView(sessionIdRef.current)
     }
-  }, [visible])
+  }, [effectiveVisible])
 
   return <div ref={containerRef} className="w-full h-full" />
 }
