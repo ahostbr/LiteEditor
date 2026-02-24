@@ -26,6 +26,7 @@ from fastmcp import FastMCP
 # HTTP bridge config
 # ---------------------------------------------------------------------------
 BRIDGE_URL = "http://127.0.0.1:7423"
+BRIDGE_TOKEN = os.environ.get("BRIDGE_TOKEN", "")
 
 # ---------------------------------------------------------------------------
 # Terminal output filter  (ported from Kuroryuu)
@@ -239,14 +240,15 @@ def _pid_alive(pid: int) -> bool:
 def _bridge_request(method: str, path: str, body: dict | None = None) -> dict:
     """Make an HTTP request to the Agent Bridge in the Electron process."""
     url = f"{BRIDGE_URL}{path}"
+    headers: dict[str, str] = {"Authorization": f"Bearer {BRIDGE_TOKEN}"}
     if body is not None:
         data = json.dumps(body).encode("utf-8")
+        headers["Content-Type"] = "application/json"
         req = urllib.request.Request(
-            url, data=data, method=method,
-            headers={"Content-Type": "application/json"},
+            url, data=data, method=method, headers=headers,
         )
     else:
-        req = urllib.request.Request(url, method=method)
+        req = urllib.request.Request(url, method=method, headers=headers)
 
     with urllib.request.urlopen(req, timeout=10) as resp:
         return json.loads(resp.read().decode("utf-8"))

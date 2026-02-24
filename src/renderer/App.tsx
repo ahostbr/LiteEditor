@@ -212,6 +212,21 @@ export default function App() {
           prevProjectRootRef.current = data.projectRoot
         }
       }
+
+      // If launched with a file from Explorer, open it after workspace restore
+      // so it wins the race and becomes the active tab
+      const params = new URLSearchParams(window.location.search)
+      const launchFile = params.get('openFile')
+      if (launchFile) {
+        try {
+          const content = await window.api.fs.readFile(launchFile)
+          useEditorStore.getState().openFile(launchFile, content)
+          if (!useEditorStore.getState().projectRoot) {
+            const dir = launchFile.replace(/[\\/][^\\/]+$/, '')
+            useEditorStore.getState().setProjectRoot(dir)
+          }
+        } catch { /* ignore unreadable files */ }
+      }
     }
     init().catch(() => {})
   }, [])

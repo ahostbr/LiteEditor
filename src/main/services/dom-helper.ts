@@ -89,7 +89,7 @@ export function getClickScript(index: number): string {
 
 /** Type text into an element. If index is provided, focuses that element first. */
 export function getTypeScript(text: string, index?: number): string {
-  const escaped = text.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n')
+  const escaped = text.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/`/g, '\\`').replace(/\$/g, '\\$').replace(/\n/g, '\\n')
   if (index !== undefined) {
     return `(function() {
       const el = document.querySelector('[data-agent-idx="${index}"]');

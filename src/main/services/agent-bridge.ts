@@ -1,4 +1,5 @@
 import * as http from 'http'
+import * as crypto from 'crypto'
 import type { BrowserWindow } from 'electron'
 import type { PtyManager } from './pty-manager'
 import type { BrowserManager } from './browser-manager'
@@ -18,6 +19,7 @@ export class AgentBridge {
   private ptyManager: PtyManager
   private browserManager: BrowserManager
   private getMainWindow: () => BrowserWindow | null
+  readonly token: string
 
   constructor(
     ptyManager: PtyManager,
@@ -27,13 +29,15 @@ export class AgentBridge {
     this.ptyManager = ptyManager
     this.browserManager = browserManager
     this.getMainWindow = getMainWindow
+    this.token = crypto.randomBytes(32).toString('hex')
   }
 
   private async focusTerminal(sessionId: string): Promise<void> {
     const win = this.getMainWindow()
     if (win) {
+      const safe = sessionId.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
       await win.webContents.executeJavaScript(
-        `window.__focusPtySession && window.__focusPtySession('${sessionId}')`
+        `window.__focusPtySession && window.__focusPtySession('${safe}')`
       ).catch(() => {})
     }
   }
@@ -62,6 +66,14 @@ export class AgentBridge {
   }
 
   private handleRequest(req: http.IncomingMessage, res: http.ServerResponse): void {
+    // Bearer token auth — reject requests without valid token
+    const authHeader = req.headers['authorization'] || ''
+    const expectedHeader = `Bearer ${this.token}`
+    if (authHeader !== expectedHeader) {
+      this.json(res, 401, { error: 'Unauthorized' })
+      return
+    }
+
     const url = req.url || ''
     const method = req.method || ''
 

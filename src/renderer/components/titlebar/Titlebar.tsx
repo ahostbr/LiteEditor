@@ -8,6 +8,7 @@ import { MenuBar } from './MenuBar'
 import { CommandCenter } from './CommandCenter'
 import claudeIcon from '../../../../assets/img/claude.png'
 import codexIcon from '../../../../assets/img/codex.png'
+import appIcon from '../../../../resources/icon.ico'
 
 const LAYOUT_OPTIONS: { mode: LayoutMode; icon: React.ReactNode; label: string }[] = [
   { mode: 'grid', icon: <LayoutGrid size={15} />, label: 'Grid Layout' },
@@ -118,9 +119,7 @@ export function Titlebar() {
           className="flex items-center justify-center w-[46px] h-full"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
-          <span className="font-bold text-[13px]" style={{ color: 'var(--accent)' }}>
-            LE
-          </span>
+          <img src={appIcon} alt="LiteEditor" className="w-[18px] h-[18px]" draggable={false} />
         </div>
         <MenuBar />
       </div>

@@ -30,7 +30,7 @@ function startMcpServer(): void {
 
   mcpServer = spawn('python', [serverScript], {
     stdio: 'ignore',
-    env: { ...process.env, MCP_TRANSPORT: 'sse', MCP_PORT: '7422' }
+    env: { ...process.env, MCP_TRANSPORT: 'sse', MCP_PORT: '7422', BRIDGE_TOKEN: agentBridge.token }
   })
 
   mcpServer.on('error', (err) => {
@@ -150,6 +150,7 @@ function createWindow(): void {
     titleBarStyle: 'hidden',
     backgroundColor: '#0c0c0f',
     show: false,
+    icon: join(__dirname, '../../resources/icon.ico'),
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       contextIsolation: true,
@@ -170,12 +171,8 @@ function createWindow(): void {
   })
 
   mainWindow.webContents.on('did-finish-load', () => {
-    // Send file from initial launch argv
-    const fileFromArgv = getFileFromArgs(process.argv)
-    if (fileFromArgv) {
-      mainWindow?.webContents.send('file:open', fileFromArgv)
-    }
-    // Send any pending file from second-instance that arrived before window was ready
+    // Initial launch file is now handled via query param (see loadFile/loadURL below)
+    // Only send pending files from second-instance that arrived before window was ready
     if (pendingFilePath) {
       mainWindow?.webContents.send('file:open', pendingFilePath)
       pendingFilePath = null
@@ -319,11 +316,17 @@ function createWindow(): void {
   try { registerCodexHandlers(mainWindow!) } catch (e) { console.error('Failed to register codex handlers:', e) }
   try { registerIntegrationsHandlers(mainWindow!) } catch (e) { console.error('Failed to register integrations handlers:', e) }
 
-  // Load renderer
+  // Load renderer — pass launch file as query param so renderer can open it
+  // after workspace restoration (avoids race condition with file:open IPC)
+  const launchFile = getFileFromArgs(process.argv)
+  const query = launchFile ? { openFile: launchFile } : undefined
+
   if (process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    const url = new URL(process.env['ELECTRON_RENDERER_URL'])
+    if (launchFile) url.searchParams.set('openFile', launchFile)
+    mainWindow.loadURL(url.toString())
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    mainWindow.loadFile(join(__dirname, '../renderer/index.html'), { query: query as Record<string, string> })
   }
 }
 
