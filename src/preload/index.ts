@@ -295,6 +295,8 @@ const api = {
       ipcRenderer.invoke('integrations:verify', integrationId),
     revealPath: (integrationId: IntegrationId): Promise<string | null> =>
       ipcRenderer.invoke('integrations:reveal-path', integrationId),
+    revealLog: (integrationId: IntegrationId): Promise<string | null> =>
+      ipcRenderer.invoke('integrations:reveal-log', integrationId),
     onProgress: (callback: (progress: IntegrationProgress) => void): (() => void) => {
       const handler = (_e: unknown, progress: IntegrationProgress) => callback(progress)
       ipcRenderer.on('integrations:progress', handler)

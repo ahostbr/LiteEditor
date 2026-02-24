@@ -50,6 +50,12 @@ export function registerIntegrationsHandlers(mainWindow: BrowserWindow): void {
     }
     return path
   })
+
+  ipcMain.handle('integrations:reveal-log', async (_e, integrationId: IntegrationId) => {
+    const path = integrationsManager.revealLog(asIntegrationId(integrationId))
+    await shell.openPath(path)
+    return path
+  })
 }
 
 export function shutdownIntegrationsHandlers(): void {
@@ -59,6 +65,7 @@ export function shutdownIntegrationsHandlers(): void {
   ipcMain.removeHandler('integrations:update')
   ipcMain.removeHandler('integrations:verify')
   ipcMain.removeHandler('integrations:reveal-path')
+  ipcMain.removeHandler('integrations:reveal-log')
 
   if (progressListener) {
     integrationsManager.off('progress', progressListener)

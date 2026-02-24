@@ -13,6 +13,7 @@ interface GalleryProperty {
 interface GalleryVersion {
   version?: string
   lastUpdated?: string
+  targetPlatform?: string
   files?: GalleryFile[]
   properties?: GalleryProperty[]
   assetUri?: string
@@ -51,7 +52,8 @@ export class MarketplaceProvider {
           sortOrder: 0
         }
       ],
-      flags: 723
+      // Include full version metadata, files and properties for robust platform selection.
+      flags: 32767
     }
 
     const response = await fetch(`${MARKETPLACE_QUERY_URL}?api-version=${MARKETPLACE_API_VERSION}`, {
@@ -98,6 +100,7 @@ export class MarketplaceProvider {
       publisher,
       name,
       version: version.version,
+      targetPlatform: this.normalizeTargetPlatform(version.targetPlatform),
       downloadUrl,
       sha256,
       publishedAt: Number.isFinite(publishedAt) ? publishedAt : null
@@ -106,7 +109,22 @@ export class MarketplaceProvider {
 
   private pickVersion(versions: GalleryVersion[] | undefined): GalleryVersion | null {
     if (!versions || versions.length === 0) return null
-    return [...versions].sort((a, b) => this.compareVersions(a.version ?? '0', b.version ?? '0')).pop() ?? null
+    const hostTarget = this.getHostTargetPlatform()
+    const allCandidates = [...versions]
+      .filter((entry) => typeof entry.version === 'string' && entry.version.trim().length > 0)
+
+    const compatibleCandidates = allCandidates.filter((entry) =>
+      this.isCompatibleTargetPlatform(entry.targetPlatform, hostTarget)
+    )
+
+    const rankedCandidates = (compatibleCandidates.length > 0 ? compatibleCandidates : allCandidates)
+      .sort((a, b) => {
+        const versionScore = this.compareVersions(a.version ?? '0', b.version ?? '0')
+        if (versionScore !== 0) return versionScore
+        return this.targetPlatformScore(a.targetPlatform, hostTarget) - this.targetPlatformScore(b.targetPlatform, hostTarget)
+      })
+
+    return rankedCandidates.pop() ?? null
   }
 
   private resolveVsixUrl(extension: GalleryExtension, version: GalleryVersion): string | null {
@@ -145,5 +163,43 @@ export class MarketplaceProvider {
   private compareVersions(a: string, b: string): number {
     return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
   }
-}
 
+  private getHostTargetPlatform(): string {
+    switch (process.platform) {
+      case 'win32':
+        if (process.arch === 'arm64') return 'win32-arm64'
+        if (process.arch === 'ia32') return 'win32-ia32'
+        return 'win32-x64'
+      case 'darwin':
+        return process.arch === 'arm64' ? 'darwin-arm64' : 'darwin-x64'
+      case 'linux':
+        return process.arch === 'arm64' ? 'linux-arm64' : 'linux-x64'
+      default:
+        return `${process.platform}-${process.arch}`
+    }
+  }
+
+  private normalizeTargetPlatform(value: string | undefined): string | null {
+    if (!value || value.trim().length === 0) return null
+    return value.trim().toLowerCase()
+  }
+
+  private targetPlatformScore(candidate: string | undefined, hostTarget: string): number {
+    const normalized = this.normalizeTargetPlatform(candidate)
+
+    if (normalized === hostTarget) return 100
+    if (!normalized) return 90
+
+    const hostFamily = hostTarget.split('-')[0]
+    const candidateFamily = normalized.split('-')[0]
+    if (hostFamily === candidateFamily) return 70
+
+    return 10
+  }
+
+  private isCompatibleTargetPlatform(candidate: string | undefined, hostTarget: string): boolean {
+    const normalized = this.normalizeTargetPlatform(candidate)
+    if (!normalized) return true
+    return normalized === hostTarget
+  }
+}

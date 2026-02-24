@@ -46,6 +46,7 @@ export interface IntegrationManifest {
   publisher: string
   name: string
   version: string
+  targetPlatform?: string | null
   downloadUrl: string
   sha256: string | null
   publishedAt: number | null
@@ -78,4 +79,3 @@ export const INTEGRATION_SPECS: Record<IntegrationId, IntegrationSpec> = {
     requiredFiles: ['webview/index.js', 'resources/native-binary/claude.exe']
   }
 }
-

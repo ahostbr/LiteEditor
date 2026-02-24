@@ -344,6 +344,7 @@ export function SettingsPanel() {
             onVerify={() => void runIntegrationAction('codex', () => window.api.integrations.verify('codex'))}
             onReinstall={() => void runIntegrationAction('codex', () => window.api.integrations.install('codex', { reinstall: true }))}
             onRevealPath={() => void window.api.integrations.revealPath('codex')}
+            onRevealLog={() => void window.api.integrations.revealLog('codex')}
             onCheckUpdates={() => void handleCheckUpdates('codex')}
           />
 
@@ -357,6 +358,7 @@ export function SettingsPanel() {
             onVerify={() => void runIntegrationAction('claude', () => window.api.integrations.verify('claude'))}
             onReinstall={() => void runIntegrationAction('claude', () => window.api.integrations.install('claude', { reinstall: true }))}
             onRevealPath={() => void window.api.integrations.revealPath('claude')}
+            onRevealLog={() => void window.api.integrations.revealLog('claude')}
             onCheckUpdates={() => void handleCheckUpdates('claude')}
           />
         </SettingsSection>
@@ -375,6 +377,7 @@ function IntegrationCard({
   onVerify,
   onReinstall,
   onRevealPath,
+  onRevealLog,
   onCheckUpdates
 }: {
   title: string
@@ -386,6 +389,7 @@ function IntegrationCard({
   onVerify: () => void
   onReinstall: () => void
   onRevealPath: () => void
+  onRevealLog: () => void
   onCheckUpdates: () => void
 }) {
   const state = status?.state ?? 'not_installed'
@@ -460,6 +464,7 @@ function IntegrationCard({
         {showReinstall && (
           <ActionButton label="Reinstall" onClick={onReinstall} disabled={busy} />
         )}
+        <ActionButton label="Open Logs" onClick={onRevealLog} disabled={busy} />
         <ActionButton label="Show Folder" onClick={onRevealPath} disabled={busy} />
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { createHash } from 'crypto'
 import { EventEmitter } from 'events'
 import {
+  appendFileSync,
   cpSync,
   createReadStream,
   createWriteStream,
@@ -68,10 +69,12 @@ const DEFAULT_CACHE_ENTRY: IntegrationCacheEntry = {
   latestVersion: null,
   lastCheckedAt: null
 }
+const OPERATION_LOCK_STALE_MS = 30 * 60 * 1000
 
 export class IntegrationsManager extends EventEmitter {
   private readonly provider = new MarketplaceProvider()
   private readonly activeOperations = new Set<IntegrationId>()
+  private readonly lastLoggedStage = new Map<IntegrationId, string>()
   private readonly runtimeStates = new Map<IntegrationId, { state: IntegrationState; message?: string }>()
   private cache: IntegrationCache = this.loadCache()
 
@@ -153,11 +156,13 @@ export class IntegrationsManager extends EventEmitter {
         cacheEntry.lastCheckedAt = Date.now()
         delete cacheEntry.lastError
         this.runtimeStates.delete(id)
+        this.appendIntegrationLog(id, `Update check succeeded. Latest Marketplace version: ${manifest.version}.`)
       } catch (err) {
         const cacheEntry = this.ensureCacheEntry(id)
         cacheEntry.lastCheckedAt = Date.now()
         cacheEntry.lastError = err instanceof Error ? err.message : String(err)
         this.runtimeStates.delete(id)
+        this.appendIntegrationLog(id, `Update check failed: ${cacheEntry.lastError}`)
       }
     }
 
@@ -191,11 +196,16 @@ export class IntegrationsManager extends EventEmitter {
 
         this.emitProgress({ id, stage: 'verifying', message: 'Verifying download integrity...' })
         const { hex: archiveHashHex, base64: archiveHashBase64 } = await this.sha256File(vsixPath)
-        if (!manifest.sha256) {
-          throw new Error('Marketplace manifest missing SHA256 metadata.')
-        }
-        if (!this.matchesHash(manifest.sha256, archiveHashHex, archiveHashBase64)) {
-          throw new Error('SHA256 mismatch: downloaded archive hash does not match Marketplace metadata.')
+        if (manifest.sha256) {
+          if (!this.matchesHash(manifest.sha256, archiveHashHex, archiveHashBase64)) {
+            throw new Error('SHA256 mismatch: downloaded archive hash does not match Marketplace metadata.')
+          }
+        } else {
+          this.emitProgress({
+            id,
+            stage: 'verifying',
+            message: 'Marketplace did not provide SHA256; validating extension identity and runtime files instead.'
+          })
         }
 
         this.emitProgress({ id, stage: 'extracting', message: 'Extracting VSIX package...' })
@@ -233,7 +243,7 @@ export class IntegrationsManager extends EventEmitter {
         delete cacheEntry.lastError
         this.saveCache()
 
-        this.emitProgress({ id, stage: 'done', message: 'Install completed successfully.' })
+        this.emitProgress({ id, stage: 'done', message: 'Install completed successfully. Reopen the panel to load the new version.' })
         this.runtimeStates.delete(id)
         return this.getStatus(id)
       } catch (err) {
@@ -312,6 +322,14 @@ export class IntegrationsManager extends EventEmitter {
     return null
   }
 
+  revealLog(id: IntegrationId): string {
+    const logPath = this.getLogPath(id)
+    if (!existsSync(logPath)) {
+      this.appendIntegrationLog(id, `Log created for ${INTEGRATION_SPECS[id].displayName}.`)
+    }
+    return logPath
+  }
+
   private discoverManaged(id: IntegrationId): DiscoveryResult {
     const baseDir = join(this.getManagedRoot(), id)
     if (!existsSync(baseDir)) {
@@ -322,7 +340,7 @@ export class IntegrationsManager extends EventEmitter {
     let broken: DiscoveryResult['broken'] = null
     for (const version of versions) {
       const fullPath = join(baseDir, version)
-      const validation = this.validateCandidate(fullPath, id)
+      const validation = this.validateCandidate(fullPath, id, 'managed')
       if (validation.ok) {
         return {
           valid: { id, path: fullPath, source: 'managed', version: validation.version ?? version },
@@ -357,7 +375,7 @@ export class IntegrationsManager extends EventEmitter {
 
     for (const folderName of candidates) {
       const fullPath = join(externalRoot, folderName)
-      const validation = this.validateCandidate(fullPath, id)
+      const validation = this.validateCandidate(fullPath, id, 'external')
       if (validation.ok) {
         return {
           valid: { id, path: fullPath, source: 'external', version: validation.version ?? folderName.slice(prefix.length) },
@@ -370,7 +388,7 @@ export class IntegrationsManager extends EventEmitter {
     return { valid: null, broken }
   }
 
-  private validateCandidate(path: string, id: IntegrationId): { ok: boolean; version: string | null; message: string } {
+  private validateCandidate(path: string, id: IntegrationId, source: 'managed' | 'external'): { ok: boolean; version: string | null; message: string } {
     try {
       if (!statSync(path).isDirectory()) {
         return { ok: false, version: null, message: 'Candidate is not a directory.' }
@@ -398,7 +416,51 @@ export class IntegrationsManager extends EventEmitter {
       return { ok: false, version: identity.version, message: required.message }
     }
 
+    if (source === 'managed') {
+      const managedRecordValidation = this.validateManagedInstallRecord(id, path)
+      if (!managedRecordValidation.ok) {
+        return { ok: false, version: identity.version, message: managedRecordValidation.message }
+      }
+    }
+
     return { ok: true, version: identity.version, message: 'ok' }
+  }
+
+  private validateManagedInstallRecord(id: IntegrationId, rootPath: string): { ok: boolean; message: string } {
+    const record = this.readInstallRecord(rootPath)
+    if (!record) {
+      return { ok: false, message: 'Managed install record is missing.' }
+    }
+
+    const spec = INTEGRATION_SPECS[id]
+    if (
+      record.extensionId !== spec.extensionId
+      || record.publisher?.toLowerCase() !== spec.publisher
+      || record.name?.toLowerCase() !== spec.name
+    ) {
+      return {
+        ok: false,
+        message: `Managed install record identity mismatch: expected ${spec.extensionId}.`
+      }
+    }
+
+    if (!record.requiredFileHashes || typeof record.requiredFileHashes !== 'object') {
+      return { ok: false, message: 'Managed install record is missing required file hashes.' }
+    }
+
+    for (const requiredFile of spec.requiredFiles) {
+      const expectedHash = record.requiredFileHashes[requiredFile]
+      if (!expectedHash) {
+        return { ok: false, message: `Managed install record is missing hash for ${requiredFile}.` }
+      }
+      const fullPath = this.resolveRelative(rootPath, requiredFile)
+      const actualHash = this.sha256FileSync(fullPath)
+      if (!actualHash || actualHash.toLowerCase() !== expectedHash.toLowerCase()) {
+        return { ok: false, message: `Managed install integrity check failed for ${requiredFile}.` }
+      }
+    }
+
+    return { ok: true, message: 'ok' }
   }
 
   private validateRequiredFiles(id: IntegrationId, rootPath: string): void {
@@ -465,6 +527,26 @@ export class IntegrationsManager extends EventEmitter {
     return join(this.getManagedRoot(), 'manifest-cache.json')
   }
 
+  private getLocksRoot(): string {
+    const lockRoot = join(this.getManagedRoot(), '.locks')
+    mkdirSync(lockRoot, { recursive: true })
+    return lockRoot
+  }
+
+  private getLockPath(id: IntegrationId): string {
+    return join(this.getLocksRoot(), `${id}.lock`)
+  }
+
+  private getLogsRoot(): string {
+    const logsRoot = join(this.getManagedRoot(), 'logs')
+    mkdirSync(logsRoot, { recursive: true })
+    return logsRoot
+  }
+
+  private getLogPath(id: IntegrationId): string {
+    return join(this.getLogsRoot(), `${id}.log`)
+  }
+
   private loadCache(): IntegrationCache {
     const base: IntegrationCache = {
       codex: { ...DEFAULT_CACHE_ENTRY },
@@ -503,6 +585,7 @@ export class IntegrationsManager extends EventEmitter {
 
   private emitProgress(progress: IntegrationProgress): void {
     this.emit('progress', progress)
+    this.logProgress(progress)
 
     if (progress.stage === 'error') {
       this.runtimeStates.set(progress.id, { state: 'failed', message: progress.message })
@@ -528,16 +611,80 @@ export class IntegrationsManager extends EventEmitter {
     })
   }
 
+  private logProgress(progress: IntegrationProgress): void {
+    const previousStage = this.lastLoggedStage.get(progress.id)
+    if (progress.stage !== previousStage || progress.stage === 'done' || progress.stage === 'error') {
+      const percent = typeof progress.percent === 'number' ? ` (${progress.percent}%)` : ''
+      const suffix = progress.message ? ` ${progress.message}` : ''
+      this.appendIntegrationLog(progress.id, `[${progress.stage}]${percent}${suffix}`)
+    }
+
+    if (progress.stage === 'done' || progress.stage === 'error') {
+      this.lastLoggedStage.delete(progress.id)
+    } else {
+      this.lastLoggedStage.set(progress.id, progress.stage)
+    }
+  }
+
+  private appendIntegrationLog(id: IntegrationId, message: string): void {
+    try {
+      const line = `${new Date().toISOString()} ${message}\n`
+      appendFileSync(this.getLogPath(id), line, 'utf-8')
+    } catch {
+      // Logging failures should not affect install/update flow.
+    }
+  }
+
   private async runExclusive<T>(id: IntegrationId, work: () => Promise<T>): Promise<T> {
     if (this.activeOperations.has(id)) {
       throw new Error(`${INTEGRATION_SPECS[id].displayName} already has an active operation.`)
     }
 
     this.activeOperations.add(id)
+    let lockPath: string | null = null
     try {
+      lockPath = this.acquireOperationLock(id)
       return await work()
     } finally {
+      if (lockPath) {
+        this.releaseOperationLock(lockPath)
+      }
       this.activeOperations.delete(id)
+    }
+  }
+
+  private acquireOperationLock(id: IntegrationId): string {
+    const lockPath = this.getLockPath(id)
+    const payload = JSON.stringify({ id, pid: process.pid, startedAt: Date.now() })
+
+    try {
+      writeFileSync(lockPath, payload, { encoding: 'utf-8', flag: 'wx' })
+      return lockPath
+    } catch {
+      if (this.isLockStale(lockPath)) {
+        try { rmSync(lockPath, { force: true }) } catch { /* ignore */ }
+        try {
+          writeFileSync(lockPath, payload, { encoding: 'utf-8', flag: 'wx' })
+          return lockPath
+        } catch {
+          // Fall through to shared error below.
+        }
+      }
+    }
+
+    throw new Error(`${INTEGRATION_SPECS[id].displayName} already has an active operation.`)
+  }
+
+  private releaseOperationLock(lockPath: string): void {
+    try { rmSync(lockPath, { force: true }) } catch { /* ignore */ }
+  }
+
+  private isLockStale(lockPath: string): boolean {
+    try {
+      const ageMs = Date.now() - statSync(lockPath).mtimeMs
+      return ageMs > OPERATION_LOCK_STALE_MS
+    } catch {
+      return false
     }
   }
 
@@ -585,6 +732,17 @@ export class IntegrationsManager extends EventEmitter {
         resolve({ hex: digestHex, base64: digestBase64 })
       })
     })
+  }
+
+  private sha256FileSync(filePath: string): string | null {
+    if (!existsSync(filePath)) return null
+    try {
+      const hash = createHash('sha256')
+      hash.update(readFileSync(filePath))
+      return hash.digest('hex')
+    } catch {
+      return null
+    }
   }
 
   private matchesHash(expected: string, actualHex: string, actualBase64: string): boolean {
