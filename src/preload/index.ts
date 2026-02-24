@@ -20,6 +20,37 @@ type PtySessionInfo = {
   createdAt: number
 }
 
+type IntegrationId = 'codex' | 'claude'
+
+type IntegrationState =
+  | 'not_installed'
+  | 'installed_managed'
+  | 'installed_external'
+  | 'update_available'
+  | 'broken'
+  | 'verifying'
+  | 'downloading'
+  | 'installing'
+  | 'failed'
+
+type IntegrationStatus = {
+  id: IntegrationId
+  state: IntegrationState
+  installedVersion: string | null
+  latestVersion: string | null
+  source: 'managed' | 'external' | null
+  verified: boolean
+  lastVerifiedAt: number | null
+  message?: string
+}
+
+type IntegrationProgress = {
+  id: IntegrationId
+  stage: 'checking' | 'downloading' | 'verifying' | 'extracting' | 'installing' | 'finalizing' | 'done' | 'error'
+  percent?: number
+  message?: string
+}
+
 const api = {
   appInfo: {
     version: '1.0.0',
@@ -247,6 +278,26 @@ const api = {
       ipcRenderer.invoke('settings:load'),
     save: (data: string): Promise<void> =>
       ipcRenderer.invoke('settings:save', data)
+  },
+
+  integrations: {
+    listStatus: (): Promise<IntegrationStatus[]> =>
+      ipcRenderer.invoke('integrations:list-status'),
+    checkUpdates: (integrationId?: IntegrationId): Promise<IntegrationStatus[]> =>
+      ipcRenderer.invoke('integrations:check-updates', integrationId),
+    install: (integrationId: IntegrationId, options?: { reinstall?: boolean }): Promise<IntegrationStatus> =>
+      ipcRenderer.invoke('integrations:install', integrationId, options),
+    update: (integrationId: IntegrationId): Promise<IntegrationStatus> =>
+      ipcRenderer.invoke('integrations:update', integrationId),
+    verify: (integrationId: IntegrationId): Promise<IntegrationStatus> =>
+      ipcRenderer.invoke('integrations:verify', integrationId),
+    revealPath: (integrationId: IntegrationId): Promise<string | null> =>
+      ipcRenderer.invoke('integrations:reveal-path', integrationId),
+    onProgress: (callback: (progress: IntegrationProgress) => void): (() => void) => {
+      const handler = (_e: unknown, progress: IntegrationProgress) => callback(progress)
+      ipcRenderer.on('integrations:progress', handler)
+      return () => ipcRenderer.removeListener('integrations:progress', handler)
+    }
   },
 
   workspace: {

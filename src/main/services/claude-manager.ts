@@ -1,8 +1,9 @@
 import { WebContentsView, BrowserWindow, app } from 'electron'
 import { join } from 'path'
-import { readdirSync, existsSync, writeFileSync, mkdirSync } from 'fs'
+import { writeFileSync, mkdirSync } from 'fs'
 import { type NativeViewBounds, toContentBounds } from './native-view-bounds'
 import { buildWebviewThemeCss } from './webview-theme'
+import { integrationsManager } from './integrations-manager'
 
 let counter = 0
 
@@ -15,45 +16,16 @@ interface ClaudeSession {
 
 export class ClaudeManager {
   private sessions = new Map<string, ClaudeSession>()
-  private extensionPath: string | null = null
-  private wrapperHtmlPath: string | null = null
+  private wrapperHtmlPathByExtension = new Map<string, string>()
 
   findClaudeExtension(): string | null {
-    if (this.extensionPath) return this.extensionPath
-
-    const homeDir = process.env.USERPROFILE || process.env.HOME || ''
-    const extensionsDir = join(homeDir, '.vscode', 'extensions')
-
-    if (!existsSync(extensionsDir)) return null
-
-    try {
-      const entries = readdirSync(extensionsDir)
-      const claudeExtensions = entries
-        .filter((e) => e.startsWith('anthropic.claude-code-'))
-        .sort()
-
-      if (claudeExtensions.length === 0) return null
-
-      // Use latest version (last in sorted order)
-      const latest = claudeExtensions[claudeExtensions.length - 1]
-      const fullPath = join(extensionsDir, latest)
-
-      // Verify webview assets exist
-      if (existsSync(join(fullPath, 'webview', 'index.js'))) {
-        this.extensionPath = fullPath
-        return fullPath
-      }
-    } catch {
-      /* extension dir not readable */
-    }
-
-    return null
+    return integrationsManager.resolve('claude')?.path ?? null
   }
 
   private getWrapperHtmlPath(extPath: string): string {
-    if (this.wrapperHtmlPath) return this.wrapperHtmlPath
+    const existing = this.wrapperHtmlPathByExtension.get(extPath)
+    if (existing) return existing
 
-    // Generate the wrapper HTML at runtime and write to a temp location
     const tmpDir = join(app.getPath('temp'), 'liteeditor-claude')
     try { mkdirSync(tmpDir, { recursive: true }) } catch { /* exists */ }
 
@@ -81,10 +53,14 @@ ${themeCss}
 </body>
 </html>`
 
-    const htmlPath = join(tmpDir, 'claude-webview.html')
+    const htmlPath = join(tmpDir, `claude-webview-${this.toFileSafe(extPath)}.html`)
     writeFileSync(htmlPath, html, 'utf-8')
-    this.wrapperHtmlPath = htmlPath
+    this.wrapperHtmlPathByExtension.set(extPath, htmlPath)
     return htmlPath
+  }
+
+  private toFileSafe(value: string): string {
+    return value.replace(/[\\/:*?"<>|]/g, '_')
   }
 
   createSession(mainWindow: BrowserWindow): string {
@@ -118,14 +94,12 @@ ${themeCss}
       view.webContents.send('claude:set-session-id', id)
     })
 
-    // Load the wrapper HTML
     const extPath = this.findClaudeExtension()
     if (extPath) {
       const htmlPath = this.getWrapperHtmlPath(extPath)
       view.webContents.loadFile(htmlPath)
     } else {
-      // No extension found — load a fallback message
-      view.webContents.loadURL('data:text/html,<html><body style="background:%230c0c0f;color:%23999;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div style="text-align:center"><h2>Claude Code Extension Not Found</h2><p>Install the Claude Code VS Code extension first.</p></div></body></html>')
+      view.webContents.loadURL('data:text/html,<html><body style="background:%230c0c0f;color:%23999;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div style="text-align:center"><h2>Claude Code Extension Not Found</h2><p>Open Settings -> Integrations to install Claude Code.</p></div></body></html>')
     }
 
     return id

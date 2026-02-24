@@ -9,6 +9,7 @@ import { registerBrowserHandlers, shutdownBrowserHandlers, browserManager } from
 import { registerClaudeHandlers, shutdownClaudeHandlers } from './ipc/claude-handlers'
 import { registerCodexHandlers, shutdownCodexHandlers } from './ipc/codex-handlers'
 import { registerWorkspaceHandlers } from './ipc/workspace-handlers'
+import { registerIntegrationsHandlers, shutdownIntegrationsHandlers } from './ipc/integrations-handlers'
 import { AgentBridge } from './services/agent-bridge'
 
 // Limit V8 heap — default scales with system RAM and gets way too aggressive
@@ -316,6 +317,7 @@ function createWindow(): void {
   try { registerBrowserHandlers(mainWindow!) } catch (e) { console.error('Failed to register browser handlers:', e) }
   try { registerClaudeHandlers(mainWindow!) } catch (e) { console.error('Failed to register claude handlers:', e) }
   try { registerCodexHandlers(mainWindow!) } catch (e) { console.error('Failed to register codex handlers:', e) }
+  try { registerIntegrationsHandlers(mainWindow!) } catch (e) { console.error('Failed to register integrations handlers:', e) }
 
   // Load renderer
   if (process.env['ELECTRON_RENDERER_URL']) {
@@ -342,6 +344,7 @@ app.on('before-quit', () => {
   shutdownBrowserHandlers()
   shutdownClaudeHandlers()
   shutdownCodexHandlers()
+  shutdownIntegrationsHandlers()
   agentBridge.stop()
   stopMcpServer()
 })

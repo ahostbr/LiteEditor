@@ -1,8 +1,9 @@
 import { WebContentsView, BrowserWindow, app } from 'electron'
 import { join } from 'path'
-import { readdirSync, existsSync, writeFileSync, mkdirSync, readFileSync } from 'fs'
+import { writeFileSync, mkdirSync, readFileSync } from 'fs'
 import { type NativeViewBounds, toContentBounds } from './native-view-bounds'
 import { buildWebviewThemeCss } from './webview-theme'
+import { integrationsManager } from './integrations-manager'
 
 let counter = 0
 
@@ -15,52 +16,22 @@ interface CodexSession {
 
 export class CodexManager {
   private sessions = new Map<string, CodexSession>()
-  private extensionPath: string | null = null
-  private wrapperHtmlPath: string | null = null
+  private wrapperHtmlPathByExtension = new Map<string, string>()
 
   findCodexExtension(): string | null {
-    if (this.extensionPath) return this.extensionPath
-
-    const homeDir = process.env.USERPROFILE || process.env.HOME || ''
-    const extensionsDir = join(homeDir, '.vscode', 'extensions')
-
-    if (!existsSync(extensionsDir)) return null
-
-    try {
-      const entries = readdirSync(extensionsDir)
-      const codexExtensions = entries
-        .filter((e) => e.startsWith('openai.chatgpt-'))
-        .sort()
-
-      if (codexExtensions.length === 0) return null
-
-      // Use latest version (last in sorted order)
-      const latest = codexExtensions[codexExtensions.length - 1]
-      const fullPath = join(extensionsDir, latest)
-
-      // Verify webview assets exist
-      if (existsSync(join(fullPath, 'webview', 'index.html'))) {
-        this.extensionPath = fullPath
-        return fullPath
-      }
-    } catch {
-      /* extension dir not readable */
-    }
-
-    return null
+    return integrationsManager.resolve('codex')?.path ?? null
   }
 
   private getWrapperHtmlPath(extPath: string): string {
-    if (this.wrapperHtmlPath) return this.wrapperHtmlPath
+    const existing = this.wrapperHtmlPathByExtension.get(extPath)
+    if (existing) return existing
 
     const tmpDir = join(app.getPath('temp'), 'liteeditor-codex')
     try { mkdirSync(tmpDir, { recursive: true }) } catch { /* exists */ }
 
-    // Read the Codex extension's own index.html
     const srcHtml = readFileSync(join(extPath, 'webview', 'index.html'), 'utf-8')
     const webviewDir = join(extPath, 'webview').replace(/\\/g, '/')
 
-    // Replace placeholders
     let html = srcHtml
       .replace(
         '<!-- PROD_BASE_TAG_HERE -->',
@@ -70,18 +41,19 @@ export class CodexManager {
         '<!-- PROD_CSP_TAG_HERE -->',
         `<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' file: data: blob: https:; img-src 'self' file: data: blob: https:; style-src 'self' 'unsafe-inline' file:; script-src 'self' 'unsafe-inline' 'unsafe-eval' file:; connect-src 'self' https: wss:; font-src 'self' file: data:;" />`
       )
-      // Strip crossorigin attributes — they break file:// module loading in Electron
       .replace(/\s+crossorigin/g, '')
 
-    // Inject VS Code CSS variables for dark theme (before </head>)
     const cssVars = buildWebviewThemeCss()
-
     html = html.replace('</head>', `${cssVars}\n</head>`)
 
-    const htmlPath = join(tmpDir, 'codex-webview.html')
+    const htmlPath = join(tmpDir, `codex-webview-${this.toFileSafe(extPath)}.html`)
     writeFileSync(htmlPath, html, 'utf-8')
-    this.wrapperHtmlPath = htmlPath
+    this.wrapperHtmlPathByExtension.set(extPath, htmlPath)
     return htmlPath
+  }
+
+  private toFileSafe(value: string): string {
+    return value.replace(/[\\/:*?"<>|]/g, '_')
   }
 
   createSession(mainWindow: BrowserWindow): string {
@@ -98,7 +70,6 @@ export class CodexManager {
       }
     })
 
-    // Start at zero bounds until the renderer reports real bounds
     view.setBounds({ x: 0, y: 0, width: 0, height: 0 })
     mainWindow.contentView.addChildView(view)
 
@@ -110,23 +81,20 @@ export class CodexManager {
     }
     this.sessions.set(id, session)
 
-    // Log load failures for diagnostics
     view.webContents.on('did-fail-load', (_e, errorCode, errorDescription, validatedURL) => {
       console.error('[codex] did-fail-load:', errorCode, errorDescription, validatedURL)
     })
 
-    // Send session ID to the preload script once the page loads
     view.webContents.on('did-finish-load', () => {
       view.webContents.send('codex:set-session-id', id)
     })
 
-    // Load the wrapper HTML
     const extPath = this.findCodexExtension()
     if (extPath) {
       const htmlPath = this.getWrapperHtmlPath(extPath)
       view.webContents.loadFile(htmlPath)
     } else {
-      view.webContents.loadURL('data:text/html,<html><body style="background:%230c0c0f;color:%23999;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div style="text-align:center"><h2>Codex Extension Not Found</h2><p>Install the OpenAI Codex VS Code extension first.</p></div></body></html>')
+      view.webContents.loadURL('data:text/html,<html><body style="background:%230c0c0f;color:%23999;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div style="text-align:center"><h2>Codex Extension Not Found</h2><p>Open Settings -> Integrations to install OpenAI Codex.</p></div></body></html>')
     }
 
     return id
