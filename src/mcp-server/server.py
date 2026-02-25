@@ -26,7 +26,15 @@ from fastmcp import FastMCP
 # HTTP bridge config
 # ---------------------------------------------------------------------------
 BRIDGE_URL = "http://127.0.0.1:7423"
-BRIDGE_TOKEN = os.environ.get("BRIDGE_TOKEN", "")
+_env_token = os.environ.get("BRIDGE_TOKEN", "")
+if _env_token:
+    BRIDGE_TOKEN = _env_token
+else:
+    _token_path = Path.home() / ".liteeditor" / "bridge-token"
+    try:
+        BRIDGE_TOKEN = _token_path.read_text().strip()
+    except OSError:
+        BRIDGE_TOKEN = ""
 
 # ---------------------------------------------------------------------------
 # Terminal output filter  (ported from Kuroryuu)

@@ -1,5 +1,8 @@
 import * as http from 'http'
 import * as crypto from 'crypto'
+import * as fs from 'fs'
+import * as path from 'path'
+import { app } from 'electron'
 import type { BrowserWindow } from 'electron'
 import type { PtyManager } from './pty-manager'
 import type { BrowserManager } from './browser-manager'
@@ -50,12 +53,14 @@ export class AgentBridge {
       this.server.on('error', reject)
       this.server.listen(PORT, HOST, () => {
         console.log(`Agent Bridge listening on ${HOST}:${PORT}`)
+        this.persistToken()
         resolve()
       })
     })
   }
 
   stop(): Promise<void> {
+    this.removeTokenFile()
     return new Promise((resolve) => {
       if (this.server) {
         this.server.close(() => resolve())
@@ -63,6 +68,27 @@ export class AgentBridge {
         resolve()
       }
     })
+  }
+
+  private get tokenFilePath(): string {
+    const dir = path.join(app.getPath('home'), '.liteeditor')
+    return path.join(dir, 'bridge-token')
+  }
+
+  private persistToken(): void {
+    try {
+      const filePath = this.tokenFilePath
+      fs.mkdirSync(path.dirname(filePath), { recursive: true })
+      fs.writeFileSync(filePath, this.token, { mode: 0o600 })
+    } catch (err) {
+      console.error('Failed to persist bridge token:', err)
+    }
+  }
+
+  private removeTokenFile(): void {
+    try {
+      fs.unlinkSync(this.tokenFilePath)
+    } catch { /* file may not exist */ }
   }
 
   private handleRequest(req: http.IncomingMessage, res: http.ServerResponse): void {
