@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { useEditorStore } from './editor-store'
+import { useSettingsStore } from './settings-store'
 
 export interface TerminalSession {
   id: string
@@ -21,7 +22,17 @@ interface TerminalState {
   removeTerminal: (id: string) => void
   setActiveSession: (id: string) => void
   reorderTerminals: (fromIndex: number, toIndex: number) => void
-  restartTerminal: (id: string, cwd: string) => Promise<void>
+  restartTerminal: (id: string, cwd: string) => Promise<string | null>
+}
+
+function resolveTerminalCwd(cwd?: string): string | undefined {
+  const explicitCwd = typeof cwd === 'string' ? cwd.trim() : ''
+  if (explicitCwd) return explicitCwd
+
+  const configuredCwd = useSettingsStore.getState().defaultTerminalCwd.trim()
+  if (configuredCwd) return configuredCwd
+
+  return useEditorStore.getState().projectRoot || undefined
 }
 
 export const useTerminalStore = create<TerminalState>((set, get) => ({
@@ -87,10 +98,10 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   },
 
   addTerminal: async (shell?: string, cwd?: string) => {
-    const fallbackCwd = cwd || useEditorStore.getState().projectRoot || undefined
+    const resolvedCwd = resolveTerminalCwd(cwd)
     try {
-      const sessionId = await window.api.pty.create(shell || undefined, fallbackCwd)
-      get().createSession(sessionId, shell, fallbackCwd)
+      const sessionId = await window.api.pty.create(shell || undefined, resolvedCwd)
+      get().createSession(sessionId, shell, resolvedCwd)
       const info = await window.api.pty.getSessionInfo(sessionId)
       if (info) {
         get().updateSessionMeta(sessionId, {
@@ -105,7 +116,10 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   },
 
   removeTerminal: (id) => {
-    try { window.api.pty.kill(id) } catch { /* ignore */ }
+    const exists = get().sessions.some((s) => s.id === id)
+    if (exists) {
+      try { window.api.pty.kill(id) } catch { /* ignore */ }
+    }
     set((state) => {
       const sessions = state.sessions.filter((s) => s.id !== id)
       let activeSessionId = state.activeSessionId
@@ -129,16 +143,18 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
 
   restartTerminal: async (id, cwd) => {
     const session = get().sessions.find((s) => s.id === id)
-    if (!session) return
+    if (!session) return null
     const { shell } = session
-
-    try { window.api.pty.kill(id) } catch { /* ignore */ }
+    const resolvedCwd = cwd.trim()
+    if (!resolvedCwd) return null
 
     try {
-      const newId = await window.api.pty.create(shell || undefined, cwd)
+      const newId = await window.api.pty.create(shell || undefined, resolvedCwd)
+      try { window.api.pty.kill(id) } catch { /* ignore */ }
+
       set((state) => ({
         sessions: state.sessions.map((s) =>
-          s.id === id ? { ...s, id: newId, cwd } : s
+          s.id === id ? { ...s, id: newId, cwd: resolvedCwd } : s
         ),
         activeSessionId: state.activeSessionId === id ? newId : state.activeSessionId
       }))
@@ -150,8 +166,10 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
           createdAt: info.createdAt
         })
       }
+      return newId
     } catch (err) {
       console.error('Failed to restart terminal:', err)
+      return null
     }
   }
 }))

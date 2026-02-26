@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog, shell, screen } from 'electron'
 import { join } from 'path'
 import { spawn, ChildProcess } from 'child_process'
+import { statSync } from 'fs'
 import { registerFsHandlers, shutdownFsHandlers } from './ipc/fs-handlers'
 import { registerGitHandlers } from './ipc/git-handlers'
 import { registerPtyHandlers, ptyManager } from './ipc/pty-handlers'
@@ -96,12 +97,18 @@ function getFileFromArgs(argv: string[]): string | null {
   // argv[0] is electron exe, argv[1] may be the app .js entry in dev
   // In packaged app, argv[0] is the .exe, rest are args
   for (let i = 1; i < argv.length; i++) {
-    const arg = argv[i]
+    const arg = argv[i].replace(/^"(.*)"$/, '$1')
     if (arg.startsWith('-') || arg.startsWith('--')) continue
     if (arg.endsWith('.js') || arg.endsWith('.mjs')) continue
     // Check if it looks like a file path (has a dot extension or backslash/forward slash)
-    if (arg.includes('\\') || arg.includes('/') || arg.includes('.')) {
-      return arg
+    if (!(arg.includes('\\') || arg.includes('/') || arg.includes('.'))) continue
+
+    // Only treat existing files as launch files. Ignore directories and invalid paths.
+    try {
+      const st = statSync(arg)
+      if (st.isFile()) return arg
+    } catch {
+      continue
     }
   }
   return null

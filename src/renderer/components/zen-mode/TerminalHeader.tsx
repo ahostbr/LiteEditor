@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { X, Settings, Copy, Clipboard } from 'lucide-react'
 import { useTerminalStore } from '../../stores/terminal-store'
 import { useZenStore } from '../../stores/zen-store'
+import { useToastStore } from '../../stores/toast-store'
 import { cn } from '../../lib/cn'
 import type { Terminal } from '@xterm/xterm'
 
@@ -38,8 +39,10 @@ export function TerminalHeader({
   const cogButtonRef = useRef<HTMLButtonElement>(null)
   const renamePanel = useZenStore((s) => s.renamePanel)
   const removePanel = useZenStore((s) => s.removePanel)
+  const rebindTerminalPanelSession = useZenStore((s) => s.rebindTerminalPanelSession)
   const renameSession = useTerminalStore((s) => s.renameSession)
   const restartTerminal = useTerminalStore((s) => s.restartTerminal)
+  const pushToast = useToastStore((s) => s.pushToast)
   const cwd = useTerminalStore((s) => s.sessions.find((sess) => sess.id === sessionId)?.cwd)
   const shell = useTerminalStore((s) => s.sessions.find((sess) => sess.id === sessionId)?.shell)
 
@@ -92,12 +95,22 @@ export function TerminalHeader({
   }
 
   const handleChangeDirectory = useCallback(async () => {
-    const folder = await window.api.dialog.openFolder()
-    if (folder && folder !== cwd) {
-      await restartTerminal(sessionId, folder)
+    try {
+      const folder = await window.api.dialog.openFolder()
+      if (folder && folder !== cwd) {
+        const nextSessionId = await restartTerminal(sessionId, folder)
+        if (nextSessionId && nextSessionId !== sessionId) {
+          rebindTerminalPanelSession(panelId, nextSessionId)
+        } else {
+          pushToast('Failed to change terminal directory.', 'error')
+        }
+      }
+    } catch (err) {
+      console.error('Failed to change terminal directory:', err)
+      pushToast('Failed to change terminal directory.', 'error')
     }
     setShowCogMenu(false)
-  }, [sessionId, cwd, restartTerminal])
+  }, [sessionId, panelId, cwd, restartTerminal, rebindTerminalPanelSession, pushToast])
 
   return (
     <div

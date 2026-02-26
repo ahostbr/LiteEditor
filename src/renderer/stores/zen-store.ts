@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { useTerminalStore } from './terminal-store'
 import { useEditorStore } from './editor-store'
 import { useBrowserStore } from './browser-store'
+import { useSettingsStore } from './settings-store'
 
 export type ZenPanelType = 'terminal' | 'editor' | 'browser' | 'unified-editor' | 'claude' | 'codex'
 
@@ -35,6 +36,7 @@ interface ZenState {
   addCodexPanel: () => void
   clearEditorPanels: () => void
   removePanel: (id: string) => void
+  rebindTerminalPanelSession: (panelId: string, nextSessionId: string) => void
   setActivePanel: (id: string) => void
   reorderPanels: (fromIndex: number, toIndex: number) => void
   markPanelDirty: (id: string, dirty: boolean) => void
@@ -43,15 +45,25 @@ interface ZenState {
 
 let panelCounter = 0
 
+function resolveTerminalCwd(cwd?: string): string | undefined {
+  const explicitCwd = typeof cwd === 'string' ? cwd.trim() : ''
+  if (explicitCwd) return explicitCwd
+
+  const configuredCwd = useSettingsStore.getState().defaultTerminalCwd.trim()
+  if (configuredCwd) return configuredCwd
+
+  return useEditorStore.getState().projectRoot || undefined
+}
+
 export const useZenStore = create<ZenState>((set, get) => ({
   panels: [],
   activePanelId: null,
 
   addTerminalPanel: async (shell?: string, cwd?: string) => {
-    const fallbackCwd = cwd || useEditorStore.getState().projectRoot || undefined
+    const resolvedCwd = resolveTerminalCwd(cwd)
     try {
-      const sessionId = await window.api.pty.create(shell || undefined, fallbackCwd)
-      useTerminalStore.getState().createSession(sessionId, shell, fallbackCwd)
+      const sessionId = await window.api.pty.create(shell || undefined, resolvedCwd)
+      useTerminalStore.getState().createSession(sessionId, shell, resolvedCwd)
       const id = `zen-term-${++panelCounter}`
       const termCount = get().panels.filter((p) => p.type === 'terminal').length + 1
       set((state) => ({
@@ -206,6 +218,16 @@ export const useZenStore = create<ZenState>((set, get) => ({
       }
       return { panels, activePanelId }
     })
+  },
+
+  rebindTerminalPanelSession: (panelId: string, nextSessionId: string) => {
+    set((state) => ({
+      panels: state.panels.map((panel) => (
+        panel.id === panelId && panel.type === 'terminal'
+          ? { ...panel, terminalSessionId: nextSessionId }
+          : panel
+      ))
+    }))
   },
 
   setActivePanel: (id: string) => set({ activePanelId: id }),

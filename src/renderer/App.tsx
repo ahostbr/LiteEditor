@@ -23,6 +23,7 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useWorkspacePersistence } from './hooks/useWorkspacePersistence'
 import { getLanguageFromPath, getLanguageDisplayName } from './lib/language-map'
 import { ConfirmDialog } from './components/shared/ConfirmDialog'
+import { ToastViewport } from './components/shared/ToastViewport'
 
 async function loadWorkspaceForProject(projectRoot: string): Promise<void> {
   try {
@@ -545,6 +546,7 @@ export default function App() {
         </div>
       </div>
       <StatusBar />
+      <ToastViewport />
       <ConfirmDialog />
     </div>
   )

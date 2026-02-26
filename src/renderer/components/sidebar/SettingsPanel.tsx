@@ -270,6 +270,16 @@ export function SettingsPanel() {
             hasOverride={settings.hasWorkspaceOverride('terminalShell')}
             hasProject={!!projectRoot}
           />
+          <TextSetting
+            label="Default Directory"
+            settingKey="defaultTerminalCwd"
+            value={settings.defaultTerminalCwd}
+            onChange={handleChange}
+            onReset={handleResetToGlobal}
+            placeholder="Project root"
+            hasOverride={settings.hasWorkspaceOverride('defaultTerminalCwd')}
+            hasProject={!!projectRoot}
+          />
         </SettingsSection>
 
         {/* Zen Mode */}
