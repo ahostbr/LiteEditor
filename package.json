@@ -153,7 +153,9 @@
       {
         "from": "src/mcp-server",
         "to": "mcp-server",
-        "filter": ["**/*.py"]
+        "filter": [
+          "**/*.py"
+        ]
       }
     ],
     "asar": true,
@@ -196,5 +198,14 @@
     "postcss": "^8.5.1",
     "tailwindcss": "^4.0.6",
     "typescript": "^5.7.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "electron",
+      "electron-winstaller",
+      "esbuild",
+      "node-pty"
+    ]
   }
 }
