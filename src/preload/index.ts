@@ -74,6 +74,10 @@ const api = {
       ipcRenderer.send('fs:watch-start', path),
     watchStop: (): void =>
       ipcRenderer.send('fs:watch-stop'),
+    watchDir: (path: string): void =>
+      ipcRenderer.send('fs:watch-dir', path),
+    unwatchDir: (path: string): void =>
+      ipcRenderer.send('fs:unwatch-dir', path),
     onFileChange: (callback: (event: string, path: string) => void): (() => void) => {
       const handler = (_e: unknown, event: string, path: string) => callback(event, path)
       ipcRenderer.on('fs:file-changed', handler)

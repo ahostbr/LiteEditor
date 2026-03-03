@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { ChevronRight, ChevronDown } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { FileIcon } from '../shared/FileIcon'
@@ -10,30 +10,48 @@ export interface FileNode {
   children?: FileNode[]
 }
 
+export interface RefreshSignal {
+  dirPath: string
+  counter: number
+}
+
 interface TreeNodeProps {
   node: FileNode
   depth: number
   onFileClick: (node: FileNode) => void
+  refreshSignal: RefreshSignal
 }
 
-export function TreeNode({ node, depth, onFileClick }: TreeNodeProps) {
-  const [isOpen, setIsOpen] = useState(depth < 1)
+export function TreeNode({ node, depth, onFileClick, refreshSignal }: TreeNodeProps) {
+  const [isOpen, setIsOpen] = useState(false)
   const [children, setChildren] = useState<FileNode[] | undefined>(undefined)
   const [isLoading, setIsLoading] = useState(false)
+  const mountedRef = useRef(true)
 
-  // Auto-load children for directories that start expanded (depth < 1)
   useEffect(() => {
-    if (node.isDirectory && isOpen && !children) {
-      setIsLoading(true)
+    return () => { mountedRef.current = false }
+  }, [])
+
+  // Watch/unwatch directory when expanded/collapsed
+  useEffect(() => {
+    if (node.isDirectory && isOpen) {
+      window.api.fs.watchDir(node.path)
+      return () => {
+        window.api.fs.unwatchDir(node.path)
+      }
+    }
+  }, [isOpen, node.path, node.isDirectory])
+
+  // Re-fetch children when a change occurs in this directory
+  useEffect(() => {
+    if (refreshSignal.counter > 0 && isOpen && children && refreshSignal.dirPath === node.path) {
       window.api.fs.readDir(node.path).then((loaded) => {
-        setChildren(loaded as FileNode[])
+        if (mountedRef.current) setChildren(loaded as FileNode[])
       }).catch(() => {
-        setChildren([])
-      }).finally(() => {
-        setIsLoading(false)
+        if (mountedRef.current) setChildren([])
       })
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [refreshSignal.counter]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleClick = async () => {
     if (node.isDirectory) {
@@ -44,11 +62,11 @@ export function TreeNode({ node, depth, onFileClick }: TreeNodeProps) {
         setIsLoading(true)
         try {
           const loaded = await window.api.fs.readDir(node.path) as FileNode[]
-          setChildren(loaded)
+          if (mountedRef.current) setChildren(loaded)
         } catch {
-          setChildren([])
+          if (mountedRef.current) setChildren([])
         } finally {
-          setIsLoading(false)
+          if (mountedRef.current) setIsLoading(false)
         }
       }
     } else {
@@ -89,6 +107,7 @@ export function TreeNode({ node, depth, onFileClick }: TreeNodeProps) {
               node={child}
               depth={depth + 1}
               onFileClick={onFileClick}
+              refreshSignal={refreshSignal}
             />
           ))}
         </div>

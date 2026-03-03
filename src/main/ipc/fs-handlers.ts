@@ -7,6 +7,16 @@ let fileWatcher: FileWatcher | null = null
 let fileTreeDB: FileTreeDB | null = null
 let currentRoot: string | null = null
 
+function onFileChange(event: string, filePath: string): void {
+  if (fileTreeDB) {
+    fileTreeDB.invalidatePath(filePath)
+  }
+  const windows = BrowserWindow.getAllWindows()
+  for (const win of windows) {
+    win.webContents.send('fs:file-changed', event, filePath)
+  }
+}
+
 export function registerFsHandlers(): void {
   fileTreeDB = new FileTreeDB()
 
@@ -34,29 +44,33 @@ export function registerFsHandlers(): void {
 
   ipcMain.on('fs:watch-start', (_e, path: string) => {
     if (fileWatcher) {
-      fileWatcher.close()
+      fileWatcher.closeAll()
     }
-    fileWatcher = new FileWatcher(path, (event, filePath) => {
-      // Targeted invalidation: only mark the affected directory as stale
-      if (fileTreeDB) {
-        fileTreeDB.invalidatePath(filePath)
-      }
-      const windows = BrowserWindow.getAllWindows()
-      for (const win of windows) {
-        win.webContents.send('fs:file-changed', event, filePath)
-      }
-    })
+    fileWatcher = new FileWatcher(onFileChange)
+    fileWatcher.watchDir(path)
+  })
+
+  ipcMain.on('fs:watch-dir', (_e, dirPath: string) => {
+    if (fileWatcher) {
+      fileWatcher.watchDir(dirPath)
+    }
+  })
+
+  ipcMain.on('fs:unwatch-dir', (_e, dirPath: string) => {
+    if (fileWatcher) {
+      fileWatcher.unwatchDir(dirPath)
+    }
   })
 
   ipcMain.on('fs:watch-stop', () => {
     if (fileWatcher) {
-      fileWatcher.close()
+      fileWatcher.closeAll()
       fileWatcher = null
     }
   })
 }
 
 export function shutdownFsHandlers(): void {
-  fileWatcher?.close()
+  fileWatcher?.closeAll()
   fileTreeDB?.close()
 }

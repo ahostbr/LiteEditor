@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { RefreshCw, FolderOpen } from 'lucide-react'
-import { TreeNode, type FileNode } from './TreeNode'
+import { TreeNode, type FileNode, type RefreshSignal } from './TreeNode'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUiStore } from '../../stores/ui-store'
 import { useZenStore } from '../../stores/zen-store'
@@ -8,6 +8,7 @@ import { useZenStore } from '../../stores/zen-store'
 export function FileExplorer() {
   const [tree, setTree] = useState<FileNode[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [refreshSignal, setRefreshSignal] = useState<RefreshSignal>({ dirPath: '', counter: 0 })
   const projectRoot = useEditorStore((s) => s.projectRoot)
   const setProjectRoot = useEditorStore((s) => s.setProjectRoot)
   const openFile = useEditorStore((s) => s.openFile)
@@ -32,13 +33,23 @@ export function FileExplorer() {
 
   useEffect(() => {
     if (!projectRoot) return
+    // Only watch the root directory (non-recursive); subdirectories are watched on expand
     window.api.fs.watchStart(projectRoot)
-    const unsub = window.api.fs.onFileChange(() => {
-      // Debounce file change reloads
+    const unsub = window.api.fs.onFileChange((_event, filePath) => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
       debounceRef.current = setTimeout(() => {
-        loadTree()
-      }, 500)
+        // Determine which directory was affected
+        const lastSep = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'))
+        const parentDir = lastSep > 0 ? filePath.substring(0, lastSep) : filePath
+
+        // If the root directory itself changed, re-fetch the root tree
+        if (parentDir === projectRoot) {
+          loadTree()
+        }
+
+        // Signal the affected directory so expanded TreeNodes can refresh
+        setRefreshSignal(prev => ({ dirPath: parentDir, counter: prev.counter + 1 }))
+      }, 300)
     })
     return () => {
       unsub()
@@ -115,6 +126,7 @@ export function FileExplorer() {
             node={node}
             depth={0}
             onFileClick={handleFileClick}
+            refreshSignal={refreshSignal}
           />
         ))}
       </div>
