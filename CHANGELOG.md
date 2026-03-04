@@ -4,6 +4,12 @@ All notable changes to LiteEditor are documented in this file.
 
 ## [Unreleased]
 
+### Performance
+
+- Fixed file watcher consuming 7GB RAM when opening large directories (e.g. `C:\Projects`). Replaced single recursive chokidar watcher with per-directory non-recursive (`depth: 0`) watchers that are created/destroyed as folders are expanded/collapsed.
+- All folders now start collapsed on project load — no automatic expansion or filesystem traversal on startup.
+- File change events now trigger targeted directory refresh instead of reloading the entire file tree.
+
 ### AI Integrations and Native Webviews
 
 - Added embedded Claude Code and Codex webview integrations in LiteEditor panels.
