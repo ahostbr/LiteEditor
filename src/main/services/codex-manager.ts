@@ -34,17 +34,26 @@ export class CodexManager {
 
     let html = srcHtml
       .replace(
+        '<html lang="en">',
+        '<html lang="en" data-codex-window-type="electron">'
+      )
+      .replace(
         '<!-- PROD_BASE_TAG_HERE -->',
         `<base href="file:///${webviewDir}/" />`
       )
       .replace(
         '<!-- PROD_CSP_TAG_HERE -->',
-        `<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' file: data: blob: https:; img-src 'self' file: data: blob: https:; style-src 'self' 'unsafe-inline' file:; script-src 'self' 'unsafe-inline' 'unsafe-eval' file:; connect-src 'self' https: wss:; font-src 'self' file: data:;" />`
+        `<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' file: data: blob: https:; img-src 'self' file: data: blob: https:; style-src 'self' 'unsafe-inline' 'unsafe-eval' file:; connect-src 'self' https: wss:; font-src 'self' file: data:;" />`
       )
       .replace(/\s+crossorigin/g, '')
 
     const cssVars = buildWebviewThemeCss()
-    html = html.replace('</head>', `${cssVars}\n</head>`)
+
+    // Guard: the bundle unconditionally overwrites data-codex-window-type and data-window-type
+    // to "extension" at module init. This MutationObserver reverts them to "electron" immediately.
+    const windowTypeGuard = `<script>(function(){var l=false;new MutationObserver(function(m){if(l)return;for(var i=0;i<m.length;i++){var a=m[i].attributeName;if((a==="data-codex-window-type"||a==="data-window-type")&&document.documentElement.getAttribute(a)!=="electron"){l=true;document.documentElement.setAttribute(a,"electron");l=false}}}).observe(document.documentElement,{attributes:true,attributeFilter:["data-codex-window-type","data-window-type"]})})()</script>`
+
+    html = html.replace('</head>', `${windowTypeGuard}\n${cssVars}\n</head>`)
 
     const htmlPath = join(tmpDir, `codex-webview-${this.toFileSafe(extPath)}.html`)
     writeFileSync(htmlPath, html, 'utf-8')

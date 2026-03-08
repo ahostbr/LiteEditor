@@ -36,6 +36,11 @@ export class CodexBridge {
   private lineBuffer = ''
   private connectedWebContents = new Map<string, WebContents>()
 
+  // Server initialization tracking
+  private initializeResolve: (() => void) | null = null
+  private initializePromise: Promise<void> | null = null
+  private serverInitialized = false
+
   constructor(codexManager: CodexManager) {
     this.codexManager = codexManager
     this.hydrateWorkspaceState()
@@ -139,7 +144,7 @@ export class CodexBridge {
         break
 
       case 'mcp-request':
-        this.handleMcpRequest(wc, message)
+        void this.handleMcpRequest(wc, message)
         break
 
       case 'mcp-response': {
@@ -210,6 +215,54 @@ export class CodexBridge {
         console.log(`[codex-bridge] Worker message: ${msgType}`, message.method || '')
         break
 
+      case 'electron-add-new-workspace-root-option': {
+        const root = this.normalizeRoot(message.root)
+        if (root) {
+          const existingRoots = this.getWorkspaceRoots()
+          const roots = existingRoots.includes(root) ? existingRoots : [root, ...existingRoots]
+          this.applyWorkspaceRoots(roots, this.activeWorkspaceRoot, true)
+        }
+        this.sendToWebview(wc, { type: 'electron-add-new-workspace-root-option-result', success: true })
+        break
+      }
+
+      case 'electron-add-ssh-host':
+        // SSH hosts not supported in LiteEditor
+        break
+
+      case 'electron-app-state-snapshot-request':
+        this.sendToWebview(wc, {
+          type: 'electron-app-state-snapshot-response',
+          state: {}
+        })
+        break
+
+      case 'electron-onboarding-pick-workspace-or-create-default': {
+        const activeRoot = this.activeWorkspaceRoot || this.getWorkspaceRoots()[0] || null
+        this.sendToWebview(wc, {
+          type: 'electron-onboarding-pick-workspace-or-create-default-result',
+          success: true,
+          root: activeRoot
+        })
+        break
+      }
+
+      case 'electron-request-microphone-permission':
+        // Microphone not supported in LiteEditor
+        this.sendToWebview(wc, {
+          type: 'electron-request-microphone-permission-result',
+          granted: false
+        })
+        break
+
+      case 'electron-window-focus-request': {
+        const mainWindow = this.codexManager.getMainWindow(sessionId)
+        if (mainWindow) {
+          mainWindow.focus()
+        }
+        break
+      }
+
       default:
         console.log('[codex-bridge] unhandled:', msgType)
         break
@@ -233,6 +286,16 @@ export class CodexBridge {
       type: 'persisted-atom-sync',
       state: this.persistedAtomState
     })
+
+    // If the server is already initialized, immediately tell this webview
+    // it's connected so the auth flow can proceed.
+    if (this.serverInitialized && this.proc) {
+      this.sendToWebview(wc, {
+        type: 'codex-app-server-connection-changed',
+        hostId: 'local',
+        state: 'connected'
+      })
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -256,6 +319,21 @@ export class CodexBridge {
 
     console.log('[codex-bridge] Starting codex.exe app-server...')
 
+    // Set up initialization tracking: webview MCP requests are queued until
+    // the initialize handshake with codex.exe completes.
+    this.serverInitialized = false
+    this.initializePromise = new Promise<void>((resolve) => {
+      this.initializeResolve = resolve
+    })
+
+    // Auto-resolve initialization after 10s so we never hang forever
+    setTimeout(() => {
+      if (!this.serverInitialized) {
+        console.warn('[codex-bridge] Initialize handshake timed out after 10s, proceeding anyway')
+        this.completeInitialization()
+      }
+    }, 10_000)
+
     this.proc = spawn(codexExe, ['app-server', '--analytics-default-enabled'], {
       stdio: ['pipe', 'pipe', 'pipe'],
       env: { ...process.env, RUST_LOG: 'warn' }
@@ -270,14 +348,27 @@ export class CodexBridge {
     this.proc.on('error', (err) => {
       console.error('[codex-bridge] Process error:', err)
       this.proc = null
+      this.completeInitialization() // Unblock any waiting requests
     })
 
     this.proc.on('exit', (code, signal) => {
       console.log('[codex-bridge] Process exited: code=%s signal=%s', code, signal)
       this.proc = null
+      this.serverInitialized = false
+      this.initializePromise = null
+      this.initializeResolve = null
+
+      // Notify webviews that the server disconnected
+      this.broadcastToWebviews({
+        type: 'codex-app-server-connection-changed',
+        hostId: 'local',
+        state: 'disconnected'
+      })
+
       for (const [id, pendingWc] of this.pendingRequests) {
         this.sendToWebview(pendingWc, {
           type: 'mcp-response',
+          hostId: 'local',
           message: { id, error: { code: -1, message: 'codex.exe process exited' } }
         })
       }
@@ -300,6 +391,27 @@ export class CodexBridge {
         capabilities: { experimentalApi: true }
       }
     })
+  }
+
+  private completeInitialization(): void {
+    if (this.serverInitialized) return
+    this.serverInitialized = true
+
+    if (this.initializeResolve) {
+      this.initializeResolve()
+      this.initializeResolve = null
+    }
+
+    // Tell webviews the app-server is connected -- this is what the real
+    // Codex electron app sends after connecting to codex.exe.  Without it
+    // the AppServerManager stays in 'disconnected' state.
+    this.broadcastToWebviews({
+      type: 'codex-app-server-connection-changed',
+      hostId: 'local',
+      state: 'connected'
+    })
+
+    console.log('[codex-bridge] Server initialized, notified webviews of connected state')
   }
 
   private onStdoutData(chunk: Buffer): void {
@@ -339,10 +451,12 @@ export class CodexBridge {
         if (wc) {
           this.sendToWebview(wc, {
             type: 'mcp-response',
+            hostId: 'local',
             message: { id: msg.id, result: msg.result, error: msg.error }
           })
         } else if (msg.id === 'initialize') {
           console.log('[codex-bridge] Initialize response:', msg.result ? 'success' : 'error')
+          this.completeInitialization()
         }
       }
       return
@@ -351,6 +465,7 @@ export class CodexBridge {
     if (msg.id && msg.method) {
       this.broadcastToWebviews({
         type: 'mcp-request',
+        hostId: 'local',
         request: { id: msg.id, method: msg.method, params: msg.params }
       })
       return
@@ -359,6 +474,7 @@ export class CodexBridge {
     if (msg.method) {
       this.broadcastToWebviews({
         type: 'mcp-notification',
+        hostId: 'local',
         method: msg.method,
         params: msg.params
       })
@@ -386,7 +502,7 @@ export class CodexBridge {
   // MCP request/response (extension host RPC -> codex.exe)
   // ---------------------------------------------------------------------------
 
-  private handleMcpRequest(wc: WebContents, message: any): void {
+  private async handleMcpRequest(wc: WebContents, message: any): Promise<void> {
     const request = message.request
     if (!request?.id || !request?.method) {
       console.log('[codex-bridge] mcp-request missing id/method:', message)
@@ -402,13 +518,44 @@ export class CodexBridge {
     if (!this.proc) {
       this.sendToWebview(wc, {
         type: 'mcp-response',
+        hostId: 'local',
         message: { id, error: { code: -1, message: 'codex.exe server not available' } }
+      })
+      return
+    }
+
+    // Wait for the initialize handshake to complete before forwarding
+    // webview requests, otherwise codex.exe may drop them.
+    if (this.initializePromise) {
+      await this.initializePromise
+    }
+
+    if (!this.proc) {
+      // Process may have exited while we were waiting
+      this.sendToWebview(wc, {
+        type: 'mcp-response',
+        hostId: 'local',
+        message: { id, error: { code: -1, message: 'codex.exe server exited during initialization' } }
       })
       return
     }
 
     this.pendingRequests.set(id, wc)
     this.writeToServer({ id, method, params })
+
+    // Add a safety timeout for each pending request so the webview never hangs
+    // indefinitely waiting for a response from codex.exe.
+    setTimeout(() => {
+      if (this.pendingRequests.has(id)) {
+        console.warn('[codex-bridge] MCP request timed out:', method, id)
+        this.pendingRequests.delete(id)
+        this.sendToWebview(wc, {
+          type: 'mcp-response',
+          hostId: 'local',
+          message: { id, error: { code: -1, message: `Request timed out: ${method}` } }
+        })
+      }
+    }, 30_000)
   }
 
   /**
@@ -483,7 +630,7 @@ export class CodexBridge {
 
     switch (path) {
       case 'extension-info':
-        return { status: 200, body: { version: '0.5.76', name: 'openai.chatgpt' } }
+        return { status: 200, body: { version: '26.5304.20706', name: 'openai.chatgpt' } }
 
       case 'codex-home':
         return { status: 200, body: { codexHome, worktreesSegment: 'worktrees' } }
@@ -1201,6 +1348,13 @@ export class CodexBridge {
       this.proc.kill()
       this.proc = null
     }
+
+    this.serverInitialized = false
+    if (this.initializeResolve) {
+      this.initializeResolve()
+      this.initializeResolve = null
+    }
+    this.initializePromise = null
 
     this.pendingRequests.clear()
     for (const [, cb] of this.rpcCallbacks) {
