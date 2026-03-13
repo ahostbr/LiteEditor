@@ -131,11 +131,15 @@ export function useKeyboardShortcuts() {
         return
       }
 
-      // Ctrl+Shift+B: New browser panel (zen mode only)
+      // Ctrl+Shift+B: New browser panel (zen mode or canvas mode)
       if (ctrl && shift && e.key === 'B') {
         e.preventDefault()
-        if (useUiStore.getState().appMode === 'zen') {
+        const mode = useUiStore.getState().appMode
+        if (mode === 'zen') {
           useZenStore.getState().addBrowserPanel()
+        } else if (mode === 'canvas') {
+          const { useCanvasStore } = require('../stores/canvas-store')
+          useCanvasStore.getState().addPane('browser')
         }
         return
       }

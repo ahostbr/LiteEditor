@@ -13,6 +13,8 @@ import { useUiStore } from './stores/ui-store'
 const TerminalPanel = React.lazy(() => import('./components/terminal/TerminalPanel'))
 // Lazy-load zen mode — only loads when user switches to zen mode
 const ZenArea = React.lazy(() => import('./components/zen-mode/ZenArea'))
+// Lazy-load canvas mode — the new default mode
+const Canvas = React.lazy(() => import('./components/canvas/Canvas'))
 import { useEditorStore } from './stores/editor-store'
 import { useGitStore } from './stores/git-store'
 import { useTerminalStore } from './stores/terminal-store'
@@ -20,7 +22,11 @@ import { useSettingsStore } from './stores/settings-store'
 import { useLayoutStore } from './stores/layout-store'
 import { useZenStore } from './stores/zen-store'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
+import { useCanvasNavigation } from './hooks/useCanvasNavigation'
 import { useWorkspacePersistence } from './hooks/useWorkspacePersistence'
+import { useProjectStore } from './stores/project-store'
+import { ProjectSidebar } from './components/sidebar/ProjectSidebar'
+import { AddPaneMenu } from './components/canvas/AddPaneMenu'
 import { getLanguageFromPath, getLanguageDisplayName } from './lib/language-map'
 import { ConfirmDialog } from './components/shared/ConfirmDialog'
 import { ToastViewport } from './components/shared/ToastViewport'
@@ -98,6 +104,36 @@ function getActiveSelectionText(): string {
 
 async function ensureClaudePanelSession(): Promise<string | null> {
   const ui = useUiStore.getState()
+
+  // If in canvas mode, add a Claude pane to the canvas
+  if (ui.appMode === 'canvas') {
+    const { useCanvasStore } = await import('./stores/canvas-store')
+    const store = useCanvasStore.getState()
+
+    // Check if Claude pane already exists
+    for (const pane of store.panes.values()) {
+      if (pane.type === 'claude' && pane.claudeSessionId) {
+        store.setFocusedPane(pane.id)
+        return pane.claudeSessionId
+      }
+    }
+
+    store.addPane('claude')
+
+    // Wait for the Claude session to be initialized
+    for (let i = 0; i < 80; i++) {
+      for (const pane of useCanvasStore.getState().panes.values()) {
+        if (pane.type === 'claude' && pane.claudeSessionId) {
+          useCanvasStore.getState().setFocusedPane(pane.id)
+          return pane.claudeSessionId
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, 25))
+    }
+    return null
+  }
+
+  // Fall back to zen mode behavior
   if (ui.appMode !== 'zen') {
     ui.setAppMode('zen')
   }
@@ -134,6 +170,8 @@ function SidebarContent() {
   const panel = useUiStore((s) => s.activeSidebarPanel)
 
   switch (panel) {
+    case 'projects':
+      return <ProjectSidebar />
     case 'files':
       return <FileExplorer />
     case 'search':
@@ -143,7 +181,7 @@ function SidebarContent() {
     case 'settings':
       return <SettingsPanel />
     default:
-      return <FileExplorer />
+      return <ProjectSidebar />
   }
 }
 
@@ -184,6 +222,7 @@ function StatusBar() {
 
 export default function App() {
   useKeyboardShortcuts()
+  useCanvasNavigation()
   useWorkspacePersistence()
 
   const sidebarVisible = useUiStore((s) => s.sidebarVisible)
@@ -460,6 +499,13 @@ export default function App() {
     window.api.codex.setProjectRoot(projectRoot ?? null)
   }, [projectRoot])
 
+  // Auto-register project in the project store when projectRoot changes
+  useEffect(() => {
+    if (projectRoot) {
+      useProjectStore.getState().addProject(projectRoot)
+    }
+  }, [projectRoot])
+
   useEffect(() => {
     if (!projectRoot) return
 
@@ -503,7 +549,7 @@ export default function App() {
     <div className="flex flex-col h-screen w-screen overflow-hidden">
       <Titlebar />
       <div className="flex flex-1 overflow-hidden">
-        {(appMode === 'editor' || sidebarVisible) && <ActivityBar />}
+        <ActivityBar />
         {sidebarVisible && (
           <>
             <div
@@ -519,7 +565,11 @@ export default function App() {
           </>
         )}
         <div className="flex-1 overflow-hidden">
-          {appMode === 'zen' ? (
+          {appMode === 'canvas' ? (
+            <Suspense fallback={<div className="h-full" style={{ backgroundColor: 'var(--bg-base)' }} />}>
+              <Canvas />
+            </Suspense>
+          ) : appMode === 'zen' ? (
             <Suspense fallback={<div className="h-full" style={{ backgroundColor: 'var(--bg-base)' }} />}>
               <ZenArea />
             </Suspense>
@@ -546,6 +596,7 @@ export default function App() {
         </div>
       </div>
       <StatusBar />
+      {appMode === 'canvas' && <AddPaneMenu />}
       <ToastViewport />
       <ConfirmDialog />
     </div>

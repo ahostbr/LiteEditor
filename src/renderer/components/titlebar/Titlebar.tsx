@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Minus, Square, X, Copy, PanelLeft, PanelBottom, Terminal, Code, Plus, LayoutGrid, GripVertical, Layers, PanelTop, ChevronDown, FileCode, Monitor, Globe } from 'lucide-react'
+import { Minus, Square, X, Copy, PanelLeft, PanelBottom, Terminal, Code, Plus, LayoutGrid, GripVertical, Layers, PanelTop, ChevronDown, FileCode, Monitor, Globe, Map } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { useUiStore } from '../../stores/ui-store'
 import { useLayoutStore, type LayoutMode, type GridLayout } from '../../stores/layout-store'
@@ -247,8 +247,30 @@ export function Titlebar() {
           </div>
         )}
 
-        {/* Separator between zen controls and panel toggles */}
-        {appMode === 'zen' && <TitlebarSeparator />}
+        {/* Separator between zen/canvas controls and panel toggles */}
+        {(appMode === 'zen' || appMode === 'canvas') && <TitlebarSeparator />}
+
+        {/* Canvas mode controls */}
+        {appMode === 'canvas' && (
+          <div className="flex items-center gap-1 mr-1" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+            <LayoutToggleButton
+              onClick={() => window.dispatchEvent(new CustomEvent('canvas:add-pane-menu'))}
+              active={false}
+              title="Add Pane (Ctrl+Shift+N)"
+            >
+              <Plus size={15} />
+            </LayoutToggleButton>
+            <LayoutToggleButton
+              onClick={() => window.dispatchEvent(new CustomEvent('canvas:toggle-minimap'))}
+              active={false}
+              title="Toggle Minimap (Ctrl+M)"
+            >
+              <Map size={15} />
+            </LayoutToggleButton>
+          </div>
+        )}
+
+        {appMode === 'canvas' && <TitlebarSeparator />}
 
         {/* Panel toggles */}
         <div className="flex items-center gap-1" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
@@ -270,10 +292,15 @@ export function Titlebar() {
           )}
           <LayoutToggleButton
             onClick={toggleAppMode}
-            active={appMode === 'zen'}
-            title={appMode === 'editor' ? 'Enter Zen Mode (Ctrl+Shift+T)' : 'Exit Zen Mode (Ctrl+Shift+T)'}
+            active={appMode === 'canvas'}
+            title={
+              appMode === 'canvas' ? 'Canvas Mode (Ctrl+Shift+T)' :
+              appMode === 'editor' ? 'Switch to Zen (Ctrl+Shift+T)' :
+              'Switch to Canvas (Ctrl+Shift+T)'
+            }
           >
-            {appMode === 'editor' ? <Terminal size={15} /> : <Code size={15} />}
+            {appMode === 'canvas' ? <LayoutGrid size={15} /> :
+             appMode === 'editor' ? <Terminal size={15} /> : <Code size={15} />}
           </LayoutToggleButton>
         </div>
 

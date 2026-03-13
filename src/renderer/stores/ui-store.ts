@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 
-export type SidebarPanel = 'files' | 'search' | 'git' | 'settings'
+export type SidebarPanel = 'projects' | 'files' | 'search' | 'git' | 'settings'
 
-export type AppMode = 'editor' | 'zen'
+export type AppMode = 'canvas' | 'editor' | 'zen'
 
 export interface WorkspaceUIState {
   sidebarVisible: boolean
@@ -33,10 +33,10 @@ interface UiState {
 
 export const useUiStore = create<UiState>((set, get) => ({
   sidebarVisible: true,
-  activeSidebarPanel: 'files',
+  activeSidebarPanel: 'projects',
   sidebarWidth: 260,
   terminalPanelVisible: false,
-  appMode: 'editor',
+  appMode: 'canvas',
   nativeOverlayOpen: false,
 
   toggleSidebar: () => set((s) => ({ sidebarVisible: !s.sidebarVisible })),
@@ -54,7 +54,12 @@ export const useUiStore = create<UiState>((set, get) => ({
   toggleTerminalPanel: () => set((s) => ({ terminalPanelVisible: !s.terminalPanelVisible })),
 
   setAppMode: (mode) => set({ appMode: mode }),
-  toggleAppMode: () => set((s) => ({ appMode: s.appMode === 'editor' ? 'zen' : 'editor' })),
+  toggleAppMode: () => set((s) => {
+    // Cycle: canvas -> editor -> zen -> canvas
+    const modes: AppMode[] = ['canvas', 'editor', 'zen']
+    const idx = modes.indexOf(s.appMode)
+    return { appMode: modes[(idx + 1) % modes.length] }
+  }),
   setNativeOverlayOpen: (open) => set({ nativeOverlayOpen: open }),
 
   getUIState: (): WorkspaceUIState => {
