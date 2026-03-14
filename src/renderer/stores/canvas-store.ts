@@ -14,6 +14,9 @@ export interface CanvasPaneState {
   title: string
   // Terminal panes
   terminalSessionId?: string
+  terminalSessionIds?: string[]
+  terminalTabNames?: string[]
+  activeTerminalIndex?: number
   // Editor panes
   filePath?: string
   isDirty?: boolean
@@ -117,13 +120,17 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       }
     }
 
+    // Per-type default dimensions
+    const defaultWidth = options.width ?? getDefaultWidth(type)
+    const defaultHeight = options.height ?? getDefaultHeight(type)
+
     const newPane: CanvasPaneState = {
       id,
       type,
       x,
       y,
-      width: options.width ?? DEFAULT_PANE_WIDTH,
-      height: options.height ?? DEFAULT_PANE_HEIGHT,
+      width: defaultWidth,
+      height: defaultHeight,
       layoutMode: options.layoutMode ?? 'single',
       title: options.title ?? getDefaultTitle(type),
       terminalSessionId: options.terminalSessionId,
@@ -269,6 +276,23 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     set(update)
   }
 }))
+
+function getDefaultWidth(type: CanvasPaneType): number {
+  switch (type) {
+    case 'codex': return 1100
+    case 'claude': return 900
+    case 'browser': return 1000
+    default: return DEFAULT_PANE_WIDTH
+  }
+}
+
+function getDefaultHeight(type: CanvasPaneType): number {
+  switch (type) {
+    case 'codex': return 700
+    case 'claude': return 700
+    default: return DEFAULT_PANE_HEIGHT
+  }
+}
 
 function getDefaultTitle(type: CanvasPaneType): string {
   switch (type) {

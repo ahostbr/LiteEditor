@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useZenStore } from '../../stores/zen-store'
 import { useUiStore } from '../../stores/ui-store'
+import { clipToCanvasContainer } from '../../lib/clip-native-bounds'
 
 function toNativeBounds(rect: DOMRect | { x: number; y: number; width: number; height: number }) {
   return {
@@ -89,12 +90,14 @@ export function ClaudePanel({ panelId, visible = true }: ClaudePanelProps) {
   }, [])
 
   // rAF bounds tracking — handles drag, resize, splitter, and window moves
+  // Clips to canvas container so native views don't overflow the viewport
   useEffect(() => {
     let rafId: number | null = null
     let lastX = 0
     let lastY = 0
     let lastW = 0
     let lastH = 0
+    let lastVisible = true
 
     function tick() {
       const sid = sessionIdRef.current
@@ -104,22 +107,30 @@ export function ClaudePanel({ panelId, visible = true }: ClaudePanelProps) {
       }
 
       const rect = containerRef.current.getBoundingClientRect()
-      const bounds = toNativeBounds(rect)
-      const x = bounds.x
-      const y = bounds.y
-      const w = bounds.width
-      const h = bounds.height
+      const clipped = clipToCanvasContainer(rect)
 
+      if (!clipped.visible) {
+        if (lastVisible) {
+          lastVisible = false
+          window.api.claude.hideView(sid)
+        }
+        rafId = requestAnimationFrame(tick)
+        return
+      }
+
+      if (!lastVisible) {
+        lastVisible = true
+        window.api.claude.showView(sid)
+      }
+
+      const { x, y, width: w, height: h } = clipped
       if (x !== lastX || y !== lastY || w !== lastW || h !== lastH) {
         lastX = x
         lastY = y
         lastW = w
         lastH = h
         window.api.claude.setBounds(sid, {
-          x,
-          y,
-          width: w,
-          height: h,
+          x, y, width: w, height: h,
           viewportWidth: window.innerWidth,
           viewportHeight: window.innerHeight
         })

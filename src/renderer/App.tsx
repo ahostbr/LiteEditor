@@ -21,6 +21,7 @@ import { useTerminalStore } from './stores/terminal-store'
 import { useSettingsStore } from './stores/settings-store'
 import { useLayoutStore } from './stores/layout-store'
 import { useZenStore } from './stores/zen-store'
+import { useCanvasStore } from './stores/canvas-store'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useCanvasNavigation } from './hooks/useCanvasNavigation'
 import { useWorkspacePersistence } from './hooks/useWorkspacePersistence'
@@ -187,12 +188,19 @@ function SidebarContent() {
 
 function StatusBar() {
   const currentBranch = useGitStore((s) => s.currentBranch)
+  const appMode = useUiStore((s) => s.appMode)
   const panes = useEditorStore((s) => s.panes)
   const activePaneIndex = useEditorStore((s) => s.activePaneIndex)
+  const canvasPanes = useCanvasStore((s) => s.panes)
+  const canvasZoom = useCanvasStore((s) => s.zoom)
+  const focusedPaneId = useCanvasStore((s) => s.focusedPaneId)
 
   const activePane = panes[activePaneIndex]
   const activeTab = activePane?.tabs[activePane?.activeTabIndex]
   const language = activeTab?.path ? getLanguageDisplayName(getLanguageFromPath(activeTab.path)) : null
+
+  const focusedCanvasPane = focusedPaneId ? canvasPanes.get(focusedPaneId) : null
+  const activeProject = useProjectStore.getState().getActiveProject()
 
   return (
     <div
@@ -210,11 +218,26 @@ function StatusBar() {
             {currentBranch.name}
           </span>
         )}
+        {appMode === 'canvas' && activeProject && (
+          <span style={{ color: 'var(--text-secondary)' }}>{activeProject.name}</span>
+        )}
       </div>
       <div className="flex items-center gap-3">
-        {language && <span>{language}</span>}
-        <span>UTF-8</span>
-        <span>Spaces: 2</span>
+        {appMode === 'canvas' ? (
+          <>
+            {focusedCanvasPane && (
+              <span style={{ color: 'var(--text-secondary)' }}>{focusedCanvasPane.title}</span>
+            )}
+            <span>{canvasPanes.size} pane{canvasPanes.size !== 1 ? 's' : ''}</span>
+            {canvasZoom !== 1 && <span>{Math.round(canvasZoom * 100)}%</span>}
+          </>
+        ) : (
+          <>
+            {language && <span>{language}</span>}
+            <span>UTF-8</span>
+            <span>Spaces: 2</span>
+          </>
+        )}
       </div>
     </div>
   )

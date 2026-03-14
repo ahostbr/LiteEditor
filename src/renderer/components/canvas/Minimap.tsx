@@ -28,6 +28,7 @@ export function Minimap({ containerRef }: MinimapProps) {
   const panes = useCanvasStore((s) => s.panes)
   const viewportX = useCanvasStore((s) => s.viewportX)
   const viewportY = useCanvasStore((s) => s.viewportY)
+  const zoom = useCanvasStore((s) => s.zoom)
   const isDragging = useRef(false)
 
   // Convert Map to array reactively
@@ -53,8 +54,11 @@ export function Minimap({ containerRef }: MinimapProps) {
 
   // Add padding around the content area + viewport
   const container = containerRef.current
-  const vw = container?.clientWidth || 800
-  const vh = container?.clientHeight || 600
+  const screenW = container?.clientWidth || 800
+  const screenH = container?.clientHeight || 600
+  // Visible area in canvas space (accounts for zoom)
+  const vw = screenW / zoom
+  const vh = screenH / zoom
 
   // Include viewport in the bounds calculation so the viewport rect is always visible
   minX = Math.min(minX, viewportX) - PADDING

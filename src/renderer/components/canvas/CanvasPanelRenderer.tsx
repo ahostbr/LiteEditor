@@ -30,6 +30,8 @@ export function CanvasPanelRenderer({ pane, isFocused }: CanvasPanelRendererProp
         useTerminalStore.getState().createSession(sessionId, undefined, cwd)
         useCanvasStore.getState().updatePane(pane.id, {
           terminalSessionId: sessionId,
+          terminalSessionIds: [sessionId],
+          activeTerminalIndex: 0,
           title: `Terminal`
         })
       }).catch((err: unknown) => {
@@ -46,7 +48,11 @@ export function CanvasPanelRenderer({ pane, isFocused }: CanvasPanelRendererProp
         </div>
       )
     }
-    return <TerminalInstance sessionId={pane.terminalSessionId} />
+    // Render the active terminal session (supports multi-tab)
+    const sessions = pane.terminalSessionIds || [pane.terminalSessionId]
+    const activeIndex = pane.activeTerminalIndex ?? 0
+    const activeSessionId = sessions[activeIndex] || pane.terminalSessionId
+    return <TerminalInstance sessionId={activeSessionId} />
   }
 
   if (pane.type === 'editor' && pane.filePath) {

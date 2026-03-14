@@ -28,11 +28,12 @@ export function CanvasPane({ pane, isFocused, viewportX, viewportY, containerRef
     setFocusedPane(pane.id)
   }, [pane.id, setFocusedPane])
 
-  // --- Drag to move ---
+  // --- Drag to move (accounts for zoom) ---
   const handleDragStart = useCallback((e: React.PointerEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setIsDragging(true)
+    setFocusedPane(pane.id)
     dragStartRef.current = {
       x: e.clientX,
       y: e.clientY,
@@ -41,8 +42,9 @@ export function CanvasPane({ pane, isFocused, viewportX, viewportY, containerRef
     }
 
     const handleMove = (ev: PointerEvent) => {
-      const dx = ev.clientX - dragStartRef.current.x
-      const dy = ev.clientY - dragStartRef.current.y
+      const zoom = useCanvasStore.getState().zoom
+      const dx = (ev.clientX - dragStartRef.current.x) / zoom
+      const dy = (ev.clientY - dragStartRef.current.y) / zoom
       movePane(pane.id, dragStartRef.current.paneX + dx, dragStartRef.current.paneY + dy)
     }
 
@@ -62,9 +64,9 @@ export function CanvasPane({ pane, isFocused, viewportX, viewportY, containerRef
 
     window.addEventListener('pointermove', handleMove)
     window.addEventListener('pointerup', handleUp)
-  }, [pane.id, pane.x, pane.y, movePane])
+  }, [pane.id, pane.x, pane.y, movePane, setFocusedPane])
 
-  // --- Resize ---
+  // --- Resize (accounts for zoom) ---
   const handleResizeStart = useCallback((e: React.PointerEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -77,8 +79,9 @@ export function CanvasPane({ pane, isFocused, viewportX, viewportY, containerRef
     }
 
     const handleMove = (ev: PointerEvent) => {
-      const dx = ev.clientX - resizeStartRef.current.x
-      const dy = ev.clientY - resizeStartRef.current.y
+      const zoom = useCanvasStore.getState().zoom
+      const dx = (ev.clientX - resizeStartRef.current.x) / zoom
+      const dy = (ev.clientY - resizeStartRef.current.y) / zoom
       resizePane(
         pane.id,
         Math.max(MIN_WIDTH, resizeStartRef.current.width + dx),
