@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { useEditorStore } from '../stores/editor-store'
-import { useUiStore } from '../stores/ui-store'
+import { useCanvasStore } from '../stores/canvas-store'
+import { useWorkspaceStore } from '../stores/workspace-store'
 
 const DEBOUNCE_MS = 1000
 
@@ -9,15 +9,10 @@ export function useWorkspacePersistence() {
 
   useEffect(() => {
     function save() {
-      const projectRoot = useEditorStore.getState().projectRoot
-      if (!projectRoot) return
+      const { activeWorkspaceId, activeProjectId } = useWorkspaceStore.getState()
+      if (!activeWorkspaceId || !activeProjectId) return
 
-      const editorState = useEditorStore.getState().getWorkspaceState()
-      const uiState = useUiStore.getState().getUIState()
-
-      const workspace = { editor: editorState, ui: uiState }
-
-      window.api.workspace.saveState(projectRoot, JSON.stringify(workspace, null, 2)).catch(() => {})
+      useWorkspaceStore.getState().saveCurrentWorkspace().catch(() => {})
     }
 
     function debouncedSave() {
@@ -25,15 +20,11 @@ export function useWorkspacePersistence() {
       timerRef.current = setTimeout(save, DEBOUNCE_MS)
     }
 
-    // Subscribe to editor store changes (tabs, panes, cursor, scroll)
-    const unsubEditor = useEditorStore.subscribe(debouncedSave)
-
-    // Subscribe to UI store changes (sidebar, terminal, app mode)
-    const unsubUI = useUiStore.subscribe(debouncedSave)
+    // Subscribe to canvas store changes (pane positions, viewport, zoom)
+    const unsubCanvas = useCanvasStore.subscribe(debouncedSave)
 
     return () => {
-      unsubEditor()
-      unsubUI()
+      unsubCanvas()
       if (timerRef.current) clearTimeout(timerRef.current)
     }
   }, [])

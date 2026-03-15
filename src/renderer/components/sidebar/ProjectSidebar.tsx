@@ -1,14 +1,27 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Plus, FolderOpen } from 'lucide-react'
-import { useProjectStore } from '../../stores/project-store'
+import { useProjectStore, type ProjectState } from '../../stores/project-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { ProjectEntry } from './ProjectEntry'
+import { WorkspaceCreateDialog } from './WorkspaceCreateDialog'
+import { ProjectSettingsDialog } from './ProjectSettingsDialog'
 
 export function ProjectSidebar() {
   const projects = useProjectStore((s) => s.projects)
   const activeProjectId = useProjectStore((s) => s.activeProjectId)
+  const loaded = useProjectStore((s) => s.loaded)
   const addProject = useProjectStore((s) => s.addProject)
   const setActiveProject = useProjectStore((s) => s.setActiveProject)
+  const loadFromDisk = useProjectStore((s) => s.loadFromDisk)
+  const [createDialogProjectId, setCreateDialogProjectId] = useState<string | null>(null)
+  const [settingsProject, setSettingsProject] = useState<ProjectState | null>(null)
+
+  // Load projects from disk on mount
+  useEffect(() => {
+    if (!loaded) {
+      loadFromDisk()
+    }
+  }, [loaded, loadFromDisk])
 
   // Sort: pinned first, then by last activity
   const sortedProjects = [...projects].sort((a, b) => {
@@ -21,8 +34,7 @@ export function ProjectSidebar() {
     try {
       const path = await window.api.dialog.openFolder()
       if (path) {
-        const id = addProject(path)
-        // Also set as project root for file explorer / git
+        await addProject(path)
         useEditorStore.getState().setProjectRoot(path)
       }
     } catch { /* ignore */ }
@@ -66,6 +78,8 @@ export function ProjectSidebar() {
             project={project}
             isActive={project.id === activeProjectId}
             onSelect={() => handleSelectProject(project.id)}
+            onCreateWorkspace={() => setCreateDialogProjectId(project.id)}
+            onOpenSettings={() => setSettingsProject(project)}
           />
         ))}
 
@@ -80,6 +94,22 @@ export function ProjectSidebar() {
           </button>
         )}
       </div>
+
+      {/* Workspace create dialog */}
+      {createDialogProjectId && (
+        <WorkspaceCreateDialog
+          projectId={createDialogProjectId}
+          onClose={() => setCreateDialogProjectId(null)}
+        />
+      )}
+
+      {/* Project settings dialog */}
+      {settingsProject && (
+        <ProjectSettingsDialog
+          project={settingsProject}
+          onClose={() => setSettingsProject(null)}
+        />
+      )}
     </div>
   )
 }

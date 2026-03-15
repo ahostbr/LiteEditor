@@ -115,11 +115,13 @@ export function useKeyboardShortcuts() {
         setActiveSidebarPanel('search')
       }
 
-      // Ctrl+Shift+O: Open folder
+      // Ctrl+Shift+O: Open folder → register as project
       if (ctrl && shift && e.key === 'O') {
         e.preventDefault()
         const path = await window.api.dialog.openFolder()
         if (path) {
+          const { useProjectStore } = await import('../stores/project-store')
+          await useProjectStore.getState().addProject(path)
           setProjectRoot(path)
         }
       }

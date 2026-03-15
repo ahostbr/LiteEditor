@@ -90,4 +90,21 @@ export function registerGitHandlers(): void {
   ipcMain.handle('git:discard-changes', async (_e, path: string) => {
     return getGit().discardChanges(path)
   })
+
+  // Worktree operations
+  ipcMain.handle('git:worktree-list', async () => {
+    return getGit().worktreeList()
+  })
+
+  ipcMain.handle('git:worktree-add', async (_e, path: string, branch: string, createBranch: boolean) => {
+    return getGit().worktreeAdd(path, branch, createBranch)
+  })
+
+  ipcMain.handle('git:worktree-remove', async (_e, path: string) => {
+    return getGit().worktreeRemove(path)
+  })
+
+  ipcMain.handle('git:branch-list', async () => {
+    return getGit().branchList()
+  })
 }

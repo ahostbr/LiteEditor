@@ -145,4 +145,52 @@ export class GitService {
   async discardChanges(path: string): Promise<void> {
     await this.git.checkout(['--', path])
   }
+
+  // --- Worktree operations ---
+
+  async worktreeList(): Promise<Array<{ path: string; branch: string; head: string; bare: boolean }>> {
+    const result = await this.git.raw(['worktree', 'list', '--porcelain'])
+    const worktrees: Array<{ path: string; branch: string; head: string; bare: boolean }> = []
+    let current: { path: string; branch: string; head: string; bare: boolean } | null = null
+
+    for (const line of result.split('\n')) {
+      if (line.startsWith('worktree ')) {
+        if (current) worktrees.push(current)
+        current = { path: line.slice(9), branch: '', head: '', bare: false }
+      } else if (line.startsWith('HEAD ') && current) {
+        current.head = line.slice(5)
+      } else if (line.startsWith('branch ') && current) {
+        current.branch = line.slice(7).replace('refs/heads/', '')
+      } else if (line === 'bare' && current) {
+        current.bare = true
+      } else if (line === '' && current) {
+        worktrees.push(current)
+        current = null
+      }
+    }
+    if (current) worktrees.push(current)
+    return worktrees
+  }
+
+  async worktreeAdd(path: string, branch: string, createBranch: boolean): Promise<void> {
+    const args = ['worktree', 'add']
+    if (createBranch) {
+      args.push('-b', branch, path)
+    } else {
+      args.push(path, branch)
+    }
+    await this.git.raw(args)
+  }
+
+  async worktreeRemove(path: string): Promise<void> {
+    await this.git.raw(['worktree', 'remove', path, '--force'])
+  }
+
+  async branchList(): Promise<Array<{ name: string; isRemote: boolean }>> {
+    const result = await this.git.branch(['-a'])
+    return Object.values(result.branches).map((b) => ({
+      name: b.name,
+      isRemote: b.name.startsWith('remotes/')
+    }))
+  }
 }

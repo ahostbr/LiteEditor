@@ -11,7 +11,8 @@ export const DEFAULT_SETTINGS = {
   autoSave: 'off' as const,
   autoSaveDelay: 1000,
   defaultTerminalCwd: '',
-  zenEditorMode: 'separate' as const
+  zenEditorMode: 'separate' as const,
+  autoLoadLastProject: false
 }
 
 export const KEYBOARD_SHORTCUTS = {

@@ -83,7 +83,11 @@ function useMenuActions(onShowAbout: () => void) {
 
   const openFolder = useCallback(async () => {
     const path = await window.api.dialog.openFolder()
-    if (path) setProjectRoot(path)
+    if (path) {
+      const { useProjectStore } = await import('../../stores/project-store')
+      await useProjectStore.getState().addProject(path)
+      setProjectRoot(path)
+    }
   }, [setProjectRoot])
 
   const menus: MenuDefinition[] = [

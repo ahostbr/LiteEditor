@@ -10,6 +10,8 @@ import { registerBrowserHandlers, shutdownBrowserHandlers, browserManager } from
 import { registerClaudeHandlers, shutdownClaudeHandlers } from './ipc/claude-handlers'
 import { registerCodexHandlers, shutdownCodexHandlers } from './ipc/codex-handlers'
 import { registerWorkspaceHandlers } from './ipc/workspace-handlers'
+import { registerProjectHandlers } from './ipc/project-handlers'
+import { registerWorkspaceCrudHandlers } from './ipc/workspace-crud-handlers'
 import { registerIntegrationsHandlers, shutdownIntegrationsHandlers } from './ipc/integrations-handlers'
 import { AgentBridge } from './services/agent-bridge'
 
@@ -313,6 +315,8 @@ function createWindow(): void {
   })
 
   // Register IPC handler modules
+  try { registerProjectHandlers() } catch (e) { console.error('Failed to register project handlers:', e) }
+  try { registerWorkspaceCrudHandlers() } catch (e) { console.error('Failed to register workspace CRUD handlers:', e) }
   try { registerWorkspaceHandlers() } catch (e) { console.error('Failed to register workspace handlers:', e) }
   try { registerFsHandlers() } catch (e) { console.error('Failed to register fs handlers:', e) }
   try { registerGitHandlers() } catch (e) { console.error('Failed to register git handlers:', e) }

@@ -32,6 +32,8 @@ export interface CanvasPaneState {
   notificationCount?: number
   // Minimized state
   minimized?: boolean
+  // Workspace ownership
+  workspaceId?: string
 }
 
 interface CanvasState {
@@ -67,9 +69,15 @@ interface CanvasState {
   // Find nearest pane in a direction from focused
   findNearestPane: (direction: 'left' | 'right' | 'up' | 'down') => string | null
 
+  // Workspace-aware queries
+  getVisiblePanes: (activeWorkspaceId: string | null) => CanvasPaneState[]
+  getHiddenTerminalPanes: (activeWorkspaceId: string | null) => CanvasPaneState[]
+  tagPanesWithWorkspace: (workspaceId: string) => void
+
   // Bulk operations
   setPanes: (panes: Map<string, CanvasPaneState>) => void
   clearPanes: () => void
+  clearWorkspacePanes: (workspaceId: string, keepTerminals?: boolean) => void
   setViewport: (x: number, y: number, zoom?: number) => void
 }
 
@@ -266,9 +274,51 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     return best?.id ?? null
   },
 
+  getVisiblePanes: (activeWorkspaceId) => {
+    const panes = Array.from(get().panes.values())
+    if (!activeWorkspaceId) return panes
+    return panes.filter((p) => !p.workspaceId || p.workspaceId === activeWorkspaceId)
+  },
+
+  getHiddenTerminalPanes: (activeWorkspaceId) => {
+    if (!activeWorkspaceId) return []
+    const panes = Array.from(get().panes.values())
+    return panes.filter(
+      (p) => p.type === 'terminal' && p.workspaceId && p.workspaceId !== activeWorkspaceId
+    )
+  },
+
+  tagPanesWithWorkspace: (workspaceId) => {
+    const newPanes = new Map<string, CanvasPaneState>()
+    for (const [id, pane] of get().panes) {
+      if (!pane.workspaceId) {
+        newPanes.set(id, { ...pane, workspaceId })
+      } else {
+        newPanes.set(id, pane)
+      }
+    }
+    set({ panes: newPanes })
+  },
+
   setPanes: (panes) => set({ panes }),
 
   clearPanes: () => set({ panes: new Map(), focusedPaneId: null }),
+
+  clearWorkspacePanes: (workspaceId, keepTerminals = false) => {
+    const newPanes = new Map<string, CanvasPaneState>()
+    for (const [id, pane] of get().panes) {
+      // Keep panes from other workspaces
+      if (pane.workspaceId !== workspaceId) {
+        newPanes.set(id, pane)
+        continue
+      }
+      // Optionally keep terminal panes (for CSS-hidden persistence)
+      if (keepTerminals && pane.type === 'terminal') {
+        newPanes.set(id, pane)
+      }
+    }
+    set({ panes: newPanes, focusedPaneId: null })
+  },
 
   setViewport: (x, y, zoom) => {
     const update: Partial<CanvasState> = { viewportX: x, viewportY: y }

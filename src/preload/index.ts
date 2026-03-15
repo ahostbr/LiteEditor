@@ -127,7 +127,15 @@ const api = {
     getFileAtRevision: (path: string, rev: string): Promise<string> =>
       ipcRenderer.invoke('git:file-at-revision', path, rev),
     discardChanges: (path: string): Promise<void> =>
-      ipcRenderer.invoke('git:discard-changes', path)
+      ipcRenderer.invoke('git:discard-changes', path),
+    worktreeList: (): Promise<unknown[]> =>
+      ipcRenderer.invoke('git:worktree-list'),
+    worktreeAdd: (path: string, branch: string, createBranch: boolean): Promise<void> =>
+      ipcRenderer.invoke('git:worktree-add', path, branch, createBranch),
+    worktreeRemove: (path: string): Promise<void> =>
+      ipcRenderer.invoke('git:worktree-remove', path),
+    branchList: (): Promise<unknown[]> =>
+      ipcRenderer.invoke('git:branch-list')
   },
 
   pty: {
@@ -306,6 +314,34 @@ const api = {
       ipcRenderer.on('integrations:progress', handler)
       return () => ipcRenderer.removeListener('integrations:progress', handler)
     }
+  },
+
+  project: {
+    list: (): Promise<unknown[]> =>
+      ipcRenderer.invoke('project:list'),
+    add: (rootPath: string, name?: string): Promise<unknown> =>
+      ipcRenderer.invoke('project:add', rootPath, name),
+    remove: (id: string): Promise<void> =>
+      ipcRenderer.invoke('project:remove', id),
+    update: (id: string, updates: Record<string, unknown>): Promise<unknown> =>
+      ipcRenderer.invoke('project:update', id, updates),
+    get: (id: string): Promise<unknown> =>
+      ipcRenderer.invoke('project:get', id)
+  },
+
+  workspaces: {
+    list: (projectId: string): Promise<unknown[]> =>
+      ipcRenderer.invoke('workspaces:list', projectId),
+    load: (projectId: string, workspaceId: string): Promise<unknown> =>
+      ipcRenderer.invoke('workspaces:load', projectId, workspaceId),
+    save: (projectId: string, workspace: string): Promise<void> =>
+      ipcRenderer.invoke('workspaces:save', projectId, workspace),
+    create: (projectId: string, name: string, type?: string, branch?: string, worktreePath?: string): Promise<unknown> =>
+      ipcRenderer.invoke('workspaces:create', projectId, name, type, branch, worktreePath),
+    delete: (projectId: string, workspaceId: string): Promise<void> =>
+      ipcRenderer.invoke('workspaces:delete', projectId, workspaceId),
+    rename: (projectId: string, workspaceId: string, name: string): Promise<unknown> =>
+      ipcRenderer.invoke('workspaces:rename', projectId, workspaceId, name)
   },
 
   workspace: {

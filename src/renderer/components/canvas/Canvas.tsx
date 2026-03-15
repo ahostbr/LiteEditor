@@ -1,5 +1,6 @@
-import { useEffect, useRef, useCallback, useState } from 'react'
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react'
 import { useCanvasStore } from '../../stores/canvas-store'
+import { useWorkspaceStore } from '../../stores/workspace-store'
 import { useCanvasViewport } from './CanvasViewport'
 import { CanvasPane } from './CanvasPane'
 import { Minimap } from './Minimap'
@@ -12,11 +13,22 @@ export function Canvas() {
   const zoom = useCanvasStore((s) => s.zoom)
   const focusedPaneId = useCanvasStore((s) => s.focusedPaneId)
   const setFocusedPane = useCanvasStore((s) => s.setFocusedPane)
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId)
   const containerRef = useRef<HTMLDivElement>(null)
   const { handleWheel, grabbing } = useCanvasViewport()
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
 
-  const paneArray = Array.from(panes.values())
+  // Active workspace panes (visible)
+  const visiblePanes = useMemo(
+    () => useCanvasStore.getState().getVisiblePanes(activeWorkspaceId),
+    [panes, activeWorkspaceId]
+  )
+  // Hidden terminal panes from other workspaces (kept mounted for PTY persistence)
+  const hiddenTerminalPanes = useMemo(
+    () => useCanvasStore.getState().getHiddenTerminalPanes(activeWorkspaceId),
+    [panes, activeWorkspaceId]
+  )
+  const paneArray = visiblePanes
 
   // Click on empty canvas space deselects focused pane
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
@@ -74,6 +86,18 @@ export function Canvas() {
             viewportY={viewportY}
             containerRef={containerRef}
           />
+        ))}
+        {/* Hidden terminal panes from inactive workspaces — CSS hidden, PTY stays alive */}
+        {hiddenTerminalPanes.map((pane) => (
+          <div key={pane.id} style={{ display: 'none' }}>
+            <CanvasPane
+              pane={pane}
+              isFocused={false}
+              viewportX={viewportX}
+              viewportY={viewportY}
+              containerRef={containerRef}
+            />
+          </div>
         ))}
       </div>
 

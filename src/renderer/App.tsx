@@ -254,11 +254,14 @@ export default function App() {
   const prevProjectRootRef = useRef<string | null>(null)
   const prevAppModeRef = useRef(appMode)
 
-  // Initial load: settings, layout, global workspace, then project workspace
+  // Initial load: settings, layout, projects, then workspace
   useEffect(() => {
     async function init() {
       await useSettingsStore.getState().loadSettings()
       useLayoutStore.getState().loadLayout()
+
+      // Load project registry from disk
+      await useProjectStore.getState().loadFromDisk()
 
       // Restore last workspace (global — projectRoot + zoomLevel)
       const data = await window.api.workspace.load() as Record<string, unknown> | null
@@ -267,12 +270,21 @@ export default function App() {
           window.api.window.setZoomLevel(data.zoomLevel)
         }
         if (data.projectRoot && typeof data.projectRoot === 'string') {
-          useEditorStore.getState().setProjectRoot(data.projectRoot)
+          // Register as project if not already known
+          const projects = useProjectStore.getState().projects
+          const existing = projects.find((p) => p.rootPath === data.projectRoot)
+          if (!existing) {
+            await useProjectStore.getState().addProject(data.projectRoot as string)
+          } else {
+            useProjectStore.getState().setActiveProject(existing.id)
+          }
+
+          useEditorStore.getState().setProjectRoot(data.projectRoot as string)
           // Load per-project workspace state
-          await loadWorkspaceForProject(data.projectRoot)
+          await loadWorkspaceForProject(data.projectRoot as string)
           // Load per-project settings overlay
-          await useSettingsStore.getState().loadWorkspaceSettings(data.projectRoot)
-          prevProjectRootRef.current = data.projectRoot
+          await useSettingsStore.getState().loadWorkspaceSettings(data.projectRoot as string)
+          prevProjectRootRef.current = data.projectRoot as string
         }
       }
 
