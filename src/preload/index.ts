@@ -332,7 +332,9 @@ const api = {
     update: (id: string, updates: Record<string, unknown>): Promise<unknown> =>
       ipcRenderer.invoke('project:update', id, updates),
     get: (id: string): Promise<unknown> =>
-      ipcRenderer.invoke('project:get', id)
+      ipcRenderer.invoke('project:get', id),
+    detectScripts: (rootPath: string): Promise<unknown[]> =>
+      ipcRenderer.invoke('project:detect-scripts', rootPath)
   },
 
   workspaces: {

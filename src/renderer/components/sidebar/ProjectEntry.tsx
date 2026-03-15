@@ -4,6 +4,7 @@ import { useProjectStore, type ProjectState, type AgentStatus } from '../../stor
 import { useWorkspaceStore, type Workspace } from '../../stores/workspace-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { WorkspaceEntry } from './WorkspaceEntry'
+import { ScriptsSection } from './ScriptsSection'
 import { cn } from '../../lib/cn'
 
 interface ProjectEntryProps {
@@ -221,6 +222,9 @@ export function ProjectEntry({ project, isActive, onSelect, onCreateWorkspace, o
               projectRootPath={project.rootPath}
             />
           ))}
+
+          {/* Scripts section */}
+          <ScriptsSection projectRootPath={project.rootPath} />
 
           {/* Add workspace button */}
           <button

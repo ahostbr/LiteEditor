@@ -126,6 +126,14 @@ export function useKeyboardShortcuts() {
         }
       }
 
+      // Ctrl+Shift+L: Toggle column layout
+      if (ctrl && shift && e.key === 'L') {
+        e.preventDefault()
+        const { useCanvasStore } = await import('../stores/canvas-store')
+        useCanvasStore.getState().toggleLayoutMode()
+        return
+      }
+
       // Ctrl+Shift+T: Toggle zen mode
       if (ctrl && shift && e.key === 'T') {
         e.preventDefault()

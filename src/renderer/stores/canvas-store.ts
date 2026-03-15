@@ -34,7 +34,11 @@ export interface CanvasPaneState {
   minimized?: boolean
   // Workspace ownership
   workspaceId?: string
+  // Pane linking
+  linkedPaneId?: string
 }
+
+export type CanvasLayoutMode = 'freeform' | 'columns'
 
 interface CanvasState {
   panes: Map<string, CanvasPaneState>
@@ -42,6 +46,7 @@ interface CanvasState {
   viewportY: number
   focusedPaneId: string | null
   zoom: number
+  layoutMode: CanvasLayoutMode
 
   // Pane CRUD
   addPane: (type: CanvasPaneType, options?: Partial<CanvasPaneState>) => string
@@ -74,6 +79,15 @@ interface CanvasState {
   getHiddenTerminalPanes: (activeWorkspaceId: string | null) => CanvasPaneState[]
   tagPanesWithWorkspace: (workspaceId: string) => void
 
+  // Pane linking
+  linkPanes: (paneId: string, targetPaneId: string) => void
+  unlinkPane: (paneId: string) => void
+  openTerminalForEditor: (editorPaneId: string) => string | null
+
+  // Layout mode
+  toggleLayoutMode: () => void
+  autoArrangeColumns: () => void
+
   // Bulk operations
   setPanes: (panes: Map<string, CanvasPaneState>) => void
   clearPanes: () => void
@@ -98,6 +112,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   viewportY: 0,
   focusedPaneId: null,
   zoom: 1,
+  layoutMode: 'freeform' as CanvasLayoutMode,
 
   addPane: (type, options = {}) => {
     const state = get()
@@ -272,6 +287,110 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     }
 
     return best?.id ?? null
+  },
+
+  linkPanes: (paneId, targetPaneId) => {
+    const newPanes = new Map(get().panes)
+    const pane = newPanes.get(paneId)
+    if (pane) {
+      newPanes.set(paneId, { ...pane, linkedPaneId: targetPaneId })
+    }
+    set({ panes: newPanes })
+  },
+
+  unlinkPane: (paneId) => {
+    const newPanes = new Map(get().panes)
+    const pane = newPanes.get(paneId)
+    if (pane) {
+      const { linkedPaneId: _, ...rest } = pane
+      newPanes.set(paneId, rest as CanvasPaneState)
+    }
+    // Also unlink any pane that links to this one
+    for (const [id, p] of newPanes) {
+      if (p.linkedPaneId === paneId) {
+        const { linkedPaneId: _, ...rest } = p
+        newPanes.set(id, rest as CanvasPaneState)
+      }
+    }
+    set({ panes: newPanes })
+  },
+
+  openTerminalForEditor: (editorPaneId) => {
+    const editorPane = get().panes.get(editorPaneId)
+    if (!editorPane || !editorPane.filePath) return null
+
+    // Get directory from file path
+    const lastSep = Math.max(editorPane.filePath.lastIndexOf('/'), editorPane.filePath.lastIndexOf('\\'))
+    const dir = lastSep > 0 ? editorPane.filePath.substring(0, lastSep) : editorPane.filePath
+
+    // Create terminal pane to the right of the editor
+    const termId = get().addPane('terminal', {
+      x: editorPane.x + editorPane.width + PANE_GAP,
+      y: editorPane.y,
+      title: `Terminal (${editorPane.filePath.replace(/^.*[\\/]/, '')})`
+    })
+
+    // Link the terminal to the editor
+    get().linkPanes(termId, editorPaneId)
+
+    return termId
+  },
+
+  toggleLayoutMode: () => {
+    const current = get().layoutMode
+    const next = current === 'freeform' ? 'columns' : 'freeform'
+    set({ layoutMode: next })
+    if (next === 'columns') {
+      get().autoArrangeColumns()
+    }
+  },
+
+  autoArrangeColumns: () => {
+    const panes = Array.from(get().panes.values())
+    if (panes.length === 0) return
+
+    // Sort by X position to determine column assignment
+    const sorted = [...panes].sort((a, b) => a.x - b.x)
+
+    // Group into columns by proximity (panes within 100px of each other are same column)
+    const columns: CanvasPaneState[][] = []
+    let currentCol: CanvasPaneState[] = []
+    let lastX = -Infinity
+
+    for (const pane of sorted) {
+      if (pane.x - lastX > 100 || currentCol.length === 0) {
+        if (currentCol.length > 0) columns.push(currentCol)
+        currentCol = [pane]
+      } else {
+        currentCol.push(pane)
+      }
+      lastX = pane.x
+    }
+    if (currentCol.length > 0) columns.push(currentCol)
+
+    // Re-layout columns
+    const COLUMN_GAP = 24
+    const PANE_GAP = 16
+    let columnX = 40
+    const newPanes = new Map(get().panes)
+
+    for (const col of columns) {
+      // Sort column panes by Y position
+      col.sort((a, b) => a.y - b.y)
+
+      let colWidth = 0
+      let y = 40
+
+      for (const pane of col) {
+        colWidth = Math.max(colWidth, pane.width)
+        newPanes.set(pane.id, { ...pane, x: columnX, y })
+        y += pane.height + PANE_GAP
+      }
+
+      columnX += colWidth + COLUMN_GAP
+    }
+
+    set({ panes: newPanes })
   },
 
   getVisiblePanes: (activeWorkspaceId) => {

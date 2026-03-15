@@ -1,7 +1,9 @@
 import { ipcMain } from 'electron'
 import { ProjectService } from '../services/project-service'
+import { ScriptDetectionService } from '../services/script-detection-service'
 
 const projectService = new ProjectService()
+const scriptDetection = new ScriptDetectionService()
 
 export function registerProjectHandlers(): void {
   ipcMain.handle('project:list', async () => {
@@ -22,6 +24,9 @@ export function registerProjectHandlers(): void {
 
   ipcMain.handle('project:get', async (_e, id: string) => {
     return projectService.getProject(id)
+  })
+  ipcMain.handle('project:detect-scripts', async (_e, rootPath: string) => {
+    return scriptDetection.detectScripts(rootPath)
   })
 }
 
