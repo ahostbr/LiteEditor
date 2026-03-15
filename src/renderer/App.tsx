@@ -22,6 +22,8 @@ import { useSettingsStore } from './stores/settings-store'
 import { useLayoutStore } from './stores/layout-store'
 import { useZenStore } from './stores/zen-store'
 import { useCanvasStore } from './stores/canvas-store'
+import { useAppearance } from './hooks/useAppearance'
+import { EmberSparks } from './components/effects/EmberSparks'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useCanvasNavigation } from './hooks/useCanvasNavigation'
 import { useWorkspacePersistence } from './hooks/useWorkspacePersistence'
@@ -528,11 +530,17 @@ export default function App() {
     return unsub
   }, [])
 
-  // Sync accent color from settings to CSS variable
+  // Appearance: sync accent, glass blur, particles, etc. to CSS variables
   const accentColor = useSettingsStore((s) => s.accentColor)
-  useEffect(() => {
-    document.documentElement.style.setProperty('--accent', accentColor)
-  }, [accentColor])
+  const glassBlur = useSettingsStore((s) => s.glassBlur)
+  const reduceMotion = useSettingsStore((s) => s.reduceMotion)
+  const particleColor = useSettingsStore((s) => s.particleColor)
+  const glowColor = useSettingsStore((s) => s.glowColor)
+  const particleSpeed = useSettingsStore((s) => s.particleSpeed)
+  const particleDensity = useSettingsStore((s) => s.particleDensity)
+  const particleLifespan = useSettingsStore((s) => s.particleLifespan)
+
+  useAppearance({ accentColor, glassBlur, reduceMotion, particleColor, glowColor, particleSpeed })
 
   // Initialize git and search when project root changes, handle project switch
   const projectRoot = useEditorStore((s) => s.projectRoot)
@@ -590,6 +598,7 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden">
+      <EmberSparks particleDensity={particleDensity} particleSpeed={particleSpeed} particleLifespan={particleLifespan} reduceMotion={reduceMotion} />
       <Titlebar />
       <div className="flex flex-1 overflow-hidden">
         <ActivityBar />

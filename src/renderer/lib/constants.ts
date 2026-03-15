@@ -12,7 +12,14 @@ export const DEFAULT_SETTINGS = {
   autoSaveDelay: 1000,
   defaultTerminalCwd: '',
   zenEditorMode: 'separate' as const,
-  autoLoadLastProject: false
+  autoLoadLastProject: false,
+  particleDensity: 80,
+  particleSpeed: 1,
+  particleLifespan: 2,
+  glassBlur: 20,
+  reduceMotion: false,
+  particleColor: '',
+  glowColor: ''
 }
 
 export const KEYBOARD_SHORTCUTS = {

@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import { useSettingsStore } from '../../stores/settings-store'
 import { useEditorStore } from '../../stores/editor-store'
+import { AppearanceSection } from '../settings/AppearanceSection'
 
 type SettingScope = 'global' | 'workspace'
 type IntegrationId = 'codex' | 'claude'
@@ -301,14 +302,19 @@ export function SettingsPanel() {
 
         {/* Appearance */}
         <SettingsSection title="Appearance">
-          <ColorSetting
-            label="Accent Color"
-            settingKey="accentColor"
-            value={settings.accentColor}
-            onChange={handleChange}
-            onReset={handleResetToGlobal}
-            hasOverride={settings.hasWorkspaceOverride('accentColor')}
-            hasProject={!!projectRoot}
+          <AppearanceSection
+            accentColor={settings.accentColor}
+            setAccentColor={(v) => settings.setSetting('accentColor', v)}
+            particleDensity={settings.particleDensity}
+            setParticleDensity={(v) => settings.setSetting('particleDensity', v)}
+            particleSpeed={settings.particleSpeed}
+            setParticleSpeed={(v) => settings.setSetting('particleSpeed', v)}
+            particleLifespan={settings.particleLifespan}
+            setParticleLifespan={(v) => settings.setSetting('particleLifespan', v)}
+            glassBlur={settings.glassBlur}
+            setGlassBlur={(v) => settings.setSetting('glassBlur', v)}
+            reduceMotion={settings.reduceMotion}
+            setReduceMotion={(v) => settings.setSetting('reduceMotion', v)}
           />
         </SettingsSection>
 

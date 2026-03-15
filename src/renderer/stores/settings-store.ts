@@ -23,6 +23,13 @@ interface SettingsState {
   autoSaveDelay: number
   defaultTerminalCwd: string
   zenEditorMode: ZenEditorMode
+  particleDensity: number
+  particleSpeed: number
+  particleLifespan: number
+  glassBlur: number
+  reduceMotion: boolean
+  particleColor: string
+  glowColor: string
   isLoaded: boolean
 
   // Workspace settings overlay
@@ -54,7 +61,14 @@ function getGlobalSettingsObject(state: SettingsState): Record<string, unknown> 
     autoSave: state.autoSave,
     autoSaveDelay: state.autoSaveDelay,
     defaultTerminalCwd: state.defaultTerminalCwd,
-    zenEditorMode: state.zenEditorMode
+    zenEditorMode: state.zenEditorMode,
+    particleDensity: state.particleDensity,
+    particleSpeed: state.particleSpeed,
+    particleLifespan: state.particleLifespan,
+    glassBlur: state.glassBlur,
+    reduceMotion: state.reduceMotion,
+    particleColor: state.particleColor,
+    glowColor: state.glowColor
   }
 }
 
