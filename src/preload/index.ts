@@ -322,6 +322,55 @@ const api = {
     }
   },
 
+  github: {
+    checkCli: (): Promise<unknown> =>
+      ipcRenderer.invoke('github:check-cli'),
+    installCli: (): Promise<unknown> =>
+      ipcRenderer.invoke('github:install-cli'),
+    setCwd: (cwd: string): Promise<void> =>
+      ipcRenderer.invoke('github:set-cwd', cwd),
+    repoInfo: (): Promise<unknown> =>
+      ipcRenderer.invoke('github:repo-info'),
+    prList: (state?: string): Promise<unknown[]> =>
+      ipcRenderer.invoke('github:pr-list', state),
+    prGet: (number: number): Promise<unknown> =>
+      ipcRenderer.invoke('github:pr-get', number),
+    prDiff: (number: number): Promise<string> =>
+      ipcRenderer.invoke('github:pr-diff', number),
+    prCreate: (title: string, body: string, base: string, head: string, reviewers?: string[], labels?: string[]): Promise<unknown> =>
+      ipcRenderer.invoke('github:pr-create', title, body, base, head, reviewers, labels),
+    prMerge: (number: number, method: string, deleteBranch?: boolean): Promise<string> =>
+      ipcRenderer.invoke('github:pr-merge', number, method, deleteBranch),
+    prClose: (number: number): Promise<string> =>
+      ipcRenderer.invoke('github:pr-close', number),
+    prReviews: (number: number): Promise<unknown[]> =>
+      ipcRenderer.invoke('github:pr-reviews', number),
+    prReviewComments: (number: number): Promise<unknown[]> =>
+      ipcRenderer.invoke('github:pr-review-comments', number),
+    prReviewSubmit: (number: number, event: string, body: string, comments?: unknown[]): Promise<string> =>
+      ipcRenderer.invoke('github:pr-review-submit', number, event, body, comments),
+    issueList: (state?: string): Promise<unknown[]> =>
+      ipcRenderer.invoke('github:issue-list', state),
+    issueGet: (number: number): Promise<unknown> =>
+      ipcRenderer.invoke('github:issue-get', number),
+    issueCreate: (title: string, body: string, labels?: string[], assignees?: string[]): Promise<unknown> =>
+      ipcRenderer.invoke('github:issue-create', title, body, labels, assignees),
+    issueComment: (number: number, body: string): Promise<string> =>
+      ipcRenderer.invoke('github:issue-comment', number, body),
+    issueClose: (number: number): Promise<string> =>
+      ipcRenderer.invoke('github:issue-close', number),
+    issueReopen: (number: number): Promise<string> =>
+      ipcRenderer.invoke('github:issue-reopen', number),
+    issueComments: (number: number): Promise<unknown[]> =>
+      ipcRenderer.invoke('github:issue-comments', number),
+    labelsList: (): Promise<unknown[]> =>
+      ipcRenderer.invoke('github:labels-list'),
+    collaboratorsList: (): Promise<string[]> =>
+      ipcRenderer.invoke('github:collaborators-list'),
+    prTemplate: (): Promise<string | null> =>
+      ipcRenderer.invoke('github:pr-template')
+  },
+
   project: {
     list: (): Promise<unknown[]> =>
       ipcRenderer.invoke('project:list'),

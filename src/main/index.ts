@@ -13,6 +13,7 @@ import { registerWorkspaceHandlers } from './ipc/workspace-handlers'
 import { registerProjectHandlers } from './ipc/project-handlers'
 import { registerWorkspaceCrudHandlers } from './ipc/workspace-crud-handlers'
 import { registerIntegrationsHandlers, shutdownIntegrationsHandlers } from './ipc/integrations-handlers'
+import { registerGitHubHandlers } from './ipc/github-handlers'
 import { AgentBridge } from './services/agent-bridge'
 
 // Limit V8 heap — default scales with system RAM and gets way too aggressive
@@ -326,6 +327,7 @@ function createWindow(): void {
   try { registerClaudeHandlers(mainWindow!) } catch (e) { console.error('Failed to register claude handlers:', e) }
   try { registerCodexHandlers(mainWindow!) } catch (e) { console.error('Failed to register codex handlers:', e) }
   try { registerIntegrationsHandlers(mainWindow!) } catch (e) { console.error('Failed to register integrations handlers:', e) }
+  try { registerGitHubHandlers() } catch (e) { console.error('Failed to register GitHub handlers:', e) }
 
   // Load renderer — pass launch file as query param so renderer can open it
   // after workspace restoration (avoids race condition with file:open IPC)

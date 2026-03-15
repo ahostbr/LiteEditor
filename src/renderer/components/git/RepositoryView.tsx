@@ -1,10 +1,18 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { GitBranch, ArrowUp, ArrowDown, RefreshCw } from 'lucide-react'
 import { useRepositoryStore } from '../../stores/repository-store'
+import { useGitHubStore } from '../../stores/github-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { ChangesPanel } from './ChangesPanel'
 import { HistoryPanel } from './HistoryPanel'
 import { DiffViewer } from './DiffViewer'
+import { PullRequestsPanel } from './PullRequestsPanel'
+import { PullRequestDetail } from './PullRequestDetail'
+import { PullRequestCreate } from './PullRequestCreate'
+import { IssuesPanel } from './IssuesPanel'
+import { IssueDetail } from './IssueDetail'
+import { IssueCreate } from './IssueCreate'
+import { GhCliSetup } from './GhCliSetup'
 import type { RepositoryTab } from '../../types/repository'
 
 interface RepositoryViewProps {
@@ -27,12 +35,19 @@ export function RepositoryView({ repoPath }: RepositoryViewProps) {
   const shutdown = useRepositoryStore((s) => s.shutdown)
   const isLoading = useRepositoryStore((s) => s.isLoading)
 
+  const ghCliReady = useGitHubStore((s) => s.ghCliReady)
+  const initForRepo = useGitHubStore((s) => s.initForRepo)
+
+  const [showCreatePr, setShowCreatePr] = useState(false)
+  const [showCreateIssue, setShowCreateIssue] = useState(false)
+
   useEffect(() => {
     if (effectivePath) {
       initialize(effectivePath)
+      initForRepo(effectivePath)
     }
     return () => shutdown()
-  }, [effectivePath, initialize, shutdown])
+  }, [effectivePath, initialize, shutdown, initForRepo])
 
   if (!effectivePath) {
     return (
@@ -44,8 +59,12 @@ export function RepositoryView({ repoPath }: RepositoryViewProps) {
 
   const tabs: { id: RepositoryTab; label: string }[] = [
     { id: 'changes', label: 'Changes' },
-    { id: 'history', label: 'History' }
+    { id: 'history', label: 'History' },
+    { id: 'prs', label: 'PRs' },
+    { id: 'issues', label: 'Issues' }
   ]
+
+  const isGitHubTab = activeTab === 'prs' || activeTab === 'issues'
 
   return (
     <div className="flex flex-col h-full" style={{ backgroundColor: 'var(--bg-surface)' }}>
@@ -59,7 +78,6 @@ export function RepositoryView({ repoPath }: RepositoryViewProps) {
           {currentBranch || 'Loading...'}
         </span>
 
-        {/* Ahead/Behind badges */}
         {ahead > 0 && (
           <button
             onClick={() => pushOrigin()}
@@ -83,7 +101,6 @@ export function RepositoryView({ repoPath }: RepositoryViewProps) {
 
         <div className="flex-1" />
 
-        {/* Fetch button */}
         <button
           onClick={() => fetchOrigin()}
           className="p-1 rounded transition-colors"
@@ -114,27 +131,54 @@ export function RepositoryView({ repoPath }: RepositoryViewProps) {
         ))}
       </div>
 
-      {/* Content: sidebar + diff viewer */}
-      <div className="flex flex-1 min-h-0">
-        {/* Left sidebar: file list / commit list */}
-        <div
-          className="w-[260px] shrink-0 flex flex-col"
-          style={{ borderRight: '1px solid var(--border)' }}
-        >
-          {activeTab === 'changes' && <ChangesPanel />}
-          {activeTab === 'history' && <HistoryPanel />}
-        </div>
+      {/* gh CLI check for GitHub tabs */}
+      {isGitHubTab && !ghCliReady ? (
+        <GhCliSetup />
+      ) : (
+        /* Content: sidebar + detail */
+        <div className="flex flex-1 min-h-0">
+          {/* Left sidebar */}
+          <div
+            className="w-[260px] shrink-0 flex flex-col"
+            style={{ borderRight: '1px solid var(--border)' }}
+          >
+            {activeTab === 'changes' && <ChangesPanel />}
+            {activeTab === 'history' && <HistoryPanel />}
+            {activeTab === 'prs' && <PullRequestsPanel onCreatePr={() => setShowCreatePr(true)} />}
+            {activeTab === 'issues' && <IssuesPanel onCreateIssue={() => setShowCreateIssue(true)} />}
+          </div>
 
-        {/* Right: diff viewer */}
-        <div className="flex-1 min-w-0">
-          {activeTab === 'changes' && <DiffViewer diff={selectedDiff} />}
-          {activeTab === 'history' && (
-            <div className="flex items-center justify-center h-full" style={{ color: 'var(--text-muted)' }}>
-              <span className="text-xs">Select a commit to view details</span>
-            </div>
-          )}
+          {/* Right: detail view */}
+          <div className="flex-1 min-w-0">
+            {activeTab === 'changes' && <DiffViewer diff={selectedDiff} />}
+            {activeTab === 'history' && (
+              <div className="flex items-center justify-center h-full" style={{ color: 'var(--text-muted)' }}>
+                <span className="text-xs">Select a commit to view details</span>
+              </div>
+            )}
+            {activeTab === 'prs' && (
+              showCreatePr ? (
+                <PullRequestCreate
+                  onClose={() => setShowCreatePr(false)}
+                  onCreated={() => setShowCreatePr(false)}
+                />
+              ) : (
+                <PullRequestDetail />
+              )
+            )}
+            {activeTab === 'issues' && (
+              showCreateIssue ? (
+                <IssueCreate
+                  onClose={() => setShowCreateIssue(false)}
+                  onCreated={() => setShowCreateIssue(false)}
+                />
+              ) : (
+                <IssueDetail />
+              )
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

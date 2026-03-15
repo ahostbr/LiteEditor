@@ -58,4 +58,4 @@ export interface CommitDetails extends Commit {
   body: string
 }
 
-export type RepositoryTab = 'changes' | 'history' | 'worktrees'
+export type RepositoryTab = 'changes' | 'history' | 'worktrees' | 'prs' | 'issues'
