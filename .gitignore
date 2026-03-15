@@ -9,3 +9,4 @@ dist/
 /tests
 /.liteeditor
 /dist-modelfix
+.worktrees/
