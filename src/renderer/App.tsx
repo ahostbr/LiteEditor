@@ -34,7 +34,7 @@ import { ToastViewport } from './components/shared/ToastViewport'
 
 async function loadWorkspaceForProject(projectRoot: string): Promise<void> {
   try {
-    const data = await window.api.workspace.loadState(projectRoot) as { editor?: unknown; ui?: unknown } | null
+    const data = await window.api.workspace.loadState(projectRoot) as { editor?: unknown; ui?: unknown; canvas?: unknown } | null
     if (!data) return
 
     // Restore editor state (tabs, panes)
@@ -49,6 +49,12 @@ async function loadWorkspaceForProject(projectRoot: string): Promise<void> {
     if (data.ui && typeof data.ui === 'object') {
       useUiStore.getState().restoreUIState(data.ui as any)
     }
+
+    // Restore canvas state (pane layout, viewport)
+    if (data.canvas && typeof data.canvas === 'object') {
+      const { useCanvasStore } = await import('./stores/canvas-store')
+      useCanvasStore.getState().restoreCanvasState(data.canvas as any)
+    }
   } catch { /* workspace file missing or corrupt — start fresh */ }
 }
 
@@ -56,7 +62,9 @@ async function saveWorkspaceForProject(projectRoot: string): Promise<void> {
   try {
     const editorState = useEditorStore.getState().getWorkspaceState()
     const uiState = useUiStore.getState().getUIState()
-    const workspace = { editor: editorState, ui: uiState }
+    const { useCanvasStore } = await import('./stores/canvas-store')
+    const canvasState = useCanvasStore.getState().getCanvasState()
+    const workspace = { editor: editorState, ui: uiState, canvas: canvasState }
     await window.api.workspace.saveState(projectRoot, JSON.stringify(workspace, null, 2))
   } catch { /* ignore */ }
 }

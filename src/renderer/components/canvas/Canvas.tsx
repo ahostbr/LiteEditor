@@ -5,6 +5,7 @@ import { useCanvasViewport } from './CanvasViewport'
 import { CanvasPane } from './CanvasPane'
 import { Minimap } from './Minimap'
 import { AddPaneMenu } from './AddPaneMenu'
+import { useTerminalNotifications } from '../../hooks/useTerminalNotifications'
 
 export function Canvas() {
   const panes = useCanvasStore((s) => s.panes)
@@ -17,6 +18,7 @@ export function Canvas() {
   const containerRef = useRef<HTMLDivElement>(null)
   const { handleWheel, grabbing } = useCanvasViewport()
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
+  useTerminalNotifications()
 
   // Active workspace panes (visible)
   const visiblePanes = useMemo(
@@ -46,12 +48,15 @@ export function Canvas() {
     }
   }, [])
 
-  // Auto-create a terminal pane if canvas is empty
+  // Auto-create a terminal pane if canvas is empty (delayed to let restore run first)
   useEffect(() => {
-    const store = useCanvasStore.getState()
-    if (store.panes.size === 0) {
-      store.addPane('terminal', { x: 40, y: 40, width: 900, height: 600 })
-    }
+    const timer = setTimeout(() => {
+      const store = useCanvasStore.getState()
+      if (store.panes.size === 0) {
+        store.addPane('terminal', { x: 40, y: 40, width: 900, height: 600 })
+      }
+    }, 100)
+    return () => clearTimeout(timer)
   }, [])
 
   const zoomPercent = Math.round(zoom * 100)
@@ -108,7 +113,6 @@ export function Canvas() {
           style={{
             zIndex: 9999,
             cursor: 'grabbing',
-            // Transparent but captures all pointer events
             backgroundColor: 'transparent'
           }}
         />
@@ -124,19 +128,49 @@ export function Canvas() {
         </div>
       )}
 
-      {/* Zoom indicator */}
-      {zoomPercent !== 100 && (
-        <div
-          className="absolute bottom-4 left-4 px-2 py-1 rounded text-[10px] font-medium pointer-events-none"
-          style={{
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
-            color: 'var(--text-muted)',
-            zIndex: 50
+      {/* Zoom indicator — always visible, click to reset */}
+      <div
+        className="absolute bottom-4 left-4 flex items-center gap-0 rounded text-[10px] font-medium"
+        style={{
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          color: zoomPercent === 100 ? 'var(--text-muted)' : 'var(--text-primary)',
+          zIndex: 50,
+          backdropFilter: 'blur(4px)',
+          border: '1px solid rgba(255,255,255,0.08)'
+        }}
+      >
+        <button
+          className="px-1.5 py-1 hover:bg-[rgba(255,255,255,0.1)] rounded-l transition-colors"
+          onClick={() => {
+            const s = useCanvasStore.getState()
+            s.setViewport(s.viewportX, s.viewportY, Math.max(0.1, s.zoom - 0.1))
           }}
+          title="Zoom Out"
+        >
+          −
+        </button>
+        <button
+          className="px-1.5 py-1 hover:bg-[rgba(255,255,255,0.1)] transition-colors"
+          onClick={() => useCanvasStore.getState().setViewport(
+            useCanvasStore.getState().viewportX,
+            useCanvasStore.getState().viewportY,
+            1
+          )}
+          title="Reset Zoom"
         >
           {zoomPercent}%
-        </div>
-      )}
+        </button>
+        <button
+          className="px-1.5 py-1 hover:bg-[rgba(255,255,255,0.1)] rounded-r transition-colors"
+          onClick={() => {
+            const s = useCanvasStore.getState()
+            s.setViewport(s.viewportX, s.viewportY, Math.min(3, s.zoom + 0.1))
+          }}
+          title="Zoom In"
+        >
+          +
+        </button>
+      </div>
 
       {/* Minimap overlay */}
       <Minimap containerRef={containerRef} />

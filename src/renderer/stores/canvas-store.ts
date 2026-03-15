@@ -38,6 +38,29 @@ export interface CanvasPaneState {
   linkedPaneId?: string
 }
 
+// Serializable pane for persistence (no session IDs — those are ephemeral)
+export interface PersistedPane {
+  id: string
+  type: CanvasPaneType
+  x: number
+  y: number
+  width: number
+  height: number
+  title: string
+  terminalTabNames?: string[]
+  terminalTabCount?: number
+  filePath?: string
+  browserUrl?: string
+  minimized?: boolean
+}
+
+export interface PersistedCanvasState {
+  panes: PersistedPane[]
+  viewportX: number
+  viewportY: number
+  zoom: number
+}
+
 export type CanvasLayoutMode = 'freeform' | 'columns'
 
 interface CanvasState {
@@ -93,6 +116,10 @@ interface CanvasState {
   clearPanes: () => void
   clearWorkspacePanes: (workspaceId: string, keepTerminals?: boolean) => void
   setViewport: (x: number, y: number, zoom?: number) => void
+
+  // Persistence
+  getCanvasState: () => PersistedCanvasState
+  restoreCanvasState: (state: PersistedCanvasState) => void
 }
 
 // Default pane dimensions
@@ -443,6 +470,67 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const update: Partial<CanvasState> = { viewportX: x, viewportY: y }
     if (zoom !== undefined) update.zoom = zoom
     set(update)
+  },
+
+  getCanvasState: () => {
+    const state = get()
+    const panes: PersistedPane[] = []
+    for (const pane of state.panes.values()) {
+      panes.push({
+        id: pane.id,
+        type: pane.type,
+        x: pane.x,
+        y: pane.y,
+        width: pane.width,
+        height: pane.height,
+        title: pane.title,
+        terminalTabNames: pane.terminalTabNames,
+        terminalTabCount: pane.terminalSessionIds?.length ?? (pane.terminalSessionId ? 1 : undefined),
+        filePath: pane.filePath,
+        browserUrl: pane.browserUrl,
+        minimized: pane.minimized
+      })
+    }
+    return {
+      panes,
+      viewportX: state.viewportX,
+      viewportY: state.viewportY,
+      zoom: state.zoom
+    }
+  },
+
+  restoreCanvasState: (saved) => {
+    const newPanes = new Map<string, CanvasPaneState>()
+    let maxCounter = 0
+    for (const p of saved.panes) {
+      const match = p.id.match(/canvas-pane-(\d+)/)
+      if (match) maxCounter = Math.max(maxCounter, parseInt(match[1]))
+
+      newPanes.set(p.id, {
+        id: p.id,
+        type: p.type,
+        x: p.x,
+        y: p.y,
+        width: p.width,
+        height: p.height,
+        layoutMode: 'single',
+        title: p.title,
+        filePath: p.filePath,
+        browserUrl: p.browserUrl,
+        minimized: p.minimized,
+        terminalTabNames: p.terminalTabNames,
+        hasNotification: false,
+        notificationCount: 0
+      })
+    }
+    paneCounter = maxCounter
+    set({
+      panes: newPanes,
+      viewportX: saved.viewportX,
+      viewportY: saved.viewportY,
+      zoom: saved.zoom,
+      focusedPaneId: saved.panes.length > 0 ? saved.panes[0].id : null
+    })
   }
 }))
 

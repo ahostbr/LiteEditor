@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useEditorStore, getMonacoContent } from '../stores/editor-store'
 import { useUiStore } from '../stores/ui-store'
 import { useZenStore } from '../stores/zen-store'
+import { useCanvasStore } from '../stores/canvas-store'
 import { confirmAndSaveTab } from '../lib/close-helpers'
 
 export function useKeyboardShortcuts() {
@@ -63,15 +64,20 @@ export function useKeyboardShortcuts() {
         }
       }
 
-      // Ctrl+W: Close active tab (with save prompt)
+      // Ctrl+W: Close active tab (editor mode) or focused pane (canvas mode)
       if (ctrl && !shift && e.key === 'w') {
         e.preventDefault()
-        const state = useEditorStore.getState()
-        const pane = state.panes[state.activePaneIndex]
-        if (pane && pane.activeTabIndex >= 0) {
-          const tab = pane.tabs[pane.activeTabIndex]
-          if (tab && (await confirmAndSaveTab(tab))) {
-            closeTab(state.activePaneIndex, pane.activeTabIndex)
+        if (useUiStore.getState().appMode === 'canvas') {
+          const cs = useCanvasStore.getState()
+          if (cs.focusedPaneId) cs.removePane(cs.focusedPaneId)
+        } else {
+          const state = useEditorStore.getState()
+          const pane = state.panes[state.activePaneIndex]
+          if (pane && pane.activeTabIndex >= 0) {
+            const tab = pane.tabs[pane.activeTabIndex]
+            if (tab && (await confirmAndSaveTab(tab))) {
+              closeTab(state.activePaneIndex, pane.activeTabIndex)
+            }
           }
         }
       }
@@ -163,6 +169,41 @@ export function useKeyboardShortcuts() {
         const dir = shift ? -1 : 1
         const next = (pane.activeTabIndex + dir + pane.tabs.length) % pane.tabs.length
         setActiveTab(state.activePaneIndex, next)
+      }
+
+      // === Canvas Mode Shortcuts ===
+      const isCanvas = useUiStore.getState().appMode === 'canvas'
+
+      // Ctrl+1-9: Focus canvas pane by index
+      if (isCanvas && ctrl && !shift && e.key >= '1' && e.key <= '9') {
+        e.preventDefault()
+        const index = parseInt(e.key) - 1
+        const pane = useCanvasStore.getState().getPaneByIndex(index)
+        if (pane) useCanvasStore.getState().setFocusedPane(pane.id)
+        return
+      }
+
+      // Ctrl+Shift+N: Add terminal pane
+      if (isCanvas && ctrl && shift && e.key === 'N') {
+        e.preventDefault()
+        useCanvasStore.getState().addPane('terminal')
+        return
+      }
+
+      // Ctrl+M: Toggle minimap
+      if (isCanvas && ctrl && !shift && e.key === 'm') {
+        e.preventDefault()
+        window.dispatchEvent(new Event('canvas:toggle-minimap'))
+        return
+      }
+
+      // Ctrl+Alt+Arrow: Navigate between canvas panes
+      if (isCanvas && ctrl && e.altKey && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+        e.preventDefault()
+        const dir = e.key.replace('Arrow', '').toLowerCase() as 'left' | 'right' | 'up' | 'down'
+        const nextId = useCanvasStore.getState().findNearestPane(dir)
+        if (nextId) useCanvasStore.getState().setFocusedPane(nextId)
+        return
       }
     }
 
