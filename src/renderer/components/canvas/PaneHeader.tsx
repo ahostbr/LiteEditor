@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { GripHorizontal, X, Minus, Terminal, FileCode, Globe, Plus, Settings } from 'lucide-react'
+import { GripHorizontal, X, Minus, Terminal, FileCode, Globe, Plus, Settings, GitBranch } from 'lucide-react'
 import { useCanvasStore, type CanvasPaneState } from '../../stores/canvas-store'
 import { useTerminalStore } from '../../stores/terminal-store'
 import { useSettingsStore } from '../../stores/settings-store'
@@ -21,6 +21,7 @@ function getPaneTypeIcon(type: string) {
     case 'browser': return <Globe size={13} />
     case 'claude': return <span className="text-[11px] font-bold">C</span>
     case 'codex': return <span className="text-[11px] font-bold">X</span>
+    case 'git': return <GitBranch size={13} />
     default: return null
   }
 }

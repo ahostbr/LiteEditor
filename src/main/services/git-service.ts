@@ -143,7 +143,24 @@ export class GitService {
   }
 
   async discardChanges(path: string): Promise<void> {
-    await this.git.checkout(['--', path])
+    try {
+      await this.git.checkout(['--', path])
+    } catch {
+      // If checkout fails (untracked file), try clean
+      await this.git.clean('f', [path])
+    }
+  }
+
+  async showCommit(hash: string): Promise<string> {
+    return this.git.show([hash, '--stat', '--format=%H%n%h%n%an%n%ae%n%aI%n%s%n%b%n---FILES---'])
+  }
+
+  async diffCommitFile(hash: string, path: string): Promise<string> {
+    return this.git.diff([`${hash}~1`, hash, '--', path])
+  }
+
+  async statusPorcelain(): Promise<string> {
+    return this.git.raw(['status', '-z', '--porcelain=v1'])
   }
 
   // --- Worktree operations ---

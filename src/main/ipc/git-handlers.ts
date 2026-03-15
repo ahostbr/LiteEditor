@@ -91,6 +91,18 @@ export function registerGitHandlers(): void {
     return getGit().discardChanges(path)
   })
 
+  ipcMain.handle('git:show-commit', async (_e, hash: string) => {
+    return getGit().showCommit(hash)
+  })
+
+  ipcMain.handle('git:diff-commit-file', async (_e, hash: string, path: string) => {
+    return getGit().diffCommitFile(hash, path)
+  })
+
+  ipcMain.handle('git:status-porcelain', async () => {
+    return getGit().statusPorcelain()
+  })
+
   // Worktree operations
   ipcMain.handle('git:worktree-list', async () => {
     return getGit().worktreeList()

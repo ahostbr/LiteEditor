@@ -9,6 +9,7 @@ import { ZenUnifiedEditor } from '../zen-mode/ZenUnifiedEditor'
 import { BrowserPanel } from '../zen-mode/BrowserPanel'
 import { ClaudePanel } from '../zen-mode/ClaudePanel'
 import { CodexPanel } from '../zen-mode/CodexPanel'
+import { RepositoryView } from '../git/RepositoryView'
 
 interface CanvasPanelRendererProps {
   pane: CanvasPaneState
@@ -73,6 +74,10 @@ export function CanvasPanelRenderer({ pane, isFocused }: CanvasPanelRendererProp
 
   if (pane.type === 'codex') {
     return <CodexPanel panelId={pane.id} visible={true} />
+  }
+
+  if (pane.type === 'git') {
+    return <RepositoryView />
   }
 
   return null

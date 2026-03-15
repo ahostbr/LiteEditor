@@ -128,6 +128,12 @@ const api = {
       ipcRenderer.invoke('git:file-at-revision', path, rev),
     discardChanges: (path: string): Promise<void> =>
       ipcRenderer.invoke('git:discard-changes', path),
+    showCommit: (hash: string): Promise<string> =>
+      ipcRenderer.invoke('git:show-commit', hash),
+    diffCommitFile: (hash: string, path: string): Promise<string> =>
+      ipcRenderer.invoke('git:diff-commit-file', hash, path),
+    statusPorcelain: (): Promise<string> =>
+      ipcRenderer.invoke('git:status-porcelain'),
     worktreeList: (): Promise<unknown[]> =>
       ipcRenderer.invoke('git:worktree-list'),
     worktreeAdd: (path: string, branch: string, createBranch: boolean): Promise<void> =>

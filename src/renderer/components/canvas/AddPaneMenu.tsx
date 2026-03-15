@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Terminal, FileCode, Globe, X } from 'lucide-react'
+import { Terminal, FileCode, Globe, X, GitBranch } from 'lucide-react'
 import { useCanvasStore, type CanvasPaneType } from '../../stores/canvas-store'
 import claudeIcon from '../../../../assets/img/claude.png'
 import codexIcon from '../../../../assets/img/codex.png'
@@ -92,6 +92,7 @@ export function AddPaneMenu({ show: externalShow, onClose, anchorX, anchorY }: A
       <MenuItem icon={<Terminal size={14} />} label="New Terminal" onClick={() => addPaneOfType('terminal')} />
       <MenuItem icon={<FileCode size={14} />} label="Open File Editor" onClick={handleAddEditor} />
       <MenuItem icon={<FileCode size={14} />} label="Unified Editor" onClick={() => addPaneOfType('unified-editor')} />
+      <MenuItem icon={<GitBranch size={14} />} label="Git Panel" onClick={() => addPaneOfType('git')} />
       <MenuItem icon={<Globe size={14} />} label="New Browser" onClick={() => addPaneOfType('browser')} />
       <MenuItem
         icon={<img src={claudeIcon} alt="" width={14} height={14} style={{ imageRendering: 'pixelated' }} />}

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type CanvasPaneType = 'terminal' | 'editor' | 'browser' | 'unified-editor' | 'claude' | 'codex'
+export type CanvasPaneType = 'terminal' | 'editor' | 'browser' | 'unified-editor' | 'claude' | 'codex' | 'git'
 export type PaneLayoutMode = 'single' | 'grid' | 'splitter' | 'window' | 'tabs'
 
 export interface CanvasPaneState {
@@ -332,6 +332,7 @@ function getDefaultWidth(type: CanvasPaneType): number {
     case 'codex': return 1100
     case 'claude': return 900
     case 'browser': return 1000
+    case 'git': return 900
     default: return DEFAULT_PANE_WIDTH
   }
 }
@@ -340,6 +341,7 @@ function getDefaultHeight(type: CanvasPaneType): number {
   switch (type) {
     case 'codex': return 700
     case 'claude': return 700
+    case 'git': return 650
     default: return DEFAULT_PANE_HEIGHT
   }
 }
@@ -352,5 +354,6 @@ function getDefaultTitle(type: CanvasPaneType): string {
     case 'unified-editor': return 'Editor'
     case 'claude': return 'Claude Code'
     case 'codex': return 'Codex'
+    case 'git': return 'Git'
   }
 }
