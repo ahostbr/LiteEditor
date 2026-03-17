@@ -118,6 +118,8 @@ const api = {
       ipcRenderer.invoke('git:branches'),
     currentBranch: (): Promise<unknown> =>
       ipcRenderer.invoke('git:current-branch'),
+    currentBranchForPath: (rootPath: string): Promise<unknown> =>
+      ipcRenderer.invoke('git:current-branch-for-path', rootPath),
     checkout: (name: string): Promise<void> =>
       ipcRenderer.invoke('git:checkout', name),
     createBranch: (name: string): Promise<void> =>

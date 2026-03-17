@@ -1,10 +1,12 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { ChevronRight, ChevronDown, GitBranch, Folder, MoreHorizontal } from 'lucide-react'
+import { ChevronRight, ChevronDown, GitBranch, Folder, Terminal } from 'lucide-react'
 import { useWorkspaceStore, type Workspace } from '../../stores/workspace-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { useUiStore } from '../../stores/ui-store'
 import { useZenStore } from '../../stores/zen-store'
+import { useTerminalStore } from '../../stores/terminal-store'
 import { TreeNode, type FileNode } from './TreeNode'
+import { cn } from '../../lib/cn'
 
 interface WorkspaceEntryProps {
   workspace: Workspace
@@ -12,11 +14,23 @@ interface WorkspaceEntryProps {
   projectRootPath: string
 }
 
+function formatRelativeTime(timestamp: number): string {
+  const diff = Date.now() - timestamp
+  const minutes = Math.floor(diff / 60_000)
+  if (minutes < 1) return 'now'
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days}d`
+  return `${Math.floor(days / 30)}mo`
+}
+
 export function WorkspaceEntry({ workspace, isActive, projectRootPath }: WorkspaceEntryProps) {
   const [expanded, setExpanded] = useState(false)
   const [tree, setTree] = useState<FileNode[]>([])
   const [loading, setLoading] = useState(false)
-  const [showMenu, setShowMenu] = useState(false)
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null)
   const switchWorkspace = useWorkspaceStore((s) => s.switchWorkspace)
   const deleteWorkspace = useWorkspaceStore((s) => s.deleteWorkspace)
   const renameWorkspace = useWorkspaceStore((s) => s.renameWorkspace)
@@ -24,7 +38,10 @@ export function WorkspaceEntry({ workspace, isActive, projectRootPath }: Workspa
   const [editName, setEditName] = useState(workspace.name)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Check for active terminal sessions
+  const terminalSessions = useTerminalStore((s) => s.sessions)
   const effectivePath = workspace.worktreePath || projectRootPath
+  const hasActiveTerminal = terminalSessions.some((s) => s.cwd === effectivePath)
 
   const handleClick = useCallback(() => {
     if (!isActive) {
@@ -68,7 +85,7 @@ export function WorkspaceEntry({ workspace, isActive, projectRootPath }: Workspa
   }, [editName, workspace, renameWorkspace])
 
   const handleDelete = useCallback(async () => {
-    setShowMenu(false)
+    setMenuPos(null)
     // Use native dialog for confirmation
     const result = await window.api.dialog.showMessageBox({
       type: 'warning',
@@ -91,24 +108,27 @@ export function WorkspaceEntry({ workspace, isActive, projectRootPath }: Workspa
   return (
     <div>
       <div
-        className="flex items-center gap-1 px-2 py-1 cursor-pointer transition-colors group"
+        className={cn(
+          'relative flex items-center gap-1 px-2 py-0 cursor-pointer transition-colors group h-6',
+          isActive && 'ring-1 ring-[var(--border)]/50'
+        )}
         style={{
-          paddingLeft: '24px',
+          paddingLeft: '20px',
           backgroundColor: isActive ? 'var(--bg-overlay)' : undefined,
           borderLeft: isActive ? '2px solid var(--accent)' : '2px solid transparent'
         }}
         onClick={handleClick}
-        onContextMenu={(e) => { e.preventDefault(); setShowMenu(true) }}
-        onMouseLeave={() => setShowMenu(false)}
+        onContextMenu={(e) => { e.preventDefault(); setMenuPos({ x: e.clientX, y: e.clientY }) }}
+        onMouseLeave={() => setMenuPos(null)}
       >
         <button
           onClick={handleExpand}
-          className="shrink-0 p-0.5"
+          className="shrink-0 p-0"
           style={{ color: 'var(--text-muted)' }}
         >
-          {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
         </button>
-        <TypeIcon size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+        <TypeIcon size={10} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
         {isRenaming ? (
           <input
             ref={inputRef}
@@ -119,42 +139,69 @@ export function WorkspaceEntry({ workspace, isActive, projectRootPath }: Workspa
               if (e.key === 'Enter') handleRenameSubmit()
               if (e.key === 'Escape') setIsRenaming(false)
             }}
-            className="flex-1 bg-transparent border-b text-[11px] outline-none min-w-0"
+            className="flex-1 bg-transparent border-b text-[10px] outline-none min-w-0"
             style={{ color: 'var(--text-primary)', borderColor: 'var(--accent)' }}
             onClick={(e) => e.stopPropagation()}
             autoFocus
           />
         ) : (
           <span
-            className="text-[11px] truncate flex-1"
+            className="text-[10px] truncate flex-1"
             style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)' }}
           >
             {workspace.name}
           </span>
         )}
-        {workspace.branch && (
-          <span className="text-[9px] px-1 rounded shrink-0" style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-overlay)' }}>
-            {workspace.branch}
-          </span>
-        )}
+
+        {/* Right-side signals */}
+        <div className="flex items-center gap-1 ml-auto shrink-0">
+          {/* Terminal running indicator */}
+          {hasActiveTerminal && (
+            <Terminal
+              size={9}
+              className="text-teal-400 animate-pulse shrink-0"
+              title="Terminal process running"
+            />
+          )}
+
+          {/* Branch badge */}
+          {workspace.branch && (
+            <span className="text-[8px] px-0.5 rounded shrink-0" style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-overlay)' }}>
+              {workspace.branch}
+            </span>
+          )}
+
+          {/* Relative timestamp */}
+          {workspace.lastActivity > 0 && (
+            <span
+              className={cn(
+                'text-[8px] shrink-0',
+                isActive ? 'text-[var(--text-secondary)]' : 'text-[var(--text-muted)]'
+              )}
+              style={{ opacity: isActive ? 0.65 : 0.4 }}
+            >
+              {formatRelativeTime(workspace.lastActivity)}
+            </span>
+          )}
+        </div>
 
         {/* Context menu */}
-        {showMenu && (
+        {menuPos && (
           <div
-            className="absolute right-2 z-50 rounded border shadow-lg py-1 min-w-[120px]"
-            style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+            className="fixed z-50 rounded border shadow-lg py-0.5 min-w-[120px]"
+            style={{ left: menuPos.x, top: menuPos.y, backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }}
           >
             <ContextItem label="Rename" onClick={() => {
-              setShowMenu(false)
+              setMenuPos(null)
               setIsRenaming(true)
               setEditName(workspace.name)
               setTimeout(() => inputRef.current?.select(), 0)
             }} />
             <ContextItem label="Open in Explorer" onClick={() => {
-              setShowMenu(false)
+              setMenuPos(null)
               window.api.shell.openPath(effectivePath)
             }} />
-            <div className="my-1" style={{ borderTop: '1px solid var(--border)' }} />
+            <div className="my-0.5" style={{ borderTop: '1px solid var(--border)' }} />
             <ContextItem label="Delete" danger onClick={handleDelete} />
           </div>
         )}
@@ -162,9 +209,9 @@ export function WorkspaceEntry({ workspace, isActive, projectRootPath }: Workspa
 
       {/* Inline file tree */}
       {expanded && (
-        <div style={{ paddingLeft: '36px' }}>
+        <div style={{ paddingLeft: '32px' }}>
           {loading ? (
-            <div className="text-[10px] py-1" style={{ color: 'var(--text-muted)' }}>Loading...</div>
+            <div className="text-[9px] py-0.5" style={{ color: 'var(--text-muted)' }}>Loading...</div>
           ) : (
             tree.map((node) => (
               <TreeNode
@@ -186,7 +233,7 @@ function ContextItem({ label, onClick, danger }: { label: string; onClick: () =>
   return (
     <button
       onClick={(e) => { e.stopPropagation(); onClick() }}
-      className="flex items-center w-full px-3 py-1 text-[11px] hover:bg-[var(--bg-overlay)] transition-colors"
+      className="flex items-center w-full px-3 py-0.5 text-[10px] hover:bg-[var(--bg-overlay)] transition-colors"
       style={{ color: danger ? '#ef4444' : 'var(--text-primary)' }}
     >
       {label}

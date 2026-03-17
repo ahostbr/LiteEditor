@@ -9,7 +9,8 @@ export function clipToCanvasContainer(
   const container = document.querySelector('[data-canvas-container]') as HTMLElement | null
   if (!container) {
     // Not in canvas mode — return bounds unchanged
-    return { ...bounds, visible: bounds.width > 0 && bounds.height > 0 }
+    // Note: DOMRect properties are prototype getters, not own enumerable — spread won't copy them
+    return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height, visible: bounds.width > 0 && bounds.height > 0 }
   }
 
   const cr = container.getBoundingClientRect()

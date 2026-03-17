@@ -96,8 +96,6 @@ export class CodexManager {
 
     view.webContents.on('did-finish-load', () => {
       view.webContents.send('codex:set-session-id', id)
-      // Close sidebar by default for canvas pane sizing
-      this.closeSidebar(view)
     })
 
     const extPath = this.findCodexExtension()
@@ -109,32 +107,6 @@ export class CodexManager {
     }
 
     return id
-  }
-
-  private closeSidebar(view: WebContentsView): void {
-    // Inject CSS + JS to collapse the sidebar on load
-    view.webContents.executeJavaScript(`
-      (function() {
-        // Try common sidebar patterns: nav, aside, [data-sidebar], .sidebar
-        function tryClose() {
-          // Method 1: Click sidebar toggle/close button if it exists
-          var toggleBtn = document.querySelector('[data-testid="close-sidebar-button"], button[aria-label*="Close sidebar"], button[aria-label*="close sidebar"], button[aria-label*="Toggle sidebar"]');
-          if (toggleBtn) { toggleBtn.click(); return; }
-
-          // Method 2: Hide sidebar via CSS (covers most layouts)
-          var style = document.createElement('style');
-          style.id = 'liteeditor-sidebar-hide';
-          style.textContent = 'nav:first-of-type, aside:first-of-type, [data-sidebar], .sidebar, .side-nav { display: none !important; }';
-          if (!document.getElementById('liteeditor-sidebar-hide')) {
-            document.head.appendChild(style);
-          }
-        }
-        // Try immediately and after short delay for dynamic rendering
-        tryClose();
-        setTimeout(tryClose, 500);
-        setTimeout(tryClose, 1500);
-      })();
-    `).catch(() => {})
   }
 
   setBounds(sessionId: string, bounds: NativeViewBounds): void {

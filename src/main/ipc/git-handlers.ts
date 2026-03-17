@@ -14,6 +14,12 @@ export function registerGitHandlers(): void {
     gitService = new GitService(root)
   })
 
+  // Get current branch for an arbitrary path (used by sidebar per-project)
+  ipcMain.handle('git:current-branch-for-path', async (_e, rootPath: string) => {
+    const tempGit = new GitService(rootPath)
+    return tempGit.currentBranch()
+  })
+
   ipcMain.handle('git:status', async () => {
     return getGit().status()
   })

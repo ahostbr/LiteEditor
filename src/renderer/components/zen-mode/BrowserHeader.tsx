@@ -1,7 +1,8 @@
 import { useState, useRef, type KeyboardEvent } from 'react'
-import { ArrowLeft, ArrowRight, RotateCw, Loader2, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, RotateCw, Loader2, X, FolderOpen, Maximize2, Minimize2 } from 'lucide-react'
 import { useBrowserStore } from '../../stores/browser-store'
 import { useZenStore } from '../../stores/zen-store'
+import { useEditorStore } from '../../stores/editor-store'
 import { cn } from '../../lib/cn'
 
 interface BrowserHeaderProps {
@@ -31,6 +32,9 @@ export function BrowserHeader({
   const [isFocused, setIsFocused] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const removePanel = useZenStore((s) => s.removePanel)
+  const isMaximized = useZenStore((s) => s.maximizedPanelId === panelId)
+  const toggleMaximize = useZenStore((s) => s.toggleMaximize)
+  const projectRoot = useEditorStore((s) => s.projectRoot)
   const session = useBrowserStore((s) => browserSessionId ? s.sessions.get(browserSessionId) : undefined)
 
   const canGoBack = session?.canGoBack ?? false
@@ -163,6 +167,30 @@ export function BrowserHeader({
           color: 'var(--text-primary)'
         }}
       />
+
+      {/* Project CWD indicator */}
+      {projectRoot && (
+        <div
+          className="flex items-center gap-1 shrink-0 text-[10px] max-w-[180px]"
+          style={{ color: 'var(--text-muted)' }}
+          title={projectRoot}
+        >
+          <FolderOpen size={10} className="shrink-0 opacity-60" />
+          <span className="truncate font-mono">{projectRoot.split(/[\\/]/).pop()}</span>
+        </div>
+      )}
+
+      {/* Fullscreen */}
+      <button
+        onClick={(e) => { e.stopPropagation(); toggleMaximize(panelId) }}
+        className="p-1 rounded hover:bg-[var(--bg-muted)] opacity-50 hover:opacity-100 transition-opacity shrink-0"
+        title={isMaximized ? 'Restore' : 'Fullscreen'}
+      >
+        {isMaximized
+          ? <Minimize2 size={18} style={{ color: 'var(--text-muted)' }} />
+          : <Maximize2 size={18} style={{ color: 'var(--text-muted)' }} />
+        }
+      </button>
 
       {/* Close button */}
       <button

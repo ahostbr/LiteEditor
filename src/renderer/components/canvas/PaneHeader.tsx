@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { GripHorizontal, X, Minus, Terminal, FileCode, Globe, Plus, Settings, GitBranch } from 'lucide-react'
+import { GripHorizontal, X, Minus, Terminal, FileCode, Globe, Plus, Settings, GitBranch, Maximize2, Minimize2, FolderOpen } from 'lucide-react'
 import { useCanvasStore, type CanvasPaneState } from '../../stores/canvas-store'
 import { useTerminalStore } from '../../stores/terminal-store'
 import { useSettingsStore } from '../../stores/settings-store'
@@ -29,6 +29,27 @@ function getPaneTypeIcon(type: string) {
 export function PaneHeader({ pane, isFocused, onDragStart }: PaneHeaderProps) {
   const removePane = useCanvasStore((s) => s.removePane)
   const updatePane = useCanvasStore((s) => s.updatePane)
+  const maximizedPaneId = useCanvasStore((s) => s.maximizedPaneId)
+  const toggleMaximizePane = useCanvasStore((s) => s.toggleMaximizePane)
+  const isMaximized = maximizedPaneId === pane.id
+
+  const activeSessionId = pane.type === 'terminal'
+    ? (pane.terminalSessionIds?.[pane.activeTerminalIndex ?? 0] ?? pane.terminalSessionId)
+    : null
+  const cwd = useTerminalStore((s) =>
+    activeSessionId ? s.sessions.find((sess) => sess.id === activeSessionId)?.cwd : undefined
+  )
+  const shellNames = useTerminalStore((s) => {
+    const sids = pane.type === 'terminal'
+      ? (pane.terminalSessionIds || (pane.terminalSessionId ? [pane.terminalSessionId] : []))
+      : []
+    return sids.map(sid => {
+      const sess = s.sessions.find((sess) => sess.id === sid)
+      return sess?.shell
+        ? sess.shell.split(/[\\\/]/).pop()?.replace(/\.(exe|cmd)$/i, '') ?? 'term'
+        : 'term'
+    })
+  })
   const [renamingTabIndex, setRenamingTabIndex] = useState<number | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const renameInputRef = useRef<HTMLInputElement>(null)
@@ -46,7 +67,10 @@ export function PaneHeader({ pane, isFocused, onDragStart }: PaneHeaderProps) {
   }, [renamingTabIndex])
 
   const getTabLabel = (index: number): string => {
-    return tabNames[index] || `${index + 1}`
+    if (tabNames[index]) return tabNames[index]
+    const name = shellNames[index] || 'term'
+    const priorSame = shellNames.slice(0, index).filter(n => n === name).length
+    return priorSame > 0 ? `${name} ${priorSame + 1}` : name
   }
 
   const handleAddTerminalTab = async (e: React.MouseEvent) => {
@@ -142,19 +166,21 @@ export function PaneHeader({ pane, isFocused, onDragStart }: PaneHeaderProps) {
   const handleOpenSettings = (e: React.MouseEvent) => {
     e.stopPropagation()
     const ui = useUiStore.getState()
-    ui.setActiveSidebarPanel('settings')
-    if (!ui.sidebarVisible) {
-      ui.setActiveSidebarPanel('settings')
+    if (!ui.settingsPanelVisible) {
+      ui.toggleSettingsPanel()
     }
   }
+
+  const headerHeight = pane.type === 'terminal' && cwd ? 44 : 32
 
   return (
     <div
       className={cn(
-        'flex items-center justify-between px-2 h-[32px] shrink-0 select-none',
+        'flex items-center justify-between px-2 shrink-0 select-none',
         isFocused ? 'border-t-2' : 'border-t-2 border-transparent'
       )}
       style={{
+        height: headerHeight,
         backgroundColor: isFocused ? 'var(--bg-muted)' : 'var(--bg-surface)',
         borderTopColor: isFocused ? 'var(--accent)' : 'transparent',
         borderBottom: '1px solid var(--border)',
@@ -162,8 +188,9 @@ export function PaneHeader({ pane, isFocused, onDragStart }: PaneHeaderProps) {
       }}
       onPointerDown={onDragStart}
     >
-      {/* Left: drag handle + type icon + title / terminal tabs */}
-      <div className="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
+      {/* Left: drag handle + type icon + title / terminal tabs + cwd */}
+      <div className="flex flex-col justify-center min-w-0 flex-1 overflow-hidden">
+      <div className="flex items-center gap-1 min-w-0 overflow-hidden">
         <GripHorizontal size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
 
         {pane.type === 'terminal' ? (
@@ -200,7 +227,7 @@ export function PaneHeader({ pane, isFocused, onDragStart }: PaneHeaderProps) {
                     onPointerDown={(e) => e.stopPropagation()}
                     className="w-[48px] h-[14px] text-[10px] bg-[var(--bg-base)] border border-[var(--accent)] rounded px-0.5 outline-none"
                     style={{ color: 'var(--text-primary)' }}
-                    placeholder={`${i + 1}`}
+                    placeholder={shellNames[i] || 'term'}
                   />
                 ) : (
                   getTabLabel(i)
@@ -219,6 +246,18 @@ export function PaneHeader({ pane, isFocused, onDragStart }: PaneHeaderProps) {
                 )}
               </div>
             ))}
+            {/* Add tab button — inline with tabs on the left */}
+            <button
+              onClick={handleAddTerminalTab}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="flex items-center justify-center w-[20px] h-[20px] rounded transition-colors shrink-0"
+              style={{ color: 'var(--text-muted)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-overlay)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+              title="New Terminal Tab"
+            >
+              <Plus size={11} />
+            </button>
           </div>
         ) : (
           // Standard title
@@ -247,26 +286,19 @@ export function PaneHeader({ pane, isFocused, onDragStart }: PaneHeaderProps) {
           </span>
         )}
       </div>
+      {pane.type === 'terminal' && cwd && (
+        <div className="flex items-center gap-1 text-[10px] leading-none" style={{ color: 'var(--text-muted)' }}>
+          <FolderOpen size={9} className="shrink-0 opacity-60" />
+          <span className="font-mono truncate">{cwd}</span>
+        </div>
+      )}
+      </div>
 
-      {/* Right: add tab + settings + minimize + close */}
+      {/* Right: add tab + settings + fullscreen + minimize + close */}
       <div
         className="flex items-center gap-0.5 shrink-0"
         onPointerDown={(e) => e.stopPropagation()}
       >
-        {/* Add terminal tab (terminal panes only) */}
-        {pane.type === 'terminal' && (
-          <button
-            onClick={handleAddTerminalTab}
-            className="flex items-center justify-center w-[20px] h-[20px] rounded transition-colors"
-            style={{ color: 'var(--text-muted)' }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-overlay)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-            title="New Terminal Tab"
-          >
-            <Plus size={12} />
-          </button>
-        )}
-
         {/* Settings */}
         <button
           onClick={handleOpenSettings}
@@ -277,6 +309,19 @@ export function PaneHeader({ pane, isFocused, onDragStart }: PaneHeaderProps) {
           title="Settings"
         >
           <Settings size={11} />
+        </button>
+
+        {/* Fullscreen */}
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleMaximizePane(pane.id) }}
+          className="flex items-center justify-center w-[20px] h-[20px] rounded transition-colors"
+          style={{ color: 'var(--text-muted)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-overlay)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+          onPointerDown={(e) => e.stopPropagation()}
+          title={isMaximized ? 'Restore' : 'Fullscreen'}
+        >
+          {isMaximized ? <Minimize2 size={11} /> : <Maximize2 size={11} />}
         </button>
 
         {/* Minimize */}

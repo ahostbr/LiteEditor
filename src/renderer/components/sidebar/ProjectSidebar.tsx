@@ -52,26 +52,26 @@ export function ProjectSidebar() {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div
-        className="flex items-center justify-between px-4 h-[36px] shrink-0"
+        className="flex items-center justify-between px-3 h-[30px] shrink-0"
         style={{ borderBottom: '1px solid var(--border)' }}
       >
-        <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+        <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
           Projects
         </span>
         <button
           onClick={handleAddProject}
-          className="flex items-center justify-center w-6 h-6 rounded transition-colors"
+          className="flex items-center justify-center w-5 h-5 rounded transition-colors"
           style={{ color: 'var(--text-muted)' }}
           onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-overlay)' }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
           title="Add Project"
         >
-          <Plus size={14} />
+          <Plus size={12} />
         </button>
       </div>
 
       {/* Project list */}
-      <div className="flex-1 overflow-y-auto py-1">
+      <div className="flex-1 overflow-y-auto py-0.5">
         {sortedProjects.map((project) => (
           <ProjectEntry
             key={project.id}
@@ -86,11 +86,11 @@ export function ProjectSidebar() {
         {projects.length === 0 && (
           <button
             onClick={handleAddProject}
-            className="flex flex-col items-center gap-2 w-full py-8 transition-colors"
+            className="flex flex-col items-center gap-1.5 w-full py-6 transition-colors"
             style={{ color: 'var(--text-muted)' }}
           >
-            <FolderOpen size={24} />
-            <span className="text-xs">Open a project folder</span>
+            <FolderOpen size={20} />
+            <span className="text-[10px]">Open a project folder</span>
           </button>
         )}
       </div>

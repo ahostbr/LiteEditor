@@ -14,6 +14,11 @@ const ZOOM_SPEED = 0.002
 const MIN_ZOOM = 0.25
 const MAX_ZOOM = 3
 
+// Spring physics for column-focus scroll (Niri-inspired)
+const SPRING_STIFFNESS = 0.08
+const SPRING_DAMPING = 0.85
+const SPRING_MIN_VELOCITY = 0.3
+
 // e.buttons bitmask: 1=left, 2=right, 4=middle
 const BOTH_LR = 3   // left(1) + right(2)
 const MIDDLE = 4
@@ -191,6 +196,59 @@ export function useCanvasViewport() {
       rafRef.current = requestAnimationFrame(animate)
     }
   }, [animate])
+
+  // --- Spring animation for column focus ---
+  const springVelRef = useRef({ x: 0, y: 0 })
+  const springRafRef = useRef<number>(0)
+
+  const springAnimate = useCallback(() => {
+    const store = useCanvasStore.getState()
+    const target = store.springTarget
+    if (!target) return
+
+    const dx = target.x - store.viewportX
+    const dy = target.y - store.viewportY
+    const vel = springVelRef.current
+
+    vel.x += dx * SPRING_STIFFNESS
+    vel.y += dy * SPRING_STIFFNESS
+    vel.x *= SPRING_DAMPING
+    vel.y *= SPRING_DAMPING
+
+    store.scrollTo(store.viewportX + vel.x, store.viewportY + vel.y)
+
+    if (Math.abs(vel.x) < SPRING_MIN_VELOCITY && Math.abs(vel.y) < SPRING_MIN_VELOCITY &&
+        Math.abs(dx) < 1 && Math.abs(dy) < 1) {
+      // Snap to target and stop
+      store.scrollTo(target.x, target.y)
+      useCanvasStore.setState({ springTarget: null })
+      vel.x = 0
+      vel.y = 0
+      return
+    }
+
+    springRafRef.current = requestAnimationFrame(springAnimate)
+  }, [])
+
+  // Watch for springTarget changes
+  useEffect(() => {
+    let prevTarget: { x: number; y: number } | null = null
+    const unsub = useCanvasStore.subscribe((state) => {
+      const target = state.springTarget
+      if (target && target !== prevTarget) {
+        prevTarget = target
+        springVelRef.current = { x: 0, y: 0 }
+        if (springRafRef.current) cancelAnimationFrame(springRafRef.current)
+        springRafRef.current = requestAnimationFrame(springAnimate)
+      } else if (!target) {
+        prevTarget = null
+      }
+    })
+    return () => {
+      unsub()
+      if (springRafRef.current) cancelAnimationFrame(springRafRef.current)
+    }
+  }, [springAnimate])
 
   useEffect(() => {
     return () => {

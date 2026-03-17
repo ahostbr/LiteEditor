@@ -13,6 +13,7 @@ export function Canvas() {
   const viewportY = useCanvasStore((s) => s.viewportY)
   const zoom = useCanvasStore((s) => s.zoom)
   const focusedPaneId = useCanvasStore((s) => s.focusedPaneId)
+  const maximizedPaneId = useCanvasStore((s) => s.maximizedPaneId)
   const setFocusedPane = useCanvasStore((s) => s.setFocusedPane)
   const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -82,7 +83,7 @@ export function Canvas() {
           willChange: 'transform'
         }}
       >
-        {paneArray.map((pane) => (
+        {paneArray.filter((pane) => pane.id !== maximizedPaneId).map((pane) => (
           <CanvasPane
             key={pane.id}
             pane={pane}
@@ -105,6 +106,23 @@ export function Canvas() {
           </div>
         ))}
       </div>
+
+      {/* Maximized pane overlay */}
+      {maximizedPaneId && (() => {
+        const maxPane = paneArray.find((p) => p.id === maximizedPaneId)
+        if (!maxPane) return null
+        return (
+          <CanvasPane
+            key={`maximized-${maxPane.id}`}
+            pane={maxPane}
+            isFocused={true}
+            viewportX={0}
+            viewportY={0}
+            containerRef={containerRef}
+            maximized
+          />
+        )
+      })()}
 
       {/* Grab overlay — covers everything including pane content while grabbing */}
       {grabbing && (

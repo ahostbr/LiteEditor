@@ -5,7 +5,7 @@ import { ActivityBar } from './components/activity-bar/ActivityBar'
 import { FileExplorer } from './components/sidebar/FileExplorer'
 import { SearchPanel } from './components/sidebar/SearchPanel'
 import { GitPanel } from './components/sidebar/GitPanel'
-import { SettingsPanel } from './components/sidebar/SettingsPanel'
+import { SettingsPanel } from './components/settings/SettingsPanel'
 import { SplitPane } from './components/editor/SplitPane'
 import { useUiStore } from './stores/ui-store'
 
@@ -189,8 +189,6 @@ function SidebarContent() {
       return <SearchPanel />
     case 'git':
       return <GitPanel />
-    case 'settings':
-      return <SettingsPanel />
     default:
       return <ProjectSidebar />
   }
@@ -260,6 +258,7 @@ export default function App() {
 
   const sidebarVisible = useUiStore((s) => s.sidebarVisible)
   const terminalPanelVisible = useUiStore((s) => s.terminalPanelVisible)
+  const settingsPanelVisible = useUiStore((s) => s.settingsPanelVisible)
   const appMode = useUiStore((s) => s.appMode)
   const prevProjectRootRef = useRef<string | null>(null)
   const prevAppModeRef = useRef(appMode)
@@ -489,7 +488,9 @@ export default function App() {
             return { success: true }
           }
           case 'open_config':
-            useUiStore.getState().setActiveSidebarPanel('settings')
+            if (!useUiStore.getState().settingsPanelVisible) {
+              useUiStore.getState().toggleSettingsPanel()
+            }
             return { success: true }
           case 'attach_terminal_session': {
             const sessionId = typeof requestPayload.sessionId === 'string' ? requestPayload.sessionId : null
@@ -617,7 +618,9 @@ export default function App() {
           </>
         )}
         <div className="flex-1 overflow-hidden">
-          {appMode === 'canvas' ? (
+          {settingsPanelVisible ? (
+            <SettingsPanel />
+          ) : appMode === 'canvas' ? (
             <Suspense fallback={<div className="h-full" style={{ backgroundColor: 'var(--bg-base)' }} />}>
               <Canvas />
             </Suspense>

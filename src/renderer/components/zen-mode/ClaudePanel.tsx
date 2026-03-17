@@ -1,22 +1,18 @@
 import { useEffect, useRef } from 'react'
 import { useZenStore } from '../../stores/zen-store'
 import { useUiStore } from '../../stores/ui-store'
-import { clipToCanvasContainer } from '../../lib/clip-native-bounds'
-
-function toNativeBounds(rect: DOMRect | { x: number; y: number; width: number; height: number }) {
-  return {
-    x: Math.round(rect.x),
-    y: Math.round(rect.y),
-    width: Math.round(rect.width),
-    height: Math.round(rect.height),
-    viewportWidth: window.innerWidth,
-    viewportHeight: window.innerHeight
-  }
-}
+import { nativeBoundsController } from '../../lib/native-bounds-controller'
 
 interface ClaudePanelProps {
   panelId: string
   visible?: boolean
+}
+
+const claudeDriver = {
+  setBounds: (sessionId: string, bounds: Parameters<typeof window.api.claude.setBounds>[1]) =>
+    window.api.claude.setBounds(sessionId, bounds),
+  showView: (sessionId: string) => window.api.claude.showView(sessionId),
+  hideView: (sessionId: string) => window.api.claude.hideView(sessionId)
 }
 
 export function ClaudePanel({ panelId, visible = true }: ClaudePanelProps) {
@@ -24,29 +20,37 @@ export function ClaudePanel({ panelId, visible = true }: ClaudePanelProps) {
   const sessionIdRef = useRef<string | null>(null)
   const nativeOverlayOpen = useUiStore((s) => s.nativeOverlayOpen)
   const effectiveVisible = visible && !nativeOverlayOpen
-  const visibleRef = useRef(effectiveVisible)
-  visibleRef.current = effectiveVisible
+
+  // Register with centralized bounds controller
+  useEffect(() => {
+    nativeBoundsController.register(panelId, 'claude', '', containerRef, claudeDriver, effectiveVisible)
+    return () => { nativeBoundsController.unregister(panelId) }
+  }, [panelId])
+
+  // Sync visibility with controller
+  useEffect(() => {
+    nativeBoundsController.updateVisibility(panelId, effectiveVisible)
+    if (sessionIdRef.current) {
+      if (effectiveVisible) {
+        window.api.claude.showView(sessionIdRef.current)
+      } else {
+        window.api.claude.hideView(sessionIdRef.current)
+      }
+    }
+  }, [effectiveVisible, panelId])
 
   // Create or reuse session, manage lifecycle
   useEffect(() => {
     let cancelled = false
 
     const init = async () => {
-      // Check if zen panel already has a session from a previous mount
       const zenPanel = useZenStore.getState().panels.find((p) => p.id === panelId)
       let sessionId = zenPanel?.claudeSessionId || null
 
       if (sessionId) {
-        // Reuse existing session — just show/hide based on visibility
         sessionIdRef.current = sessionId
-        if (visibleRef.current) {
-          window.api.claude.showView(sessionId)
-          sendBounds(sessionId)
-        } else {
-          window.api.claude.hideView(sessionId)
-        }
+        nativeBoundsController.updateSessionId(panelId, sessionId)
       } else {
-        // Create a new session
         sessionId = await window.api.claude.createSession()
         if (cancelled) {
           window.api.claude.destroySession(sessionId)
@@ -54,26 +58,13 @@ export function ClaudePanel({ panelId, visible = true }: ClaudePanelProps) {
         }
 
         sessionIdRef.current = sessionId
+        nativeBoundsController.updateSessionId(panelId, sessionId)
 
-        // Store sessionId on zen panel
         useZenStore.setState((state) => ({
           panels: state.panels.map((p) =>
-            p.id === panelId ? { ...p, claudeSessionId: sessionId } : p
+            p.id === panelId ? { ...p, claudeSessionId: sessionId! } : p
           )
         }))
-
-        if (visibleRef.current) {
-          sendBounds(sessionId)
-        } else {
-          window.api.claude.hideView(sessionId)
-        }
-      }
-    }
-
-    function sendBounds(sessionId: string) {
-      const rect = containerRef.current?.getBoundingClientRect()
-      if (rect) {
-        window.api.claude.setBounds(sessionId, toNativeBounds(rect))
       }
     }
 
@@ -81,80 +72,11 @@ export function ClaudePanel({ panelId, visible = true }: ClaudePanelProps) {
 
     return () => {
       cancelled = true
-      // Hide but don't destroy — session survives layout switches.
-      // Destruction happens in zen-store.removePanel().
       if (sessionIdRef.current) {
         window.api.claude.hideView(sessionIdRef.current)
       }
     }
   }, [])
-
-  // rAF bounds tracking — handles drag, resize, splitter, and window moves
-  // Clips to canvas container so native views don't overflow the viewport
-  useEffect(() => {
-    let rafId: number | null = null
-    let lastX = 0
-    let lastY = 0
-    let lastW = 0
-    let lastH = 0
-    let lastVisible = true
-
-    function tick() {
-      const sid = sessionIdRef.current
-      if (!sid || !containerRef.current || !visibleRef.current) {
-        rafId = requestAnimationFrame(tick)
-        return
-      }
-
-      const rect = containerRef.current.getBoundingClientRect()
-      const clipped = clipToCanvasContainer(rect)
-
-      if (!clipped.visible) {
-        if (lastVisible) {
-          lastVisible = false
-          window.api.claude.hideView(sid)
-        }
-        rafId = requestAnimationFrame(tick)
-        return
-      }
-
-      if (!lastVisible) {
-        lastVisible = true
-        window.api.claude.showView(sid)
-      }
-
-      const { x, y, width: w, height: h } = clipped
-      if (x !== lastX || y !== lastY || w !== lastW || h !== lastH) {
-        lastX = x
-        lastY = y
-        lastW = w
-        lastH = h
-        window.api.claude.setBounds(sid, {
-          x, y, width: w, height: h,
-          viewportWidth: window.innerWidth,
-          viewportHeight: window.innerHeight
-        })
-      }
-
-      rafId = requestAnimationFrame(tick)
-    }
-
-    rafId = requestAnimationFrame(tick)
-
-    return () => {
-      if (rafId !== null) cancelAnimationFrame(rafId)
-    }
-  }, [])
-
-  // Show/hide view when visibility changes
-  useEffect(() => {
-    if (!sessionIdRef.current) return
-    if (effectiveVisible) {
-      window.api.claude.showView(sessionIdRef.current)
-    } else {
-      window.api.claude.hideView(sessionIdRef.current)
-    }
-  }, [effectiveVisible])
 
   return <div ref={containerRef} className="w-full h-full" />
 }

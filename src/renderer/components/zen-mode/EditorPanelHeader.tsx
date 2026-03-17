@@ -63,21 +63,23 @@ export function EditorPanelHeader({
       onDragOver={onDragOver}
       onDrop={onDrop}
     >
-      <div className="flex items-center gap-2 min-w-0 flex-1">
-        <FileIcon name={title} />
-        <span
-          className="text-sm truncate"
-          style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-muted)' }}
-        >
-          {title}
-        </span>
-        {isDirty && (
-          <div
-            className="w-2 h-2 rounded-full shrink-0"
-            style={{ backgroundColor: 'var(--accent)' }}
-            title="Unsaved changes"
-          />
-        )}
+      <div className="flex flex-col min-w-0 flex-1 justify-center">
+        <div className="flex items-center gap-2">
+          <FileIcon name={title} />
+          <span
+            className="text-sm truncate"
+            style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-muted)' }}
+          >
+            {title}
+          </span>
+          {isDirty && (
+            <div
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{ backgroundColor: 'var(--accent)' }}
+              title="Unsaved changes"
+            />
+          )}
+        </div>
       </div>
       <div className="flex items-center gap-1">
         {isDirty && (

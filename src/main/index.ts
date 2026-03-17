@@ -4,7 +4,7 @@ import { spawn, ChildProcess } from 'child_process'
 import { statSync } from 'fs'
 import { registerFsHandlers, shutdownFsHandlers } from './ipc/fs-handlers'
 import { registerGitHandlers } from './ipc/git-handlers'
-import { registerPtyHandlers, ptyManager } from './ipc/pty-handlers'
+import { registerPtyHandlers, shutdownPtyHandlers, ptyManager } from './ipc/pty-handlers'
 import { registerSearchHandlers } from './ipc/search-handlers'
 import { registerBrowserHandlers, shutdownBrowserHandlers, browserManager } from './ipc/browser-handlers'
 import { registerClaudeHandlers, shutdownClaudeHandlers } from './ipc/claude-handlers'
@@ -356,6 +356,7 @@ app.whenReady().then(async () => {
 })
 
 app.on('before-quit', () => {
+  shutdownPtyHandlers()
   shutdownFsHandlers()
   shutdownBrowserHandlers()
   shutdownClaudeHandlers()

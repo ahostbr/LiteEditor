@@ -115,7 +115,7 @@ export function TerminalHeader({
   return (
     <div
       className={cn(
-        'flex items-center justify-between px-3 h-[60px] shrink-0 cursor-default',
+        'flex items-center justify-between px-3 h-[40px] shrink-0 cursor-default',
         isActive ? 'border-t-2' : 'border-t-2 border-transparent'
       )}
       style={{
@@ -129,7 +129,7 @@ export function TerminalHeader({
       onDragOver={onDragOver}
       onDrop={onDrop}
     >
-      <div className="flex flex-col items-start justify-center min-w-0 flex-1">
+      <div className="flex items-center min-w-0 flex-1">
         {isEditing ? (
           <input
             ref={inputRef}
@@ -137,36 +137,23 @@ export function TerminalHeader({
             onChange={(e) => setEditValue(e.target.value)}
             onBlur={handleCommit}
             onKeyDown={handleKeyDown}
-            className="text-lg bg-transparent border border-[var(--accent)] rounded px-1.5 py-0 outline-none w-36"
+            className="text-sm bg-transparent border border-[var(--accent)] rounded px-1.5 py-0 outline-none w-36"
             style={{ color: 'var(--text-primary)' }}
           />
         ) : (
           <span
-            className="text-lg truncate"
+            className="text-sm truncate"
             style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-muted)' }}
             onDoubleClick={handleDoubleClick}
           >
             {title}
           </span>
         )}
-        <div
-          className="flex items-center gap-1.5 text-[15px] leading-none mt-1"
-          style={{ color: 'var(--text-muted)' }}
-        >
-          <span
-            className="font-mono truncate cursor-pointer hover:text-[var(--text-primary)] transition-colors"
-            title={`Session ID: ${sessionId} (click to copy)`}
-            onClick={(e) => { e.stopPropagation(); handleCopyId() }}
-          >
-            {sessionId}
+        {shellName && (
+          <span className="ml-1.5 text-[11px] opacity-40 truncate" style={{ color: 'var(--text-muted)' }}>
+            · {shellName}
           </span>
-          {shellName && (
-            <>
-              <span className="opacity-40">·</span>
-              <span className="truncate">{shellName}</span>
-            </>
-          )}
-        </div>
+        )}
       </div>
       <div className="flex items-center gap-1">
         <button

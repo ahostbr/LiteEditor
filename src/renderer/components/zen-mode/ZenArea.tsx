@@ -7,9 +7,12 @@ import { GridLayout } from './GridLayout'
 import { SplitterLayout } from './SplitterLayout'
 import { WindowLayout } from './WindowLayout'
 import { TabLayout } from './TabLayout'
+import { PanelRenderer } from './PanelRenderer'
 
 export function ZenArea() {
   const panels = useZenStore((s) => s.panels)
+  const maximizedPanelId = useZenStore((s) => s.maximizedPanelId)
+  const setActivePanel = useZenStore((s) => s.setActivePanel)
   const addTerminalPanel = useZenStore((s) => s.addTerminalPanel)
   const addEditorPanel = useZenStore((s) => s.addEditorPanel)
   const addUnifiedEditorPanel = useZenStore((s) => s.addUnifiedEditorPanel)
@@ -67,6 +70,23 @@ export function ZenArea() {
         <span className="text-sm">Starting terminal...</span>
       </div>
     )
+  }
+
+  // Maximized panel takes full area
+  if (maximizedPanelId) {
+    const maxPanel = panels.find((p) => p.id === maximizedPanelId)
+    if (maxPanel) {
+      return (
+        <div className="flex-1 flex flex-col h-full" style={{ backgroundColor: 'var(--bg-base)' }}>
+          <PanelRenderer
+            panel={maxPanel}
+            isActive={true}
+            onFocus={() => setActivePanel(maxPanel.id)}
+            visible={true}
+          />
+        </div>
+      )
+    }
   }
 
   switch (layoutMode) {

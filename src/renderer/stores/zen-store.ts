@@ -27,6 +27,7 @@ export interface ZenPanel {
 interface ZenState {
   panels: ZenPanel[]
   activePanelId: string | null
+  maximizedPanelId: string | null
 
   addTerminalPanel: (shell?: string, cwd?: string) => Promise<void>
   addEditorPanel: (filePath: string, content: string) => void
@@ -41,6 +42,7 @@ interface ZenState {
   reorderPanels: (fromIndex: number, toIndex: number) => void
   markPanelDirty: (id: string, dirty: boolean) => void
   renamePanel: (id: string, title: string) => void
+  toggleMaximize: (id: string) => void
 }
 
 let panelCounter = 0
@@ -58,6 +60,7 @@ function resolveTerminalCwd(cwd?: string): string | undefined {
 export const useZenStore = create<ZenState>((set, get) => ({
   panels: [],
   activePanelId: null,
+  maximizedPanelId: null,
 
   addTerminalPanel: async (shell?: string, cwd?: string) => {
     const resolvedCwd = resolveTerminalCwd(cwd)
@@ -250,6 +253,12 @@ export const useZenStore = create<ZenState>((set, get) => ({
   renamePanel: (id: string, title: string) => {
     set((state) => ({
       panels: state.panels.map((p) => p.id === id ? { ...p, title } : p)
+    }))
+  },
+
+  toggleMaximize: (id: string) => {
+    set((state) => ({
+      maximizedPanelId: state.maximizedPanelId === id ? null : id
     }))
   }
 }))

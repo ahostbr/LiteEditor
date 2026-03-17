@@ -5,6 +5,10 @@ const ptyManager = new PtyManager()
 
 export { ptyManager }
 
+export function shutdownPtyHandlers(): void {
+  ptyManager.killAll()
+}
+
 export function registerPtyHandlers(): void {
   ipcMain.handle('pty:create', async (_e, shell?: string, cwd?: string) => {
     const sessionId = ptyManager.create(shell, cwd, (data) => {

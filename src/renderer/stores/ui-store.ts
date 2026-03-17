@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type SidebarPanel = 'projects' | 'files' | 'search' | 'git' | 'settings'
+export type SidebarPanel = 'projects' | 'files' | 'search' | 'git'
 
 export type AppMode = 'canvas' | 'editor' | 'zen'
 
@@ -9,6 +9,7 @@ export interface WorkspaceUIState {
   activeSidebarPanel: SidebarPanel
   sidebarWidth: number
   terminalPanelVisible: boolean
+  settingsPanelVisible: boolean
   appMode: AppMode
 }
 
@@ -17,6 +18,7 @@ interface UiState {
   activeSidebarPanel: SidebarPanel
   sidebarWidth: number
   terminalPanelVisible: boolean
+  settingsPanelVisible: boolean
   appMode: AppMode
   nativeOverlayOpen: boolean
 
@@ -24,6 +26,7 @@ interface UiState {
   setActiveSidebarPanel: (panel: SidebarPanel) => void
   setSidebarWidth: (width: number) => void
   toggleTerminalPanel: () => void
+  toggleSettingsPanel: () => void
   setAppMode: (mode: AppMode) => void
   toggleAppMode: () => void
   setNativeOverlayOpen: (open: boolean) => void
@@ -36,6 +39,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   activeSidebarPanel: 'projects',
   sidebarWidth: 260,
   terminalPanelVisible: false,
+  settingsPanelVisible: false,
   appMode: 'canvas',
   nativeOverlayOpen: false,
 
@@ -52,6 +56,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   setSidebarWidth: (width) => set({ sidebarWidth: width }),
 
   toggleTerminalPanel: () => set((s) => ({ terminalPanelVisible: !s.terminalPanelVisible })),
+  toggleSettingsPanel: () => set((s) => ({ settingsPanelVisible: !s.settingsPanelVisible })),
 
   setAppMode: (mode) => set({ appMode: mode }),
   toggleAppMode: () => set((s) => {
@@ -69,6 +74,7 @@ export const useUiStore = create<UiState>((set, get) => ({
       activeSidebarPanel: s.activeSidebarPanel,
       sidebarWidth: s.sidebarWidth,
       terminalPanelVisible: s.terminalPanelVisible,
+      settingsPanelVisible: s.settingsPanelVisible,
       appMode: s.appMode
     }
   },
@@ -76,9 +82,10 @@ export const useUiStore = create<UiState>((set, get) => ({
   restoreUIState: (state) => {
     const update: Partial<UiState> = {}
     if (state.sidebarVisible !== undefined) update.sidebarVisible = state.sidebarVisible
-    if (state.activeSidebarPanel) update.activeSidebarPanel = state.activeSidebarPanel
+    if (state.activeSidebarPanel && (state.activeSidebarPanel as string) !== 'settings') update.activeSidebarPanel = state.activeSidebarPanel as SidebarPanel
     if (state.sidebarWidth !== undefined) update.sidebarWidth = state.sidebarWidth
     if (state.terminalPanelVisible !== undefined) update.terminalPanelVisible = state.terminalPanelVisible
+    if (state.settingsPanelVisible !== undefined) update.settingsPanelVisible = state.settingsPanelVisible
     if (state.appMode) update.appMode = state.appMode
     set(update)
   }

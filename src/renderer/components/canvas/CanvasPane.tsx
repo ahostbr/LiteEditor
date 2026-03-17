@@ -10,12 +10,13 @@ interface CanvasPaneProps {
   viewportX: number
   viewportY: number
   containerRef: React.RefObject<HTMLDivElement | null>
+  maximized?: boolean
 }
 
 const MIN_WIDTH = 300
 const MIN_HEIGHT = 200
 
-export function CanvasPane({ pane, isFocused, viewportX, viewportY, containerRef }: CanvasPaneProps) {
+export function CanvasPane({ pane, isFocused, viewportX, viewportY, containerRef, maximized }: CanvasPaneProps) {
   const setFocusedPane = useCanvasStore((s) => s.setFocusedPane)
   const movePane = useCanvasStore((s) => s.movePane)
   const resizePane = useCanvasStore((s) => s.resizePane)
@@ -115,6 +116,21 @@ export function CanvasPane({ pane, isFocused, viewportX, viewportY, containerRef
           isFocused={isFocused}
           onDragStart={handleDragStart}
         />
+      </div>
+    )
+  }
+
+  if (maximized) {
+    return (
+      <div
+        className="absolute inset-0 flex flex-col overflow-hidden"
+        style={{ backgroundColor: 'var(--bg-surface)', zIndex: 100 }}
+        onClick={handleFocus}
+      >
+        <PaneHeader pane={pane} isFocused={true} onDragStart={() => {}} />
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <CanvasPanelRenderer pane={pane} isFocused={true} />
+        </div>
       </div>
     )
   }

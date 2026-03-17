@@ -47,8 +47,19 @@ export function AddPaneMenu({ show: externalShow, onClose, anchorX, anchorY }: A
 
   if (!show) return null
 
+  const isColumnMode = useCanvasStore((s) => s.layoutMode) === 'columns'
+
   const addPaneOfType = (type: CanvasPaneType, extra?: Record<string, unknown>) => {
     useCanvasStore.getState().addPane(type, extra as any)
+    setInternalShow(false)
+    onClose?.()
+  }
+
+  const addPaneToCurrentColumn = (type: CanvasPaneType) => {
+    const store = useCanvasStore.getState()
+    const id = store.addPane(type) // addPane handles smart column placement
+    // If we want to force add to current column (override smart stack):
+    // store.addPaneToColumn(id, store.activeColumnIdx)
     setInternalShow(false)
     onClose?.()
   }
@@ -87,7 +98,7 @@ export function AddPaneMenu({ show: externalShow, onClose, anchorX, anchorY }: A
       }}
     >
       <div className="px-3 py-1 text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-        Add Pane
+        {isColumnMode ? 'Add Pane (Column Mode)' : 'Add Pane'}
       </div>
       <MenuItem icon={<Terminal size={14} />} label="New Terminal" onClick={() => addPaneOfType('terminal')} />
       <MenuItem icon={<FileCode size={14} />} label="Open File Editor" onClick={handleAddEditor} />

@@ -63,13 +63,33 @@ export interface PersistedCanvasState {
 
 export type CanvasLayoutMode = 'freeform' | 'columns'
 
+// --- Column model (Niri-inspired paper WM) ---
+export interface CanvasColumn {
+  id: string
+  paneIds: string[]   // ordered top-to-bottom
+  width: number        // fixed width for this column
+}
+
+let columnCounter = 0
+function nextColumnId(): string {
+  return `col-${++columnCounter}`
+}
+
 interface CanvasState {
   panes: Map<string, CanvasPaneState>
   viewportX: number
   viewportY: number
   focusedPaneId: string | null
+  maximizedPaneId: string | null
   zoom: number
   layoutMode: CanvasLayoutMode
+
+  // Column model state (used when layoutMode === 'columns')
+  columns: CanvasColumn[]
+  activeColumnIdx: number
+
+  // Spring animation target (null = no animation)
+  springTarget: { x: number; y: number } | null
 
   // Pane CRUD
   addPane: (type: CanvasPaneType, options?: Partial<CanvasPaneState>) => string
@@ -80,6 +100,7 @@ interface CanvasState {
 
   // Focus
   setFocusedPane: (id: string | null) => void
+  toggleMaximizePane: (id: string) => void
 
   // Viewport
   scrollTo: (x: number, y: number) => void
@@ -96,6 +117,15 @@ interface CanvasState {
 
   // Find nearest pane in a direction from focused
   findNearestPane: (direction: 'left' | 'right' | 'up' | 'down') => string | null
+
+  // Column navigation (O(1) index arithmetic)
+  navigateColumn: (direction: 'left' | 'right' | 'up' | 'down') => void
+
+  // Column operations
+  deriveColumnPositions: () => void
+  getColumnForPane: (paneId: string) => { column: CanvasColumn; colIdx: number; paneIdx: number } | null
+  addPaneToColumn: (paneId: string, columnIdx: number, position?: number) => void
+  springToColumn: (columnIdx: number) => void
 
   // Workspace-aware queries
   getVisiblePanes: (activeWorkspaceId: string | null) => CanvasPaneState[]
@@ -133,29 +163,46 @@ function nextPaneId(): string {
   return `canvas-pane-${++paneCounter}`
 }
 
+// Column layout constants
+const COLUMN_GAP = 24
+const COLUMN_MARGIN = 40
+const COLUMN_PANE_GAP = 16
+
 export const useCanvasStore = create<CanvasState>((set, get) => ({
   panes: new Map(),
   viewportX: 0,
   viewportY: 0,
   focusedPaneId: null,
+  maximizedPaneId: null,
   zoom: 1,
   layoutMode: 'freeform' as CanvasLayoutMode,
+  columns: [],
+  activeColumnIdx: 0,
+  springTarget: null,
 
   addPane: (type, options = {}) => {
     const state = get()
     const id = options.id || nextPaneId()
 
-    // Default placement: right of focused pane, or origin if no panes
+    // Per-type default dimensions
+    const defaultWidth = options.width ?? getDefaultWidth(type)
+    const defaultHeight = options.height ?? getDefaultHeight(type)
+
+    // Default placement depends on layout mode
     let x = options.x ?? 0
     let y = options.y ?? 0
 
-    if (options.x === undefined || options.y === undefined) {
+    if (state.layoutMode === 'columns' && options.x === undefined && options.y === undefined) {
+      // Column mode: positions will be derived after column insertion
+      x = 0
+      y = 0
+    } else if (options.x === undefined || options.y === undefined) {
+      // Freeform: right of focused pane, or origin if no panes
       const focused = state.focusedPaneId ? state.panes.get(state.focusedPaneId) : null
       if (focused) {
         x = focused.x + focused.width + PANE_GAP
         y = focused.y
       } else if (state.panes.size > 0) {
-        // Place right of the rightmost pane
         let maxRight = -Infinity
         let rightY = 0
         for (const pane of state.panes.values()) {
@@ -169,10 +216,6 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         y = rightY
       }
     }
-
-    // Per-type default dimensions
-    const defaultWidth = options.width ?? getDefaultWidth(type)
-    const defaultHeight = options.height ?? getDefaultHeight(type)
 
     const newPane: CanvasPaneState = {
       id,
@@ -197,7 +240,35 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
     const newPanes = new Map(state.panes)
     newPanes.set(id, newPane)
-    set({ panes: newPanes, focusedPaneId: id })
+
+    if (state.layoutMode === 'columns' && options.x === undefined) {
+      // Column mode placement: new column by default, smart stack if active column has 1 pane
+      const columns = [...state.columns]
+      const activeCol = columns[state.activeColumnIdx]
+
+      if (activeCol && activeCol.paneIds.length === 1) {
+        // Smart stack: add to current column
+        activeCol.paneIds = [...activeCol.paneIds, id]
+        const newActiveIdx = state.activeColumnIdx
+        set({ panes: newPanes, focusedPaneId: id, columns, activeColumnIdx: newActiveIdx })
+      } else {
+        // New column to the right of active
+        const insertIdx = state.activeColumnIdx + (columns.length > 0 ? 1 : 0)
+        const newCol: CanvasColumn = {
+          id: nextColumnId(),
+          paneIds: [id],
+          width: defaultWidth
+        }
+        columns.splice(insertIdx, 0, newCol)
+        set({ panes: newPanes, focusedPaneId: id, columns, activeColumnIdx: insertIdx })
+      }
+      // Derive positions from column structure
+      get().deriveColumnPositions()
+      get().springToColumn(get().activeColumnIdx)
+    } else {
+      set({ panes: newPanes, focusedPaneId: id })
+    }
+
     return id
   },
 
@@ -206,12 +277,28 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const newPanes = new Map(state.panes)
     newPanes.delete(id)
     let focusedPaneId = state.focusedPaneId
+
+    // Remove from column structure if in column mode
+    if (state.layoutMode === 'columns') {
+      const columns = state.columns
+        .map((col) => ({
+          ...col,
+          paneIds: col.paneIds.filter((pid) => pid !== id)
+        }))
+        .filter((col) => col.paneIds.length > 0) // Remove empty columns
+      const activeColumnIdx = Math.min(state.activeColumnIdx, Math.max(0, columns.length - 1))
+      set({ columns, activeColumnIdx })
+    }
+
     if (focusedPaneId === id) {
-      // Focus the last pane if available
       const remaining = Array.from(newPanes.values())
       focusedPaneId = remaining.length > 0 ? remaining[remaining.length - 1].id : null
     }
     set({ panes: newPanes, focusedPaneId })
+
+    if (state.layoutMode === 'columns') {
+      get().deriveColumnPositions()
+    }
   },
 
   movePane: (id, x, y) => {
@@ -242,6 +329,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
 
   setFocusedPane: (id) => set({ focusedPaneId: id }),
+  toggleMaximizePane: (id) => set((s) => ({ maximizedPaneId: s.maximizedPaneId === id ? null : id })),
 
   scrollTo: (x, y) => set({ viewportX: x, viewportY: y }),
 
@@ -316,6 +404,115 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     return best?.id ?? null
   },
 
+  // --- Column navigation (O(1) index arithmetic) ---
+  navigateColumn: (direction) => {
+    const state = get()
+    if (state.layoutMode !== 'columns' || state.columns.length === 0) return
+
+    const col = state.columns[state.activeColumnIdx]
+    if (!col) return
+
+    // Find current pane index within active column
+    const focusedId = state.focusedPaneId
+    let paneIdx = focusedId ? col.paneIds.indexOf(focusedId) : 0
+    if (paneIdx < 0) paneIdx = 0
+
+    let newColIdx = state.activeColumnIdx
+    let newPaneIdx = paneIdx
+
+    switch (direction) {
+      case 'left':
+        newColIdx = Math.max(0, state.activeColumnIdx - 1)
+        newPaneIdx = Math.min(paneIdx, (state.columns[newColIdx]?.paneIds.length ?? 1) - 1)
+        break
+      case 'right':
+        newColIdx = Math.min(state.columns.length - 1, state.activeColumnIdx + 1)
+        newPaneIdx = Math.min(paneIdx, (state.columns[newColIdx]?.paneIds.length ?? 1) - 1)
+        break
+      case 'up':
+        newPaneIdx = Math.max(0, paneIdx - 1)
+        break
+      case 'down':
+        newPaneIdx = Math.min(col.paneIds.length - 1, paneIdx + 1)
+        break
+    }
+
+    const targetCol = state.columns[newColIdx]
+    if (!targetCol) return
+    const targetPaneId = targetCol.paneIds[newPaneIdx]
+    if (!targetPaneId) return
+
+    set({ activeColumnIdx: newColIdx, focusedPaneId: targetPaneId })
+
+    if (newColIdx !== state.activeColumnIdx) {
+      get().springToColumn(newColIdx)
+    }
+  },
+
+  // --- Derive pane positions from column structure ---
+  deriveColumnPositions: () => {
+    const state = get()
+    if (state.columns.length === 0) return
+
+    const newPanes = new Map(state.panes)
+    let colX = COLUMN_MARGIN
+
+    for (const col of state.columns) {
+      let paneY = COLUMN_MARGIN
+      for (const paneId of col.paneIds) {
+        const pane = newPanes.get(paneId)
+        if (!pane) continue
+        newPanes.set(paneId, { ...pane, x: colX, y: paneY, width: col.width })
+        paneY += pane.height + COLUMN_PANE_GAP
+      }
+      colX += col.width + COLUMN_GAP
+    }
+
+    set({ panes: newPanes })
+  },
+
+  getColumnForPane: (paneId) => {
+    const state = get()
+    for (let colIdx = 0; colIdx < state.columns.length; colIdx++) {
+      const col = state.columns[colIdx]
+      const paneIdx = col.paneIds.indexOf(paneId)
+      if (paneIdx >= 0) return { column: col, colIdx, paneIdx }
+    }
+    return null
+  },
+
+  addPaneToColumn: (paneId, columnIdx, position) => {
+    const state = get()
+    const columns = state.columns.map((col, i) => {
+      if (i !== columnIdx) return col
+      const paneIds = [...col.paneIds]
+      const insertAt = position ?? paneIds.length
+      paneIds.splice(insertAt, 0, paneId)
+      return { ...col, paneIds }
+    })
+    set({ columns })
+    get().deriveColumnPositions()
+  },
+
+  springToColumn: (columnIdx) => {
+    const state = get()
+    const col = state.columns[columnIdx]
+    if (!col) return
+
+    // Compute column X position (sum of preceding widths + gaps)
+    let colX = COLUMN_MARGIN
+    for (let i = 0; i < columnIdx; i++) {
+      colX += state.columns[i].width + COLUMN_GAP
+    }
+
+    // Center the column in the viewport
+    // viewportWidth approximation: use window.innerWidth minus sidebar/activitybar
+    const viewportWidth = (typeof window !== 'undefined' ? window.innerWidth : 1200) - 300
+    const targetX = colX - Math.max(0, (viewportWidth / state.zoom - col.width) / 2)
+
+    set({ springTarget: { x: targetX, y: state.viewportY } })
+  },
+
   linkPanes: (paneId, targetPaneId) => {
     const newPanes = new Map(get().panes)
     const pane = newPanes.get(paneId)
@@ -380,44 +577,46 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const sorted = [...panes].sort((a, b) => a.x - b.x)
 
     // Group into columns by proximity (panes within 100px of each other are same column)
-    const columns: CanvasPaneState[][] = []
-    let currentCol: CanvasPaneState[] = []
+    const paneGroups: CanvasPaneState[][] = []
+    let currentGroup: CanvasPaneState[] = []
     let lastX = -Infinity
 
     for (const pane of sorted) {
-      if (pane.x - lastX > 100 || currentCol.length === 0) {
-        if (currentCol.length > 0) columns.push(currentCol)
-        currentCol = [pane]
+      if (pane.x - lastX > 100 || currentGroup.length === 0) {
+        if (currentGroup.length > 0) paneGroups.push(currentGroup)
+        currentGroup = [pane]
       } else {
-        currentCol.push(pane)
+        currentGroup.push(pane)
       }
       lastX = pane.x
     }
-    if (currentCol.length > 0) columns.push(currentCol)
+    if (currentGroup.length > 0) paneGroups.push(currentGroup)
 
-    // Re-layout columns
-    const COLUMN_GAP = 24
-    const PANE_GAP = 16
-    let columnX = 40
-    const newPanes = new Map(get().panes)
-
-    for (const col of columns) {
-      // Sort column panes by Y position
-      col.sort((a, b) => a.y - b.y)
-
-      let colWidth = 0
-      let y = 40
-
-      for (const pane of col) {
-        colWidth = Math.max(colWidth, pane.width)
-        newPanes.set(pane.id, { ...pane, x: columnX, y })
-        y += pane.height + PANE_GAP
+    // Build column structure from groups
+    const columns: CanvasColumn[] = paneGroups.map((group) => {
+      group.sort((a, b) => a.y - b.y)
+      const maxWidth = Math.max(...group.map((p) => p.width))
+      return {
+        id: nextColumnId(),
+        paneIds: group.map((p) => p.id),
+        width: maxWidth
       }
+    })
 
-      columnX += colWidth + COLUMN_GAP
+    // Find which column contains the focused pane
+    const focusedId = get().focusedPaneId
+    let activeColIdx = 0
+    if (focusedId) {
+      for (let i = 0; i < columns.length; i++) {
+        if (columns[i].paneIds.includes(focusedId)) {
+          activeColIdx = i
+          break
+        }
+      }
     }
 
-    set({ panes: newPanes })
+    set({ columns, activeColumnIdx: activeColIdx })
+    get().deriveColumnPositions()
   },
 
   getVisiblePanes: (activeWorkspaceId) => {

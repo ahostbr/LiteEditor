@@ -82,10 +82,23 @@ export function useKeyboardShortcuts() {
         }
       }
 
-      // Ctrl+\: Split pane
+      // Ctrl+\: Split pane (mode-aware)
       if (ctrl && e.key === '\\') {
         e.preventDefault()
-        splitPane()
+        const mode = useUiStore.getState().appMode
+        if (mode === 'canvas') {
+          useCanvasStore.getState().addPane('editor')
+        } else if (mode === 'zen') {
+          const zenEditorMode = (await import('../stores/settings-store')).useSettingsStore.getState().zenEditorMode
+          if (zenEditorMode === 'unified') {
+            splitPane()
+          } else {
+            useZenStore.getState().addUnifiedEditorPanel()
+          }
+        } else {
+          splitPane()
+        }
+        return
       }
 
       // Ctrl+=: Zoom in

@@ -1,7 +1,9 @@
 import React, { useEffect } from 'react'
+import { X } from 'lucide-react'
 import { useSettingsStore } from '../../stores/settings-store'
 import { useEditorStore } from '../../stores/editor-store'
-import { AppearanceSection } from '../settings/AppearanceSection'
+import { useUiStore } from '../../stores/ui-store'
+import { AppearanceSection } from './AppearanceSection'
 
 type SettingScope = 'global' | 'workspace'
 type IntegrationId = 'codex' | 'claude'
@@ -37,6 +39,7 @@ type IntegrationProgress = {
 export function SettingsPanel() {
   const settings = useSettingsStore()
   const projectRoot = useEditorStore((s) => s.projectRoot)
+  const toggleSettingsPanel = useUiStore((s) => s.toggleSettingsPanel)
   const [integrationStatus, setIntegrationStatus] = React.useState<Record<IntegrationId, IntegrationStatus | null>>({
     codex: null,
     claude: null
@@ -142,242 +145,260 @@ export function SettingsPanel() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className="px-3 py-2 shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
-        <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+    <div className="flex flex-col h-full overflow-hidden" style={{ backgroundColor: 'var(--bg-base)' }}>
+      {/* Header */}
+      <div
+        className="flex items-center justify-between px-6 py-3 shrink-0"
+        style={{ borderBottom: '1px solid var(--border)' }}
+      >
+        <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
           Settings
         </span>
+        <button
+          onClick={toggleSettingsPanel}
+          className="p-1 rounded transition-colors hover:bg-[var(--bg-overlay)]"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          <X size={16} />
+        </button>
       </div>
-      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-4">
-        {/* Editor Settings */}
-        <SettingsSection title="Editor">
-          <NumberSetting
-            label="Font Size"
-            settingKey="fontSize"
-            value={settings.fontSize}
-            onChange={handleChange}
-            onReset={handleResetToGlobal}
-            min={8}
-            max={32}
-            hasOverride={settings.hasWorkspaceOverride('fontSize')}
-            hasProject={!!projectRoot}
-          />
-          <TextSetting
-            label="Font Family"
-            settingKey="fontFamily"
-            value={settings.fontFamily}
-            onChange={handleChange}
-            onReset={handleResetToGlobal}
-            hasOverride={settings.hasWorkspaceOverride('fontFamily')}
-            hasProject={!!projectRoot}
-          />
-          <NumberSetting
-            label="Tab Size"
-            settingKey="tabSize"
-            value={settings.tabSize}
-            onChange={handleChange}
-            onReset={handleResetToGlobal}
-            min={1}
-            max={8}
-            hasOverride={settings.hasWorkspaceOverride('tabSize')}
-            hasProject={!!projectRoot}
-          />
-          <SelectSetting
-            label="Word Wrap"
-            settingKey="wordWrap"
-            value={settings.wordWrap}
-            options={[
-              { value: 'off', label: 'Off' },
-              { value: 'on', label: 'On' }
-            ]}
-            onChange={handleChange}
-            onReset={handleResetToGlobal}
-            hasOverride={settings.hasWorkspaceOverride('wordWrap')}
-            hasProject={!!projectRoot}
-          />
-          <ToggleSetting
-            label="Minimap"
-            settingKey="minimap"
-            value={settings.minimap}
-            onChange={handleChange}
-            onReset={handleResetToGlobal}
-            hasOverride={settings.hasWorkspaceOverride('minimap')}
-            hasProject={!!projectRoot}
-          />
-          <SelectSetting
-            label="Line Numbers"
-            settingKey="lineNumbers"
-            value={settings.lineNumbers}
-            options={[
-              { value: 'on', label: 'On' },
-              { value: 'off', label: 'Off' },
-              { value: 'relative', label: 'Relative' }
-            ]}
-            onChange={handleChange}
-            onReset={handleResetToGlobal}
-            hasOverride={settings.hasWorkspaceOverride('lineNumbers')}
-            hasProject={!!projectRoot}
-          />
-          <SelectSetting
-            label="Auto Save"
-            settingKey="autoSave"
-            value={settings.autoSave}
-            options={[
-              { value: 'off', label: 'Off' },
-              { value: 'afterDelay', label: 'After Delay' },
-              { value: 'onFocusChange', label: 'On Focus Change' }
-            ]}
-            onChange={handleChange}
-            onReset={handleResetToGlobal}
-            hasOverride={settings.hasWorkspaceOverride('autoSave')}
-            hasProject={!!projectRoot}
-          />
-          {settings.autoSave === 'afterDelay' && (
-            <NumberSetting
-              label="Auto Save Delay (ms)"
-              settingKey="autoSaveDelay"
-              value={settings.autoSaveDelay}
-              onChange={handleChange}
-              onReset={handleResetToGlobal}
-              min={100}
-              max={10000}
-              step={100}
-              hasOverride={settings.hasWorkspaceOverride('autoSaveDelay')}
-              hasProject={!!projectRoot}
-            />
-          )}
-        </SettingsSection>
 
-        {/* Terminal Settings */}
-        <SettingsSection title="Terminal">
-          <NumberSetting
-            label="Font Size"
-            settingKey="terminalFontSize"
-            value={settings.terminalFontSize}
-            onChange={handleChange}
-            onReset={handleResetToGlobal}
-            min={8}
-            max={24}
-            hasOverride={settings.hasWorkspaceOverride('terminalFontSize')}
-            hasProject={!!projectRoot}
-          />
-          <TextSetting
-            label="Shell Path"
-            settingKey="terminalShell"
-            value={settings.terminalShell}
-            onChange={handleChange}
-            onReset={handleResetToGlobal}
-            placeholder="System default"
-            hasOverride={settings.hasWorkspaceOverride('terminalShell')}
-            hasProject={!!projectRoot}
-          />
-          <TextSetting
-            label="Default Directory"
-            settingKey="defaultTerminalCwd"
-            value={settings.defaultTerminalCwd}
-            onChange={handleChange}
-            onReset={handleResetToGlobal}
-            placeholder="Project root"
-            hasOverride={settings.hasWorkspaceOverride('defaultTerminalCwd')}
-            hasProject={!!projectRoot}
-          />
-        </SettingsSection>
+      {/* Scrollable content with column layout */}
+      <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 max-w-[1400px]">
+          {/* Column 1: Editor + Terminal + Zen */}
+          <div className="space-y-6">
+            <SettingsSection title="Editor">
+              <NumberSetting
+                label="Font Size"
+                settingKey="fontSize"
+                value={settings.fontSize}
+                onChange={handleChange}
+                onReset={handleResetToGlobal}
+                min={8}
+                max={32}
+                hasOverride={settings.hasWorkspaceOverride('fontSize')}
+                hasProject={!!projectRoot}
+              />
+              <TextSetting
+                label="Font Family"
+                settingKey="fontFamily"
+                value={settings.fontFamily}
+                onChange={handleChange}
+                onReset={handleResetToGlobal}
+                hasOverride={settings.hasWorkspaceOverride('fontFamily')}
+                hasProject={!!projectRoot}
+              />
+              <NumberSetting
+                label="Tab Size"
+                settingKey="tabSize"
+                value={settings.tabSize}
+                onChange={handleChange}
+                onReset={handleResetToGlobal}
+                min={1}
+                max={8}
+                hasOverride={settings.hasWorkspaceOverride('tabSize')}
+                hasProject={!!projectRoot}
+              />
+              <SelectSetting
+                label="Word Wrap"
+                settingKey="wordWrap"
+                value={settings.wordWrap}
+                options={[
+                  { value: 'off', label: 'Off' },
+                  { value: 'on', label: 'On' }
+                ]}
+                onChange={handleChange}
+                onReset={handleResetToGlobal}
+                hasOverride={settings.hasWorkspaceOverride('wordWrap')}
+                hasProject={!!projectRoot}
+              />
+              <ToggleSetting
+                label="Minimap"
+                settingKey="minimap"
+                value={settings.minimap}
+                onChange={handleChange}
+                onReset={handleResetToGlobal}
+                hasOverride={settings.hasWorkspaceOverride('minimap')}
+                hasProject={!!projectRoot}
+              />
+              <SelectSetting
+                label="Line Numbers"
+                settingKey="lineNumbers"
+                value={settings.lineNumbers}
+                options={[
+                  { value: 'on', label: 'On' },
+                  { value: 'off', label: 'Off' },
+                  { value: 'relative', label: 'Relative' }
+                ]}
+                onChange={handleChange}
+                onReset={handleResetToGlobal}
+                hasOverride={settings.hasWorkspaceOverride('lineNumbers')}
+                hasProject={!!projectRoot}
+              />
+              <SelectSetting
+                label="Auto Save"
+                settingKey="autoSave"
+                value={settings.autoSave}
+                options={[
+                  { value: 'off', label: 'Off' },
+                  { value: 'afterDelay', label: 'After Delay' },
+                  { value: 'onFocusChange', label: 'On Focus Change' }
+                ]}
+                onChange={handleChange}
+                onReset={handleResetToGlobal}
+                hasOverride={settings.hasWorkspaceOverride('autoSave')}
+                hasProject={!!projectRoot}
+              />
+              {settings.autoSave === 'afterDelay' && (
+                <NumberSetting
+                  label="Auto Save Delay (ms)"
+                  settingKey="autoSaveDelay"
+                  value={settings.autoSaveDelay}
+                  onChange={handleChange}
+                  onReset={handleResetToGlobal}
+                  min={100}
+                  max={10000}
+                  step={100}
+                  hasOverride={settings.hasWorkspaceOverride('autoSaveDelay')}
+                  hasProject={!!projectRoot}
+                />
+              )}
+            </SettingsSection>
 
-        {/* Zen Mode */}
-        <SettingsSection title="Zen Mode">
-          <SelectSetting
-            label="Editor Mode"
-            settingKey="zenEditorMode"
-            value={settings.zenEditorMode}
-            options={[
-              { value: 'separate', label: 'Separate Panels' },
-              { value: 'unified', label: 'Unified Editor' }
-            ]}
-            onChange={handleChange}
-            onReset={handleResetToGlobal}
-            hasOverride={settings.hasWorkspaceOverride('zenEditorMode')}
-            hasProject={!!projectRoot}
-          />
-        </SettingsSection>
+            <SettingsSection title="Terminal">
+              <NumberSetting
+                label="Font Size"
+                settingKey="terminalFontSize"
+                value={settings.terminalFontSize}
+                onChange={handleChange}
+                onReset={handleResetToGlobal}
+                min={8}
+                max={24}
+                hasOverride={settings.hasWorkspaceOverride('terminalFontSize')}
+                hasProject={!!projectRoot}
+              />
+              <TextSetting
+                label="Shell Path"
+                settingKey="terminalShell"
+                value={settings.terminalShell}
+                onChange={handleChange}
+                onReset={handleResetToGlobal}
+                placeholder="System default"
+                hasOverride={settings.hasWorkspaceOverride('terminalShell')}
+                hasProject={!!projectRoot}
+              />
+              <TextSetting
+                label="Default Directory"
+                settingKey="defaultTerminalCwd"
+                value={settings.defaultTerminalCwd}
+                onChange={handleChange}
+                onReset={handleResetToGlobal}
+                placeholder="Project root"
+                hasOverride={settings.hasWorkspaceOverride('defaultTerminalCwd')}
+                hasProject={!!projectRoot}
+              />
+            </SettingsSection>
 
-        {/* Appearance */}
-        <SettingsSection title="Appearance">
-          <AppearanceSection
-            accentColor={settings.accentColor}
-            setAccentColor={(v) => settings.setSetting('accentColor', v)}
-            particleDensity={settings.particleDensity}
-            setParticleDensity={(v) => settings.setSetting('particleDensity', v)}
-            particleSpeed={settings.particleSpeed}
-            setParticleSpeed={(v) => settings.setSetting('particleSpeed', v)}
-            particleLifespan={settings.particleLifespan}
-            setParticleLifespan={(v) => settings.setSetting('particleLifespan', v)}
-            glassBlur={settings.glassBlur}
-            setGlassBlur={(v) => settings.setSetting('glassBlur', v)}
-            reduceMotion={settings.reduceMotion}
-            setReduceMotion={(v) => settings.setSetting('reduceMotion', v)}
-          />
-        </SettingsSection>
-
-        <SettingsSection title="Integrations">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-              Install and update Codex and Claude without VS Code preinstall.
-            </span>
-            <button
-              onClick={() => void handleCheckUpdates()}
-              disabled={integrationLoading}
-              className="px-2 py-1 text-[10px] rounded disabled:opacity-50"
-              style={{
-                backgroundColor: 'var(--bg-overlay)',
-                border: '1px solid var(--border)',
-                color: 'var(--text-primary)'
-              }}
-            >
-              Check Updates
-            </button>
+            <SettingsSection title="Zen Mode">
+              <SelectSetting
+                label="Editor Mode"
+                settingKey="zenEditorMode"
+                value={settings.zenEditorMode}
+                options={[
+                  { value: 'separate', label: 'Separate Panels' },
+                  { value: 'unified', label: 'Unified Editor' }
+                ]}
+                onChange={handleChange}
+                onReset={handleResetToGlobal}
+                hasOverride={settings.hasWorkspaceOverride('zenEditorMode')}
+                hasProject={!!projectRoot}
+              />
+            </SettingsSection>
           </div>
 
-          {integrationError && (
-            <div
-              className="px-2 py-1 rounded text-[10px]"
-              style={{
-                backgroundColor: 'rgba(255,0,0,0.08)',
-                border: '1px solid rgba(255,0,0,0.25)',
-                color: 'var(--text-secondary)'
-              }}
-            >
-              {integrationError}
-            </div>
-          )}
+          {/* Column 2: Appearance */}
+          <div className="space-y-6">
+            <AppearanceSection
+              accentColor={settings.accentColor}
+              setAccentColor={(v) => settings.setSetting('accentColor', v)}
+              particleDensity={settings.particleDensity}
+              setParticleDensity={(v) => settings.setSetting('particleDensity', v)}
+              particleSpeed={settings.particleSpeed}
+              setParticleSpeed={(v) => settings.setSetting('particleSpeed', v)}
+              particleLifespan={settings.particleLifespan}
+              setParticleLifespan={(v) => settings.setSetting('particleLifespan', v)}
+              glassBlur={settings.glassBlur}
+              setGlassBlur={(v) => settings.setSetting('glassBlur', v)}
+              reduceMotion={settings.reduceMotion}
+              setReduceMotion={(v) => settings.setSetting('reduceMotion', v)}
+            />
+          </div>
 
-          <IntegrationCard
-            title="Codex"
-            status={integrationStatus.codex}
-            progress={integrationProgress.codex}
-            busy={integrationBusy.codex}
-            onInstall={() => void runIntegrationAction('codex', () => window.api.integrations.install('codex'))}
-            onUpdate={() => void runIntegrationAction('codex', () => window.api.integrations.update('codex'))}
-            onVerify={() => void runIntegrationAction('codex', () => window.api.integrations.verify('codex'))}
-            onReinstall={() => void runIntegrationAction('codex', () => window.api.integrations.install('codex', { reinstall: true }))}
-            onRevealPath={() => void window.api.integrations.revealPath('codex')}
-            onRevealLog={() => void window.api.integrations.revealLog('codex')}
-            onCheckUpdates={() => void handleCheckUpdates('codex')}
-          />
+          {/* Column 3: Integrations */}
+          <div className="space-y-6">
+            <SettingsSection title="Integrations">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                  Install and update Codex and Claude without VS Code preinstall.
+                </span>
+                <button
+                  onClick={() => void handleCheckUpdates()}
+                  disabled={integrationLoading}
+                  className="px-2 py-1 text-[11px] rounded disabled:opacity-50 shrink-0 ml-2"
+                  style={{
+                    backgroundColor: 'var(--bg-overlay)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-primary)'
+                  }}
+                >
+                  Check Updates
+                </button>
+              </div>
 
-          <IntegrationCard
-            title="Claude Code"
-            status={integrationStatus.claude}
-            progress={integrationProgress.claude}
-            busy={integrationBusy.claude}
-            onInstall={() => void runIntegrationAction('claude', () => window.api.integrations.install('claude'))}
-            onUpdate={() => void runIntegrationAction('claude', () => window.api.integrations.update('claude'))}
-            onVerify={() => void runIntegrationAction('claude', () => window.api.integrations.verify('claude'))}
-            onReinstall={() => void runIntegrationAction('claude', () => window.api.integrations.install('claude', { reinstall: true }))}
-            onRevealPath={() => void window.api.integrations.revealPath('claude')}
-            onRevealLog={() => void window.api.integrations.revealLog('claude')}
-            onCheckUpdates={() => void handleCheckUpdates('claude')}
-          />
-        </SettingsSection>
+              {integrationError && (
+                <div
+                  className="px-2 py-1 rounded text-[11px]"
+                  style={{
+                    backgroundColor: 'rgba(255,0,0,0.08)',
+                    border: '1px solid rgba(255,0,0,0.25)',
+                    color: 'var(--text-secondary)'
+                  }}
+                >
+                  {integrationError}
+                </div>
+              )}
+
+              <IntegrationCard
+                title="Codex"
+                status={integrationStatus.codex}
+                progress={integrationProgress.codex}
+                busy={integrationBusy.codex}
+                onInstall={() => void runIntegrationAction('codex', () => window.api.integrations.install('codex'))}
+                onUpdate={() => void runIntegrationAction('codex', () => window.api.integrations.update('codex'))}
+                onVerify={() => void runIntegrationAction('codex', () => window.api.integrations.verify('codex'))}
+                onReinstall={() => void runIntegrationAction('codex', () => window.api.integrations.install('codex', { reinstall: true }))}
+                onRevealPath={() => void window.api.integrations.revealPath('codex')}
+                onRevealLog={() => void window.api.integrations.revealLog('codex')}
+                onCheckUpdates={() => void handleCheckUpdates('codex')}
+              />
+
+              <IntegrationCard
+                title="Claude Code"
+                status={integrationStatus.claude}
+                progress={integrationProgress.claude}
+                busy={integrationBusy.claude}
+                onInstall={() => void runIntegrationAction('claude', () => window.api.integrations.install('claude'))}
+                onUpdate={() => void runIntegrationAction('claude', () => window.api.integrations.update('claude'))}
+                onVerify={() => void runIntegrationAction('claude', () => window.api.integrations.verify('claude'))}
+                onReinstall={() => void runIntegrationAction('claude', () => window.api.integrations.install('claude', { reinstall: true }))}
+                onRevealPath={() => void window.api.integrations.revealPath('claude')}
+                onRevealLog={() => void window.api.integrations.revealLog('claude')}
+                onCheckUpdates={() => void handleCheckUpdates('claude')}
+              />
+            </SettingsSection>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -416,7 +437,7 @@ function IntegrationCard({
 
   return (
     <div
-      className="rounded px-2 py-2 space-y-2"
+      className="rounded px-3 py-3 space-y-2"
       style={{
         border: '1px solid var(--border)',
         backgroundColor: 'var(--bg-overlay)'
@@ -433,7 +454,7 @@ function IntegrationCard({
               border: `1px solid ${stateColor(state).border}`
             }}
           >
-            {state.replaceAll('_', ' ')}
+            {(state as string).split('_').join(' ')}
           </span>
         </div>
         <button
@@ -450,7 +471,7 @@ function IntegrationCard({
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
         <InfoLine label="Installed" value={status?.installedVersion ?? '-'} />
         <InfoLine label="Latest" value={status?.latestVersion ?? '-'} />
         <InfoLine label="Source" value={status?.source ?? '-'} />
@@ -460,7 +481,7 @@ function IntegrationCard({
       </div>
 
       {progress && (
-        <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+        <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
           {progress.stage}
           {typeof progress.percent === 'number' ? ` (${progress.percent}%)` : ''}
           {progress.message ? ` - ${progress.message}` : ''}
@@ -501,7 +522,7 @@ function ActionButton({ label, onClick, disabled }: { label: string; onClick: ()
     <button
       onClick={onClick}
       disabled={disabled}
-      className="text-[10px] px-2 py-1 rounded disabled:opacity-50"
+      className="text-[11px] px-2 py-1 rounded disabled:opacity-50"
       style={{
         backgroundColor: 'transparent',
         color: 'var(--text-primary)',
@@ -542,11 +563,17 @@ function stateColor(state: IntegrationState): { background: string; border: stri
 
 function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div>
-      <h3 className="text-xs font-semibold mb-2" style={{ color: 'var(--accent)' }}>
+    <div
+      className="rounded-lg p-4"
+      style={{
+        backgroundColor: 'var(--bg-surface)',
+        border: '1px solid var(--border)'
+      }}
+    >
+      <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: 'var(--accent)' }}>
         {title}
       </h3>
-      <div className="space-y-2">
+      <div className="space-y-3">
         {children}
       </div>
     </div>
@@ -594,7 +621,7 @@ function ScopeSelector({ settingKey, hasOverride, hasProject, onChange, onReset,
           style={{ color: 'var(--text-muted)' }}
           title="Reset to global value"
         >
-          ×
+          x
         </button>
       )}
     </div>
@@ -761,41 +788,6 @@ function ToggleSetting({
             }}
           />
         </button>
-      </div>
-    </SettingRow>
-  )
-}
-
-function ColorSetting({
-  label, settingKey, value, onChange, onReset, hasOverride, hasProject
-}: {
-  label: string; settingKey: string; value: string
-} & ScopeProps) {
-  const [scope, setScope] = React.useState<SettingScope>(hasOverride ? 'workspace' : 'global')
-
-  React.useEffect(() => {
-    if (hasOverride) setScope('workspace')
-  }, [hasOverride])
-
-  return (
-    <SettingRow label={label}>
-      <div className="flex items-center gap-1">
-        <ScopeSelector
-          settingKey={settingKey}
-          hasOverride={hasOverride}
-          hasProject={hasProject}
-          onChange={onChange}
-          onReset={onReset}
-          currentScope={scope}
-          setScope={setScope}
-        />
-        <input
-          type="color"
-          value={value}
-          onChange={(e) => onChange(settingKey, e.target.value, scope)}
-          className="w-8 h-6 rounded cursor-pointer"
-          style={{ border: '1px solid var(--border)' }}
-        />
       </div>
     </SettingRow>
   )

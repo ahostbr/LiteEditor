@@ -7,12 +7,11 @@ const items: Array<{ id: SidebarPanel; icon: React.ReactNode; label: string }> =
   { id: 'projects', icon: <FolderKanban size={22} />, label: 'Projects' },
   { id: 'files', icon: <Files size={22} />, label: 'Explorer' },
   { id: 'search', icon: <Search size={22} />, label: 'Search' },
-  { id: 'git', icon: <GitBranch size={22} />, label: 'Source Control' },
-  { id: 'settings', icon: <Settings size={22} />, label: 'Settings' }
+  { id: 'git', icon: <GitBranch size={22} />, label: 'Source Control' }
 ]
 
 export function ActivityBar() {
-  const { activeSidebarPanel, sidebarVisible, setActiveSidebarPanel, terminalPanelVisible, toggleTerminalPanel, appMode, toggleAppMode } = useUiStore()
+  const { activeSidebarPanel, sidebarVisible, setActiveSidebarPanel, terminalPanelVisible, toggleTerminalPanel, settingsPanelVisible, toggleSettingsPanel, appMode, toggleAppMode } = useUiStore()
 
   return (
     <div
@@ -70,6 +69,24 @@ export function ActivityBar() {
             <Terminal size={22} />
           </button>
         )}
+        <button
+          onClick={toggleSettingsPanel}
+          title="Settings"
+          className={cn(
+            'flex items-center justify-center w-full h-12 transition-colors relative',
+            settingsPanelVisible
+              ? 'text-[var(--text-primary)]'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+          )}
+        >
+          {settingsPanelVisible && (
+            <div
+              className="absolute left-0 top-1 bottom-1 w-0.5 rounded-r"
+              style={{ backgroundColor: 'var(--accent)' }}
+            />
+          )}
+          <Settings size={22} />
+        </button>
         <button
           onClick={toggleAppMode}
           title={
