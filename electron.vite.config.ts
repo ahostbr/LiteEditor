@@ -17,7 +17,7 @@ const buildDefines = {
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
+    plugins: [externalizeDepsPlugin({ exclude: ['lite-ui', 'lite-ui/app-info-handler'] })],
     define: buildDefines,
     build: {
       rollupOptions: {

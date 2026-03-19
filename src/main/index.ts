@@ -15,6 +15,7 @@ import { registerWorkspaceCrudHandlers } from './ipc/workspace-crud-handlers'
 import { registerIntegrationsHandlers, shutdownIntegrationsHandlers } from './ipc/integrations-handlers'
 import { registerGitHubHandlers } from './ipc/github-handlers'
 import { AgentBridge } from './services/agent-bridge'
+import { registerAboutHandlers } from 'lite-ui/app-info-handler'
 
 // Limit V8 heap — default scales with system RAM and gets way too aggressive
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=512')
@@ -328,6 +329,16 @@ function createWindow(): void {
   try { registerCodexHandlers(mainWindow!) } catch (e) { console.error('Failed to register codex handlers:', e) }
   try { registerIntegrationsHandlers(mainWindow!) } catch (e) { console.error('Failed to register integrations handlers:', e) }
   try { registerGitHubHandlers() } catch (e) { console.error('Failed to register GitHub handlers:', e) }
+  try {
+    registerAboutHandlers({
+      appName: 'LiteEditor',
+      appDescription: 'Lightweight desktop code editor built with Monaco Editor. Features integrated terminal, Git integration, file explorer, and project-wide search.',
+      links: [
+        { label: 'litesuite.dev', url: 'https://litesuite.dev' },
+        { label: 'GitHub', url: 'https://github.com/ahostbr/LiteEditor' },
+      ],
+    })
+  } catch (e) { console.error('Failed to register about handlers:', e) }
 
   // Load renderer — pass launch file as query param so renderer can open it
   // after workspace restoration (avoids race condition with file:open IPC)

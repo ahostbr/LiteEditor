@@ -262,6 +262,11 @@ const api = {
       ipcRenderer.send('codex:hide-view', sessionId)
   },
 
+  about: {
+    getInfo: () => ipcRenderer.invoke('about:get-info'),
+    getIcon: () => ipcRenderer.invoke('about:get-icon'),
+  },
+
   shell: {
     openExternal: (url: string): void =>
       ipcRenderer.send('shell:open-external', url),

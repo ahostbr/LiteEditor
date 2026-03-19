@@ -1,90 +1,48 @@
-import React, { useEffect, useRef } from 'react'
-import { ExternalLink } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import { LiteAboutDialog } from 'lite-ui'
 
 interface AboutDialogProps {
   onClose: () => void
 }
 
 export function AboutDialog({ onClose }: AboutDialogProps) {
-  const ref = useRef<HTMLDivElement>(null)
-  const info = window.api.appInfo
+  const [info, setInfo] = useState<{
+    appName: string
+    appDescription: string
+    version: string
+    commitHash?: string
+    buildDate?: string
+    electronVersion?: string
+    nodeVersion?: string
+    platform?: string
+    links?: Array<{ label: string; url: string }>
+  } | null>(null)
+  const [iconSrc, setIconSrc] = useState<string | undefined>(undefined)
 
   useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handleKey)
-    return () => document.removeEventListener('keydown', handleKey)
-  }, [onClose])
+    window.api.about.getInfo().then(setInfo)
+    window.api.about.getIcon().then((src: string | null) => {
+      if (src) setIconSrc(src)
+    })
+  }, [])
 
-  const infoString = [
-    `v${info.version}`,
-    info.commitHash,
-    info.buildDate,
-    `Electron ${info.electronVersion}`,
-    `Node ${info.nodeVersion}`,
-    info.platform
-  ].join(' \u00b7 ')
+  if (!info) return null
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center"
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
-    >
-      <div
-        ref={ref}
-        className="rounded-lg shadow-2xl min-w-[380px] max-w-[480px]"
-        style={{
-          backgroundColor: 'var(--bg-surface)',
-          border: '1px solid var(--border)'
-        }}
-      >
-        <div className="px-5 pt-5 pb-4 flex flex-col items-center gap-3">
-          <span className="font-bold text-2xl" style={{ color: 'var(--accent)' }}>
-            LiteEditor
-          </span>
-          <p
-            className="text-xs text-center leading-relaxed select-text"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            {infoString}
-          </p>
-        </div>
-        <div
-          className="flex items-center justify-between px-5 py-3"
-          style={{ borderTop: '1px solid var(--border)' }}
-        >
-          <div className="flex items-center gap-4">
-            <AboutLink href="https://github.com/ahostbr/LiteEditor" label="GitHub" />
-          </div>
-          <button
-            onClick={onClose}
-            className="px-4 py-1.5 rounded text-xs font-semibold transition-colors"
-            style={{
-              backgroundColor: 'var(--accent)',
-              color: 'var(--bg-base)'
-            }}
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function AboutLink({ href, label }: { href: string; label: string }) {
-  return (
-    <button
-      onClick={() => window.api.shell.openExternal(href)}
-      className="flex items-center gap-1 text-xs transition-colors hover:underline"
-      style={{ color: 'var(--accent)' }}
-    >
-      <ExternalLink size={11} />
-      {label}
-    </button>
+    <LiteAboutDialog
+      open={true}
+      onClose={onClose}
+      appName={info.appName}
+      appDescription={info.appDescription}
+      version={info.version}
+      commitHash={info.commitHash}
+      buildDate={info.buildDate}
+      electronVersion={info.electronVersion}
+      nodeVersion={info.nodeVersion}
+      platform={info.platform}
+      links={info.links}
+      imageSrc={iconSrc}
+      onOpenExternal={(url) => window.api.shell.openExternal(url)}
+    />
   )
 }
