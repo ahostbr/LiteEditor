@@ -10,3 +10,6 @@ dist/
 /.liteeditor
 /dist-modelfix
 .worktrees/
+
+# Lite Suite skills/agents live in ~/.claude/ (global)
+.claude/
