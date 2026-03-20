@@ -3,13 +3,13 @@ import { Search, CaseSensitive, WholeWord, Regex, X } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { useSearchStore, type SearchResult } from '../../stores/search-store'
 import { useEditorStore } from '../../stores/editor-store'
+import { openFileInCurrentMode } from '../../lib/open-file'
 
 export function SearchPanel() {
   const {
     query, setQuery, isRegex, toggleRegex, isCaseSensitive, toggleCaseSensitive,
     isWholeWord, toggleWholeWord, results, isSearching, executeSearch, selectResult, clearResults
   } = useSearchStore()
-  const openFile = useEditorStore((s) => s.openFile)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -31,8 +31,7 @@ export function SearchPanel() {
     if (!projectRoot) return
     const fullPath = `${projectRoot}/${result.file}`.replace(/\//g, '\\')
     try {
-      const content = await window.api.fs.readFile(fullPath)
-      openFile(fullPath, content)
+      await openFileInCurrentMode(fullPath)
     } catch { /* ignore */ }
   }
 

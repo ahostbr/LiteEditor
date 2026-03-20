@@ -102,6 +102,40 @@ export function MonacoEditor({ content, path, paneIndex, tabIndex }: MonacoEdito
       editor.setScrollTop(currentTab.scrollTop)
     }
 
+    // Ctrl+S save — Monaco swallows Ctrl+S before the global keydown handler fires,
+    // so we must handle save directly inside the editor instance
+    editor.addAction({
+      id: 'liteeditor-save',
+      label: 'Save File',
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS],
+      run: async () => {
+        const state = useEditorStore.getState()
+        const pane = state.panes[paneIndex]
+        if (!pane) return
+        const tab = pane.tabs[tabIndex]
+        if (!tab || tab.type !== 'file') return
+
+        if (!tab.path) {
+          // Untitled — Save As
+          const modelKey = `untitled:${tab.title}`
+          const m = monaco.editor.getModel(monaco.Uri.parse(modelKey))
+          const content = m?.getValue()
+          if (content === undefined) return
+          const filePath = await window.api.dialog.saveFile(tab.title)
+          if (!filePath) return
+          await window.api.fs.writeFile(filePath, content)
+          state.setTabPath(paneIndex, tabIndex, filePath)
+          state.markSaved(paneIndex, tabIndex)
+        } else if (tab.isDirty) {
+          const m = monaco.editor.getModel(monaco.Uri.file(tab.path))
+          const content = m?.getValue()
+          if (content === undefined) return
+          await window.api.fs.writeFile(tab.path, content)
+          state.markSaved(paneIndex, tabIndex)
+        }
+      }
+    })
+
     // Listen for content changes — only mark dirty, Monaco model is source of truth
     const contentDisposable = editor.onDidChangeModelContent(() => {
       markDirty(paneIndex, tabIndex)

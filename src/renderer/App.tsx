@@ -33,6 +33,7 @@ import { AddPaneMenu } from './components/canvas/AddPaneMenu'
 import { getLanguageFromPath, getLanguageDisplayName } from './lib/language-map'
 import { ConfirmDialog } from './components/shared/ConfirmDialog'
 import { ToastViewport } from './components/shared/ToastViewport'
+import { openFileInCurrentMode, ensureEditorVisible } from './lib/open-file'
 
 async function loadWorkspaceForProject(projectRoot: string): Promise<void> {
   try {
@@ -303,8 +304,7 @@ export default function App() {
       const launchFile = params.get('openFile')
       if (launchFile) {
         try {
-          const content = await window.api.fs.readFile(launchFile)
-          useEditorStore.getState().openFile(launchFile, content)
+          await openFileInCurrentMode(launchFile)
           if (!useEditorStore.getState().projectRoot) {
             const dir = launchFile.replace(/[\\/][^\\/]+$/, '')
             useEditorStore.getState().setProjectRoot(dir)
@@ -319,13 +319,10 @@ export default function App() {
   useEffect(() => {
     const unsub = window.api.onOpenFile(async (filePath: string) => {
       try {
-        const content = await window.api.fs.readFile(filePath)
-        useEditorStore.getState().openFile(filePath, content)
-        // Set project root to file's parent dir if none is open
-        const state = useEditorStore.getState()
-        if (!state.projectRoot) {
+        await openFileInCurrentMode(filePath)
+        if (!useEditorStore.getState().projectRoot) {
           const dir = filePath.replace(/[\\/][^\\/]+$/, '')
-          state.setProjectRoot(dir)
+          useEditorStore.getState().setProjectRoot(dir)
         }
       } catch { /* ignore unreadable files */ }
     })

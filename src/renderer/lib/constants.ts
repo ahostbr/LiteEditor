@@ -11,7 +11,7 @@ export const DEFAULT_SETTINGS = {
   autoSave: 'off' as const,
   autoSaveDelay: 1000,
   defaultTerminalCwd: '',
-  zenEditorMode: 'separate' as const,
+  zenEditorMode: 'unified' as const,
   autoLoadLastProject: false,
   particleDensity: 80,
   particleSpeed: 1,

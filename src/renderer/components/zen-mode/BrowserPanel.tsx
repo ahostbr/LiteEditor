@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useBrowserStore } from '../../stores/browser-store'
 import { useZenStore } from '../../stores/zen-store'
+import { useCanvasStore } from '../../stores/canvas-store'
 import { useUiStore } from '../../stores/ui-store'
 import { nativeBoundsController } from '../../lib/native-bounds-controller'
 
@@ -50,8 +51,10 @@ export function BrowserPanel({ panelId, initialUrl, visible = true }: BrowserPan
     let cancelled = false
 
     const init = async () => {
+      // Check both zen store and canvas store for existing session
       const zenPanel = useZenStore.getState().panels.find((p) => p.id === panelId)
-      let sessionId = zenPanel?.browserSessionId || null
+      const canvasPane = useCanvasStore.getState().panes.get(panelId)
+      let sessionId = zenPanel?.browserSessionId || canvasPane?.browserSessionId || null
 
       if (sessionId) {
         sessionIdRef.current = sessionId
@@ -68,11 +71,15 @@ export function BrowserPanel({ panelId, initialUrl, visible = true }: BrowserPan
         nativeBoundsController.updateSessionId(panelId, sessionId)
         registerSession(sessionId, initialUrl)
 
+        // Persist sessionId to whichever store owns this panel
         useZenStore.setState((state) => ({
           panels: state.panels.map((p) =>
             p.id === panelId ? { ...p, browserSessionId: sessionId! } : p
           )
         }))
+        if (canvasPane || useCanvasStore.getState().panes.has(panelId)) {
+          useCanvasStore.getState().updatePane(panelId, { browserSessionId: sessionId! })
+        }
       }
     }
 

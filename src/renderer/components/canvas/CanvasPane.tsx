@@ -31,6 +31,8 @@ export function CanvasPane({ pane, isFocused, viewportX, viewportY, containerRef
 
   // --- Drag to move (accounts for zoom) ---
   const handleDragStart = useCallback((e: React.PointerEvent) => {
+    // Only drag on left-click — right-click should allow context menus
+    if (e.button !== 0) return
     e.preventDefault()
     e.stopPropagation()
     setIsDragging(true)

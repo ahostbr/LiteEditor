@@ -23,6 +23,9 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      lite-ui:
+        specifier: file:../LiteCore/packages/lite-ui
+        version: file:../LiteCore/packages/lite-ui(react@19.2.4)
       lucide-react:
         specifier: ^0.474.0
         version: 0.474.0(react@19.2.4)
@@ -1563,6 +1566,11 @@ packages:
   lightningcss@1.30.2:
     resolution: {integrity: sha512-utfs7Pr5uJyyvDETitgsaqSyjCb2qNRAtuqUeWIAKztsOYdcACf2KtARYXg2pSvhkt+9NfoaNY7fxjl6nuMjIQ==}
     engines: {node: '>= 12.0.0'}
+
+  lite-ui@file:../LiteCore/packages/lite-ui:
+    resolution: {directory: ../LiteCore/packages/lite-ui, type: directory}
+    peerDependencies:
+      react: '>=18'
 
   lodash@4.17.23:
     resolution: {integrity: sha512-LgVTMpQtIopCi79SJeDiP0TfWi5CNEc/L/aRdTh3yIvmZXTnheWpKjSZhnvMl8iXbC1tFg9gdHHDMLoV7CnG+w==}
@@ -3798,6 +3806,10 @@ snapshots:
       lightningcss-linux-x64-musl: 1.30.2
       lightningcss-win32-arm64-msvc: 1.30.2
       lightningcss-win32-x64-msvc: 1.30.2
+
+  lite-ui@file:../LiteCore/packages/lite-ui(react@19.2.4):
+    dependencies:
+      react: 19.2.4
 
   lodash@4.17.23: {}
 

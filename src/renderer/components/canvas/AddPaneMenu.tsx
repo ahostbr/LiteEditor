@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Terminal, FileCode, Globe, X, GitBranch } from 'lucide-react'
 import { useCanvasStore, type CanvasPaneType } from '../../stores/canvas-store'
+import { openFileInCurrentMode } from '../../lib/open-file'
 import claudeIcon from '../../../../assets/img/claude.png'
 import codexIcon from '../../../../assets/img/codex.png'
 
@@ -64,22 +65,10 @@ export function AddPaneMenu({ show: externalShow, onClose, anchorX, anchorY }: A
     onClose?.()
   }
 
-  const handleAddEditor = async () => {
+  const handleOpenFileInEditor = async () => {
     try {
       const path = await window.api.dialog.openFile()
-      if (path) {
-        const content = await window.api.fs.readFile(path)
-        // Create Monaco model
-        const monaco = (window as any).__monaco
-        if (monaco) {
-          const uri = monaco.Uri.file(path)
-          if (!monaco.editor.getModel(uri)) {
-            monaco.editor.createModel(content, undefined, uri)
-          }
-        }
-        const fileName = path.replace(/^.*[\\/]/, '')
-        addPaneOfType('editor', { filePath: path, title: fileName })
-      }
+      if (path) await openFileInCurrentMode(path)
     } catch { /* ignore */ }
     setInternalShow(false)
     onClose?.()
@@ -101,8 +90,8 @@ export function AddPaneMenu({ show: externalShow, onClose, anchorX, anchorY }: A
         {isColumnMode ? 'Add Pane (Column Mode)' : 'Add Pane'}
       </div>
       <MenuItem icon={<Terminal size={14} />} label="New Terminal" onClick={() => addPaneOfType('terminal')} />
-      <MenuItem icon={<FileCode size={14} />} label="Open File Editor" onClick={handleAddEditor} />
-      <MenuItem icon={<FileCode size={14} />} label="Unified Editor" onClick={() => addPaneOfType('unified-editor')} />
+      <MenuItem icon={<FileCode size={14} />} label="Open File" onClick={handleOpenFileInEditor} />
+      <MenuItem icon={<FileCode size={14} />} label="Editor" onClick={() => addPaneOfType('unified-editor')} />
       <MenuItem icon={<GitBranch size={14} />} label="Git Panel" onClick={() => addPaneOfType('git')} />
       <MenuItem icon={<Globe size={14} />} label="New Browser" onClick={() => addPaneOfType('browser')} />
       <MenuItem

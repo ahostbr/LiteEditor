@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useEditorStore, getMonacoContent } from '../../stores/editor-store'
 import { useUiStore } from '../../stores/ui-store'
 import { AboutDialog } from '../shared/AboutDialog'
+import { openFileInCurrentMode } from '../../lib/open-file'
 import { confirmAndSaveTab, confirmAndSaveTabs } from '../../lib/close-helpers'
 
 interface MenuItem {
@@ -97,10 +98,7 @@ function useMenuActions(onShowAbout: () => void) {
         { label: 'New File', shortcut: 'Ctrl+N', action: () => useEditorStore.getState().newFile() },
         { label: 'Open File...', action: async () => {
           const path = await window.api.dialog.openFile()
-          if (path) {
-            const content = await window.api.fs.readFile(path)
-            useEditorStore.getState().openFile(path, content)
-          }
+          if (path) await openFileInCurrentMode(path)
         }},
         { label: 'Open Folder...', shortcut: 'Ctrl+Shift+O', action: openFolder },
         { separator: true, label: '' },

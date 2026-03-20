@@ -91,6 +91,9 @@ interface CanvasState {
   // Spring animation target (null = no animation)
   springTarget: { x: number; y: number } | null
 
+  // Pane queries
+  hasPane: (type: CanvasPaneType) => boolean
+
   // Pane CRUD
   addPane: (type: CanvasPaneType, options?: Partial<CanvasPaneState>) => string
   removePane: (id: string) => void
@@ -179,6 +182,13 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   columns: [],
   activeColumnIdx: 0,
   springTarget: null,
+
+  hasPane: (type) => {
+    for (const pane of get().panes.values()) {
+      if (pane.type === type) return true
+    }
+    return false
+  },
 
   addPane: (type, options = {}) => {
     const state = get()

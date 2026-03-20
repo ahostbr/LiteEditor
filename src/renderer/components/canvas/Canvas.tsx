@@ -113,7 +113,7 @@ export function Canvas() {
         if (!maxPane) return null
         return (
           <CanvasPane
-            key={`maximized-${maxPane.id}`}
+            key={maxPane.id}
             pane={maxPane}
             isFocused={true}
             viewportX={0}

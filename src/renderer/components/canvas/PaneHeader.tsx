@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { GripHorizontal, X, Minus, Terminal, FileCode, Globe, Plus, Settings, GitBranch, Maximize2, Minimize2, FolderOpen } from 'lucide-react'
+import { useShallow } from 'zustand/react/shallow'
 import { useCanvasStore, type CanvasPaneState } from '../../stores/canvas-store'
 import { useTerminalStore } from '../../stores/terminal-store'
 import { useSettingsStore } from '../../stores/settings-store'
@@ -39,7 +40,7 @@ export function PaneHeader({ pane, isFocused, onDragStart }: PaneHeaderProps) {
   const cwd = useTerminalStore((s) =>
     activeSessionId ? s.sessions.find((sess) => sess.id === activeSessionId)?.cwd : undefined
   )
-  const shellNames = useTerminalStore((s) => {
+  const shellNames = useTerminalStore(useShallow((s) => {
     const sids = pane.type === 'terminal'
       ? (pane.terminalSessionIds || (pane.terminalSessionId ? [pane.terminalSessionId] : []))
       : []
@@ -49,7 +50,7 @@ export function PaneHeader({ pane, isFocused, onDragStart }: PaneHeaderProps) {
         ? sess.shell.split(/[\\\/]/).pop()?.replace(/\.(exe|cmd)$/i, '') ?? 'term'
         : 'term'
     })
-  })
+  }))
   const [renamingTabIndex, setRenamingTabIndex] = useState<number | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const renameInputRef = useRef<HTMLInputElement>(null)

@@ -34,9 +34,19 @@ export function useKeyboardShortcuts() {
         return
       }
 
-      // Ctrl+S: Save active file
+      // Ctrl+S: Save active file (mode-aware)
       if (ctrl && !shift && e.key === 's') {
         e.preventDefault()
+        const appMode = useUiStore.getState().appMode
+
+        // In zen mode, save is handled by ZenMonacoEditor's addCommand —
+        // don't try to also save from editorStore (which may have no active tab)
+        if (appMode === 'zen') return
+
+        // In canvas mode, save is handled by ZenMonacoEditor/MonacoEditor addCommand
+        if (appMode === 'canvas') return
+
+        // Editor mode: save from editorStore
         const state = useEditorStore.getState()
         const pane = state.panes[state.activePaneIndex]
         if (!pane) return
@@ -87,14 +97,7 @@ export function useKeyboardShortcuts() {
         e.preventDefault()
         const mode = useUiStore.getState().appMode
         if (mode === 'canvas') {
-          useCanvasStore.getState().addPane('editor')
-        } else if (mode === 'zen') {
-          const zenEditorMode = (await import('../stores/settings-store')).useSettingsStore.getState().zenEditorMode
-          if (zenEditorMode === 'unified') {
-            splitPane()
-          } else {
-            useZenStore.getState().addUnifiedEditorPanel()
-          }
+          useCanvasStore.getState().addPane('unified-editor')
         } else {
           splitPane()
         }

@@ -4,6 +4,7 @@ import { cn } from '../../lib/cn'
 import { useUiStore } from '../../stores/ui-store'
 import { useLayoutStore, type LayoutMode, type GridLayout } from '../../stores/layout-store'
 import { useZenStore } from '../../stores/zen-store'
+import { openFileInCurrentMode } from '../../lib/open-file'
 import { MenuBar } from './MenuBar'
 import { CommandCenter } from './CommandCenter'
 import claudeIcon from '../../../../assets/img/claude.png'
@@ -97,10 +98,7 @@ export function Titlebar() {
     setShowAddMenu(false)
     try {
       const path = await window.api.dialog.openFile()
-      if (path) {
-        const content = await window.api.fs.readFile(path)
-        addEditorPanel(path, content)
-      }
+      if (path) await openFileInCurrentMode(path)
     } catch { /* ignore */ }
   }
 

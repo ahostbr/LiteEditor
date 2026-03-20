@@ -1,9 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { ChevronRight, ChevronDown, GitBranch, Folder, Terminal } from 'lucide-react'
 import { useWorkspaceStore, type Workspace } from '../../stores/workspace-store'
-import { useEditorStore } from '../../stores/editor-store'
-import { useUiStore } from '../../stores/ui-store'
-import { useZenStore } from '../../stores/zen-store'
+import { openFileInCurrentMode } from '../../lib/open-file'
 import { useTerminalStore } from '../../stores/terminal-store'
 import { TreeNode, type FileNode } from './TreeNode'
 import { cn } from '../../lib/cn'
@@ -66,13 +64,7 @@ export function WorkspaceEntry({ workspace, isActive, projectRootPath }: Workspa
   const handleFileClick = useCallback(async (node: FileNode) => {
     if (node.isDirectory) return
     try {
-      const content = await window.api.fs.readFile(node.path)
-      const appMode = useUiStore.getState().appMode
-      if (appMode === 'zen') {
-        useZenStore.getState().addEditorPanel(node.path, content)
-      } else {
-        useEditorStore.getState().openFile(node.path, content)
-      }
+      await openFileInCurrentMode(node.path)
     } catch { /* ignore */ }
   }, [])
 
