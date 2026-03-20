@@ -96,19 +96,21 @@ export function FileExplorer() {
   return (
     <div className="flex flex-col h-full">
       <div
-        className="flex items-center justify-between px-4 py-2 shrink-0"
+        className="flex items-center justify-between px-3 h-[30px] shrink-0"
         style={{ borderBottom: '1px solid var(--border)' }}
       >
-        <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+        <span className="text-[10px] font-mono font-semibold uppercase tracking-widest opacity-80" style={{ color: 'var(--text-muted)' }}>
           Explorer
         </span>
         <button
           onClick={loadTree}
-          className="p-1 rounded hover:bg-[var(--bg-overlay)] transition-colors"
+          className="flex items-center justify-center w-5 h-5 rounded transition-all duration-200 hover:scale-110 active:scale-95"
           style={{ color: 'var(--text-muted)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.background = 'var(--bg-overlay)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent' }}
           title="Refresh"
         >
-          <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+          <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''} />
         </button>
       </div>
       <div className="flex-1 overflow-y-auto py-1">

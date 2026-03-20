@@ -1,4 +1,5 @@
 import { useRef, useCallback, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useCanvasStore, type CanvasPaneState } from '../../stores/canvas-store'
 import { PaneHeader } from './PaneHeader'
 import { CanvasPanelRenderer } from './CanvasPanelRenderer'
@@ -122,30 +123,21 @@ export function CanvasPane({ pane, isFocused, viewportX, viewportY, containerRef
     )
   }
 
-  if (maximized) {
-    return (
-      <div
-        className="absolute inset-0 flex flex-col overflow-hidden"
-        style={{ backgroundColor: 'var(--bg-surface)', zIndex: 100 }}
-        onClick={handleFocus}
-      >
-        <PaneHeader pane={pane} isFocused={true} onDragStart={() => {}} />
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <CanvasPanelRenderer pane={pane} isFocused={true} />
-        </div>
-      </div>
-    )
-  }
-
-  return (
+  const paneContent = (
     <div
       className={cn(
-        'absolute flex flex-col rounded-lg overflow-hidden shadow-lg transition-shadow',
-        isFocused && 'ring-2',
-        isDragging && 'opacity-90 cursor-grabbing',
-        pane.hasNotification && !isFocused && 'animate-pulse'
+        'flex flex-col overflow-hidden',
+        maximized
+          ? 'absolute inset-0'
+          : 'absolute rounded-lg shadow-lg transition-shadow',
+        !maximized && isFocused && 'ring-2',
+        !maximized && isDragging && 'opacity-90 cursor-grabbing',
+        !maximized && pane.hasNotification && !isFocused && 'animate-pulse'
       )}
-      style={{
+      style={maximized ? {
+        backgroundColor: 'var(--bg-surface)',
+        zIndex: 100
+      } : {
         left: pane.x,
         top: pane.y,
         width: pane.width,
@@ -163,31 +155,40 @@ export function CanvasPane({ pane, isFocused, viewportX, viewportY, containerRef
       {/* Pane header with drag handle */}
       <PaneHeader
         pane={pane}
-        isFocused={isFocused}
-        onDragStart={handleDragStart}
+        isFocused={maximized || isFocused}
+        onDragStart={maximized ? (() => {}) : handleDragStart}
       />
 
       {/* Pane content */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <CanvasPanelRenderer pane={pane} isFocused={isFocused} />
+        <CanvasPanelRenderer pane={pane} isFocused={maximized || isFocused} />
       </div>
 
-      {/* Resize handle (bottom-right corner) */}
-      <div
-        className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
-        onPointerDown={handleResizeStart}
-        style={{ zIndex: 20 }}
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 16 16"
-          className="absolute bottom-0 right-0"
-          style={{ color: 'var(--text-muted)', opacity: 0.4 }}
+      {/* Resize handle (bottom-right corner, hidden when maximized) */}
+      {!maximized && (
+        <div
+          className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
+          onPointerDown={handleResizeStart}
+          style={{ zIndex: 20 }}
         >
-          <path d="M14 14L6 14M14 14L14 6M14 14L10 14M14 10L14 14" stroke="currentColor" strokeWidth="1.5" fill="none" />
-        </svg>
-      </div>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            className="absolute bottom-0 right-0"
+            style={{ color: 'var(--text-muted)', opacity: 0.4 }}
+          >
+            <path d="M14 14L6 14M14 14L14 6M14 14L10 14M14 10L14 14" stroke="currentColor" strokeWidth="1.5" fill="none" />
+          </svg>
+        </div>
+      )}
     </div>
   )
+
+  // When maximized, portal to the canvas container (outside the CSS transform)
+  if (maximized && containerRef.current) {
+    return createPortal(paneContent, containerRef.current)
+  }
+
+  return paneContent
 }

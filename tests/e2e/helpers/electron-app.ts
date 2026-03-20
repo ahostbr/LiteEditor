@@ -1,9 +1,18 @@
 import { _electron as electron, type ElectronApplication, type Page } from 'playwright'
-import { join } from 'path'
+import { join, dirname } from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 export async function launchApp(): Promise<{ app: ElectronApplication; page: Page }> {
+  // Use __dirname to resolve relative to this file, not process.cwd()
+  // This prevents launching the wrong Electron app when running from a different shell
+  const projectRoot = join(__dirname, '..', '..', '..')
+  const mainPath = join(projectRoot, 'out', 'main', 'index.js')
   const app = await electron.launch({
-    args: [join(process.cwd(), 'out/main/index.js')],
+    args: [mainPath],
+    cwd: projectRoot,
     env: {
       ...process.env,
       NODE_ENV: 'test'

@@ -55,15 +55,15 @@ export function ProjectSidebar() {
         className="flex items-center justify-between px-3 h-[30px] shrink-0"
         style={{ borderBottom: '1px solid var(--border)' }}
       >
-        <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+        <span className="text-[10px] font-mono font-semibold uppercase tracking-widest opacity-80" style={{ color: 'var(--text-muted)' }}>
           Projects
         </span>
         <button
           onClick={handleAddProject}
-          className="flex items-center justify-center w-5 h-5 rounded transition-colors"
+          className="flex items-center justify-center w-5 h-5 rounded transition-all duration-200 hover:scale-110 active:scale-95"
           style={{ color: 'var(--text-muted)' }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-overlay)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.background = 'var(--bg-overlay)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent' }}
           title="Add Project"
         >
           <Plus size={12} />

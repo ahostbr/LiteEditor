@@ -83,14 +83,15 @@ export function Canvas() {
           willChange: 'transform'
         }}
       >
-        {paneArray.filter((pane) => pane.id !== maximizedPaneId).map((pane) => (
+        {paneArray.map((pane) => (
           <CanvasPane
             key={pane.id}
             pane={pane}
-            isFocused={pane.id === focusedPaneId}
+            isFocused={maximizedPaneId ? pane.id === maximizedPaneId : pane.id === focusedPaneId}
             viewportX={viewportX}
             viewportY={viewportY}
             containerRef={containerRef}
+            maximized={pane.id === maximizedPaneId}
           />
         ))}
         {/* Hidden terminal panes from inactive workspaces — CSS hidden, PTY stays alive */}
@@ -106,23 +107,6 @@ export function Canvas() {
           </div>
         ))}
       </div>
-
-      {/* Maximized pane overlay */}
-      {maximizedPaneId && (() => {
-        const maxPane = paneArray.find((p) => p.id === maximizedPaneId)
-        if (!maxPane) return null
-        return (
-          <CanvasPane
-            key={maxPane.id}
-            pane={maxPane}
-            isFocused={true}
-            viewportX={0}
-            viewportY={0}
-            containerRef={containerRef}
-            maximized
-          />
-        )
-      })()}
 
       {/* Grab overlay — covers everything including pane content while grabbing */}
       {grabbing && (

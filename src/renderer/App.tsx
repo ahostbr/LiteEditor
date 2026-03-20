@@ -598,23 +598,21 @@ export default function App() {
     <div className="flex flex-col h-screen w-screen overflow-hidden">
       <EmberSparks particleDensity={particleDensity} particleSpeed={particleSpeed} particleLifespan={particleLifespan} reduceMotion={reduceMotion} />
       <Titlebar />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden bg-gradient-to-br from-[var(--bg-base)] to-black p-2 gap-2">
         <ActivityBar />
         {sidebarVisible && (
           <>
             <div
-              className="h-full overflow-hidden shrink-0"
+              className="h-full overflow-hidden shrink-0 rounded-xl border border-white/10 bg-black/40 backdrop-blur-2xl shadow-2xl ring-1 ring-white/5"
               style={{
                 width: 'var(--sidebar-width)',
-                backgroundColor: 'var(--bg-surface)',
-                borderRight: '1px solid var(--border)'
               }}
             >
               <SidebarContent />
             </div>
           </>
         )}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden rounded-xl border border-white/10 bg-[var(--bg-surface)] shadow-2xl relative z-0">
           {settingsPanelVisible ? (
             <SettingsPanel />
           ) : appMode === 'canvas' ? (
@@ -634,7 +632,7 @@ export default function App() {
                 <>
                   <PanelResizeHandle
                     className="w-1 shrink-0 hover:bg-[var(--accent)] transition-colors"
-                    style={{ backgroundColor: 'var(--border)' }}
+                    style={{ backgroundColor: 'transparent' }}
                   />
                   <Panel defaultSize={35} minSize={15}>
                     <Suspense fallback={<div className="h-full" style={{ backgroundColor: '#0c0c0f' }} />}>

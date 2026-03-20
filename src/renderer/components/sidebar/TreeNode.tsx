@@ -79,8 +79,8 @@ export function TreeNode({ node, depth, onFileClick, refreshSignal }: TreeNodePr
       <div
         onClick={handleClick}
         className={cn(
-          'flex items-center gap-1 py-0.5 pr-2 cursor-pointer transition-colors',
-          'hover:bg-[var(--bg-overlay)]'
+          'flex items-center gap-1.5 py-1 pr-2 mt-0.5 mx-1 cursor-pointer transition-all duration-200 rounded-sm group/node',
+          'hover:bg-[var(--bg-overlay)]/60 hover:translate-x-0.5'
         )}
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
       >
@@ -92,7 +92,7 @@ export function TreeNode({ node, depth, onFileClick, refreshSignal }: TreeNodePr
           <span className="w-4 h-4 shrink-0" />
         )}
         <FileIcon name={node.name} isDirectory={node.isDirectory} isOpen={isOpen} />
-        <span className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>
+        <span className="text-[13px] truncate transition-colors duration-200 group-hover/node:text-[var(--accent)]" style={{ color: 'var(--text-primary)' }}>
           {node.name}
         </span>
         {isLoading && (

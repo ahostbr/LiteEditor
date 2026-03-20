@@ -137,14 +137,11 @@ export function ProjectEntry({ project, isActive, onSelect, onCreateWorkspace, o
       {/* Project header row */}
       <div
         className={cn(
-          'relative flex items-center gap-1 px-2 py-0.5 cursor-pointer transition-colors h-7',
+          'relative flex items-center gap-1.5 px-2 py-1 my-0.5 cursor-pointer transition-all duration-200 overflow-hidden',
           isActive
-            ? 'bg-[var(--bg-overlay)] ring-1 ring-[var(--border)]/70'
+            ? 'bg-[var(--bg-overlay)]/40'
             : 'hover:bg-[var(--bg-muted)]'
         )}
-        style={{
-          borderLeft: isActive ? '2px solid var(--accent)' : '2px solid transparent'
-        }}
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
         onContextMenu={(e) => {
@@ -152,6 +149,12 @@ export function ProjectEntry({ project, isActive, onSelect, onCreateWorkspace, o
           setContextMenuPos({ x: e.clientX, y: e.clientY })
         }}
       >
+        {isActive && (
+          <div 
+            className="absolute left-0 top-0 bottom-0 w-[2px] shadow-[0_0_8px_var(--accent)] transition-opacity"
+            style={{ backgroundColor: 'var(--accent)' }}
+          />
+        )}
         {/* Expand/collapse chevron */}
         <button
           onClick={handleExpand}
@@ -203,11 +206,12 @@ export function ProjectEntry({ project, isActive, onSelect, onCreateWorkspace, o
         <div className="flex items-center gap-1 shrink-0">
           {/* PR status icon */}
           {project.prStatus && (
-            <GitPullRequest
-              size={11}
-              className={cn('shrink-0', getPrColor(project.prStatus.state))}
-              title={`PR #${project.prStatus.number} (${project.prStatus.state})`}
-            />
+            <span title={`PR #${project.prStatus.number} (${project.prStatus.state})`} className="flex items-center">
+              <GitPullRequest
+                size={11}
+                className={cn('shrink-0', getPrColor(project.prStatus.state))}
+              />
+            </span>
           )}
 
           {/* Agent status dot + text */}
@@ -248,13 +252,13 @@ export function ProjectEntry({ project, isActive, onSelect, onCreateWorkspace, o
         {/* Close button — hover-only via group */}
         <button
           onClick={(e) => { e.stopPropagation(); removeProject(project.id) }}
-          className="shrink-0 p-0 rounded transition-colors opacity-0 group-hover/project:opacity-100"
+          className="shrink-0 p-0 rounded transition-all duration-200 opacity-0 group-hover/project:opacity-100 hover:scale-110 active:scale-95"
           style={{ color: 'var(--text-muted)' }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444' }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'var(--bg-overlay)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent' }}
           title="Close Project"
         >
-          <X size={10} />
+          <X size={12} />
         </button>
 
         {/* Context menu */}
