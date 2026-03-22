@@ -52,6 +52,16 @@ export function WorkspaceCreateDialog({ projectId, onClose }: WorkspaceCreateDia
         const worktreePath = `${project.rootPath}${sep}.worktrees${sep}${name.trim()}`
         await window.api.git.worktreeAdd(worktreePath, branch, branchMode === 'new')
         await createWorkspace(projectId, name.trim(), 'worktree', branch, worktreePath)
+
+        // Auto-add .worktrees/ to .gitignore if not already present
+        try {
+          const gitignorePath = `${project.rootPath}${sep}.gitignore`
+          const content = await window.api.fs.readFile(gitignorePath).catch(() => '')
+          if (typeof content === 'string' && !content.includes('.worktrees')) {
+            const newContent = content.endsWith('\n') ? `${content}.worktrees/\n` : `${content}\n.worktrees/\n`
+            await window.api.fs.writeFile(gitignorePath, newContent)
+          }
+        } catch { /* gitignore update is best-effort */ }
       } else {
         await createWorkspace(projectId, name.trim(), 'local')
       }

@@ -1,8 +1,9 @@
 import { create } from 'zustand'
 import { useTerminalStore } from './terminal-store'
 import { useEditorStore } from './editor-store'
-import { useBrowserStore } from './browser-store'
-import { useSettingsStore } from './settings-store'
+import { cleanupPaneSession } from '../lib/session-cleanup'
+import { resolveTerminalCwd } from '../lib/terminal-utils'
+import { getLanguageFromPath } from '../lib/language-map'
 
 export type ZenPanelType = 'terminal' | 'editor' | 'browser' | 'unified-editor' | 'claude' | 'codex'
 
@@ -47,15 +48,7 @@ interface ZenState {
 
 let panelCounter = 0
 
-function resolveTerminalCwd(cwd?: string): string | undefined {
-  const explicitCwd = typeof cwd === 'string' ? cwd.trim() : ''
-  if (explicitCwd) return explicitCwd
 
-  const configuredCwd = useSettingsStore.getState().defaultTerminalCwd.trim()
-  if (configuredCwd) return configuredCwd
-
-  return useEditorStore.getState().projectRoot || undefined
-}
 
 export const useZenStore = create<ZenState>((set, get) => ({
   panels: [],
@@ -173,7 +166,7 @@ export const useZenStore = create<ZenState>((set, get) => ({
       const uri = monaco.Uri.file(filePath)
       let model = monaco.editor.getModel(uri)
       if (!model) {
-        const language = getLanguageFromExtension(filePath)
+        const language = getLanguageFromPath(filePath)
         model = monaco.editor.createModel(content, language, uri)
       }
     }
@@ -196,22 +189,7 @@ export const useZenStore = create<ZenState>((set, get) => ({
     const panel = get().panels.find((p) => p.id === id)
     if (!panel) return
 
-    if (panel.type === 'terminal' && panel.terminalSessionId) {
-      useTerminalStore.getState().removeTerminal(panel.terminalSessionId)
-    }
-
-    if (panel.type === 'browser' && panel.browserSessionId) {
-      window.api.browser.destroyView(panel.browserSessionId)
-      useBrowserStore.getState().removeSession(panel.browserSessionId)
-    }
-
-    if (panel.type === 'claude' && panel.claudeSessionId) {
-      window.api.claude.destroySession(panel.claudeSessionId)
-    }
-
-    if (panel.type === 'codex' && panel.codexSessionId) {
-      window.api.codex.destroySession(panel.codexSessionId)
-    }
+    cleanupPaneSession(panel)
 
     set((state) => {
       const panels = state.panels.filter((p) => p.id !== id)
@@ -263,17 +241,3 @@ export const useZenStore = create<ZenState>((set, get) => ({
   }
 }))
 
-function getLanguageFromExtension(filePath: string): string | undefined {
-  const ext = filePath.split('.').pop()?.toLowerCase()
-  const map: Record<string, string> = {
-    ts: 'typescript', tsx: 'typescriptreact',
-    js: 'javascript', jsx: 'javascriptreact',
-    json: 'json', html: 'html', css: 'css',
-    scss: 'scss', less: 'less', md: 'markdown',
-    py: 'python', rs: 'rust', go: 'go',
-    java: 'java', c: 'c', cpp: 'cpp', h: 'c',
-    yml: 'yaml', yaml: 'yaml', xml: 'xml',
-    sh: 'shell', bash: 'shell', sql: 'sql'
-  }
-  return ext ? map[ext] : undefined
-}

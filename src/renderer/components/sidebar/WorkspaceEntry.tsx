@@ -1,7 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { ChevronRight, ChevronDown, GitBranch, Folder, Terminal } from 'lucide-react'
 import { useWorkspaceStore, type Workspace } from '../../stores/workspace-store'
+import { useProjectStore } from '../../stores/project-store'
 import { openFileInCurrentMode } from '../../lib/open-file'
+import { logError } from '../../stores/error-store'
 import { useTerminalStore } from '../../stores/terminal-store'
 import { TreeNode, type FileNode } from './TreeNode'
 import { cn } from '../../lib/cn'
@@ -36,9 +38,10 @@ export function WorkspaceEntry({ workspace, isActive, projectRootPath }: Workspa
   const [editName, setEditName] = useState(workspace.name)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Check for active terminal sessions
+  // Derive effective path from workspace entity + project-store (not stale parent prop)
+  const projectRoot = useProjectStore((s) => s.projects.find((p) => p.id === workspace.projectId)?.rootPath)
   const terminalSessions = useTerminalStore((s) => s.sessions)
-  const effectivePath = workspace.worktreePath || projectRootPath
+  const effectivePath = workspace.worktreePath || projectRoot || projectRootPath
   const hasActiveTerminal = terminalSessions.some((s) => s.cwd === effectivePath)
 
   const handleClick = useCallback(() => {
@@ -65,7 +68,7 @@ export function WorkspaceEntry({ workspace, isActive, projectRootPath }: Workspa
     if (node.isDirectory) return
     try {
       await openFileInCurrentMode(node.path)
-    } catch { /* ignore */ }
+    } catch (err) { logError('WorkspaceEntry', `Failed to open file: ${node.path}`, err) }
   }, [])
 
   const handleRenameSubmit = useCallback(() => {
@@ -78,20 +81,40 @@ export function WorkspaceEntry({ workspace, isActive, projectRootPath }: Workspa
 
   const handleDelete = useCallback(async () => {
     setMenuPos(null)
-    // Use native dialog for confirmation
-    const result = await window.api.dialog.showMessageBox({
-      type: 'warning',
-      title: 'Delete Workspace',
-      message: `Delete workspace "${workspace.name}"?`,
-      detail: workspace.type === 'worktree'
-        ? 'This will unregister the workspace. The git worktree will NOT be removed.'
-        : 'This cannot be undone.',
-      buttons: ['Delete', 'Cancel'],
-      defaultId: 1,
-      cancelId: 1
-    })
-    if (result === 0) {
-      deleteWorkspace(workspace.projectId, workspace.id)
+
+    if (workspace.type === 'worktree' && workspace.worktreePath) {
+      // Worktree workspace: offer to also remove git worktree
+      const result = await window.api.dialog.showMessageBox({
+        type: 'warning',
+        title: 'Delete Workspace',
+        message: `Delete workspace "${workspace.name}"?`,
+        detail: 'This workspace is backed by a git worktree. You can also remove the worktree directory.',
+        buttons: ['Remove worktree too', 'Just unregister', 'Cancel'],
+        defaultId: 2,
+        cancelId: 2
+      })
+      if (result === 0) {
+        // Remove worktree + workspace
+        try { await window.api.git.worktreeRemove(workspace.worktreePath) } catch { /* may already be gone */ }
+        await deleteWorkspace(workspace.projectId, workspace.id)
+      } else if (result === 1) {
+        // Just unregister workspace, keep worktree directory
+        await deleteWorkspace(workspace.projectId, workspace.id)
+      }
+    } else {
+      // Local workspace: simple delete
+      const result = await window.api.dialog.showMessageBox({
+        type: 'warning',
+        title: 'Delete Workspace',
+        message: `Delete workspace "${workspace.name}"?`,
+        detail: 'This cannot be undone.',
+        buttons: ['Delete', 'Cancel'],
+        defaultId: 1,
+        cancelId: 1
+      })
+      if (result === 0) {
+        await deleteWorkspace(workspace.projectId, workspace.id)
+      }
     }
   }, [workspace, deleteWorkspace])
 

@@ -3,6 +3,7 @@ import { RefreshCw, FolderOpen } from 'lucide-react'
 import { TreeNode, type FileNode, type RefreshSignal } from './TreeNode'
 import { useEditorStore } from '../../stores/editor-store'
 import { openFileInCurrentMode } from '../../lib/open-file'
+import { logWarn, logError } from '../../stores/error-store'
 
 export function FileExplorer() {
   const [tree, setTree] = useState<FileNode[]>([])
@@ -18,7 +19,8 @@ export function FileExplorer() {
     try {
       const nodes = await window.api.fs.readTree(projectRoot, 2) as FileNode[]
       setTree(nodes)
-    } catch {
+    } catch (err) {
+      logError('FileExplorer', 'Failed to read file tree', err)
       setTree([])
     } finally {
       setIsLoading(false)
@@ -60,8 +62,8 @@ export function FileExplorer() {
     const path = await window.api.dialog.openFolder()
     if (path) {
       setProjectRoot(path)
-      try { await window.api.git.init(path) } catch { /* not a git repo */ }
-      try { await window.api.search.setRoot(path) } catch { /* ignore */ }
+      try { await window.api.git.init(path) } catch (err) { logWarn('FileExplorer', 'Git init skipped (not a git repo)', err) }
+      try { await window.api.search.setRoot(path) } catch (err) { logWarn('FileExplorer', 'Failed to set search root', err) }
     }
   }
 
@@ -69,7 +71,7 @@ export function FileExplorer() {
     if (node.isDirectory) return
     try {
       await openFileInCurrentMode(node.path)
-    } catch { /* ignore */ }
+    } catch (err) { logError('FileExplorer', `Failed to open file: ${node.path}`, err) }
   }
 
   if (!projectRoot) {

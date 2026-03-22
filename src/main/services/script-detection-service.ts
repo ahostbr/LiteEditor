@@ -1,6 +1,8 @@
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 
+const DEV_SERVER_KEYWORDS = ['dev', 'start', 'serve', 'watch', 'preview']
+
 export interface DetectedScript {
   id: string
   name: string
@@ -8,6 +10,7 @@ export interface DetectedScript {
   source: 'package.json' | 'makefile' | 'custom'
   icon: 'play' | 'build' | 'test' | 'lint' | 'configure' | 'debug' | 'rocket' | 'custom'
   autoDetected: boolean
+  isDevServer: boolean
 }
 
 function inferIcon(name: string): DetectedScript['icon'] {
@@ -44,13 +47,15 @@ export class ScriptDetectionService {
         }
 
         for (const [name, cmd] of Object.entries(pkg.scripts)) {
+          const nameLower = name.toLowerCase()
           scripts.push({
             id: `pkg-${name}`,
             name,
             command: `${runner} ${name}`,
             source: 'package.json',
             icon: inferIcon(name),
-            autoDetected: true
+            autoDetected: true,
+            isDevServer: DEV_SERVER_KEYWORDS.some((kw) => nameLower.includes(kw))
           })
         }
       }

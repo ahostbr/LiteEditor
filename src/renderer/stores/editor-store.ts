@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { logWarn } from './error-store'
 
 /** Build the correct Monaco URI for a given path or synthetic untitled key. */
 function toMonacoUri(key: string): any {
@@ -22,7 +23,7 @@ export function getMonacoContent(filePath: string): string | undefined {
     if (!uri) return undefined
     const model = monaco.editor.getModel(uri)
     return model?.getValue()
-  } catch { return undefined }
+  } catch (err) { logWarn('editor', 'Failed to get Monaco content', err); return undefined }
 }
 
 /** Dispose a Monaco model if no remaining tab references it. */
@@ -38,7 +39,7 @@ function disposeMonacoModel(key: string, allPanes: [PaneState, PaneState | null]
     if (!uri) return
     const model = monaco.editor.getModel(uri)
     model?.dispose()
-  } catch { /* ignore */ }
+  } catch (err) { logWarn('editor', 'Failed to dispose Monaco model', err) }
 }
 
 export type TabType = 'file' | 'diff'
@@ -467,7 +468,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
               const model = monaco.editor.getModel(monaco.Uri.file(tab.path))
               model?.dispose()
             }
-          } catch { /* ignore */ }
+          } catch (err) { logWarn('editor', 'Failed to dispose Monaco model during workspace restore', err) }
         }
       }
     }
@@ -491,8 +492,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           try {
             content = await readFile(savedTab.path)
             needsLoad = false
-          } catch {
+          } catch (err) {
             // File no longer exists — skip this tab
+            logWarn('editor', `File no longer exists during restore: ${savedTab.path}`, err)
             continue
           }
         }

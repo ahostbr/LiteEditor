@@ -5,6 +5,7 @@ import { useWorkspaceStore } from '../../stores/workspace-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { WorkspaceEntry } from './WorkspaceEntry'
 import { ScriptsSection } from './ScriptsSection'
+import { StatusDot, aggregateStatus, type StatusDotState } from './StatusDot'
 import { cn } from '../../lib/cn'
 
 interface ProjectEntryProps {
@@ -70,6 +71,9 @@ export function ProjectEntry({ project, isActive, onSelect, onCreateWorkspace, o
     if (isActive) setExpanded(true)
   }, [isActive])
 
+  // Git dirty state
+  const [gitDirtyCount, setGitDirtyCount] = useState(0)
+
   // Fetch git branch for project on mount and when project becomes active
   useEffect(() => {
     if (!project.rootPath) return
@@ -81,6 +85,16 @@ export function ProjectEntry({ project, isActive, onSelect, onCreateWorkspace, o
         }
       })
       .catch(() => { /* not a git repo, ignore */ })
+
+    // Check dirty state via status-porcelain (works on any path via git init)
+    window.api.git.statusPorcelainForPath(project.rootPath)
+      .then((result: unknown) => {
+        const output = result as string
+        // Each modified file = one non-empty line
+        const lines = output ? output.split('\n').filter((l: string) => l.trim()) : []
+        setGitDirtyCount(lines.length)
+      })
+      .catch(() => setGitDirtyCount(0))
   }, [project.rootPath, project.id, updateProject])
 
   // Fetch PR status for project on mount (if it's a git repo with gh cli)
@@ -198,6 +212,15 @@ export function ProjectEntry({ project, isActive, onSelect, onCreateWorkspace, o
               <span className="text-[9px] truncate" style={{ color: 'var(--text-muted)' }}>
                 {project.gitBranch}
               </span>
+              {gitDirtyCount > 0 && (
+                <span
+                  className="text-[7px] px-0.5 rounded shrink-0"
+                  style={{ backgroundColor: 'rgba(245, 158, 11, 0.2)', color: '#f59e0b' }}
+                  title={`${gitDirtyCount} modified file${gitDirtyCount === 1 ? '' : 's'}`}
+                >
+                  {gitDirtyCount}M
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -322,7 +345,7 @@ export function ProjectEntry({ project, isActive, onSelect, onCreateWorkspace, o
           ))}
 
           {/* Scripts section */}
-          <ScriptsSection projectRootPath={project.rootPath} />
+          <ScriptsSection projectId={project.id} projectRootPath={project.rootPath} />
 
           {/* Add workspace button */}
           <button

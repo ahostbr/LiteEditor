@@ -3,6 +3,8 @@ import { useEditorStore, getMonacoContent } from '../stores/editor-store'
 import { useUiStore } from '../stores/ui-store'
 import { useZenStore } from '../stores/zen-store'
 import { useCanvasStore } from '../stores/canvas-store'
+import { useProjectStore } from '../stores/project-store'
+import { useWorkspaceStore } from '../stores/workspace-store'
 import { confirmAndSaveTab } from '../lib/close-helpers'
 
 export function useKeyboardShortcuts() {
@@ -220,6 +222,30 @@ export function useKeyboardShortcuts() {
         const nextId = useCanvasStore.getState().findNearestPane(dir)
         if (nextId) useCanvasStore.getState().setFocusedPane(nextId)
         return
+      }
+
+      // Ctrl+1-9: Switch projects by sidebar position
+      if (ctrl && !shift && !e.altKey && e.key >= '1' && e.key <= '9') {
+        const index = parseInt(e.key) - 1
+        const projects = useProjectStore.getState().projects
+        // Sort same as sidebar: pinned first, then by lastActivity
+        const sorted = [...projects].sort((a, b) => {
+          if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
+          return b.lastActivity - a.lastActivity
+        })
+        const target = sorted[index]
+        if (target && target.id !== useProjectStore.getState().activeProjectId) {
+          e.preventDefault()
+          useProjectStore.getState().setActiveProject(target.id)
+          useEditorStore.getState().setProjectRoot(target.rootPath)
+          // Load and switch to last workspace
+          useWorkspaceStore.getState().loadWorkspacesForProject(target.id).then(() => {
+            if (target.lastActiveWorkspaceId) {
+              useWorkspaceStore.getState().switchWorkspace(target.lastActiveWorkspaceId)
+            }
+          })
+          return
+        }
       }
     }
 

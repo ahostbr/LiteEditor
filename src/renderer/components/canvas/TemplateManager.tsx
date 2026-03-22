@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Save, FolderOpen, X, Trash2 } from 'lucide-react'
 import { useCanvasStore, type CanvasPaneState } from '../../stores/canvas-store'
+import { logWarn, logError } from '../../stores/error-store'
 
 interface TemplateData {
   name: string
@@ -44,11 +45,12 @@ export function TemplateManager() {
           try {
             const content = await window.api.fs.readFile(`${getTemplatesDir()}/${entry.name}`)
             loaded.push(JSON.parse(content))
-          } catch { /* skip corrupt templates */ }
+          } catch (err) { logError('TemplateManager', `Failed to parse template: ${entry.name}`, err) }
         }
       }
       setTemplates(loaded)
-    } catch {
+    } catch (err) {
+      logWarn('TemplateManager', 'Templates directory not found or unreadable', err)
       setTemplates([])
     }
   }
@@ -115,7 +117,7 @@ export function TemplateManager() {
       const fileName = template.name.replace(/[^a-zA-Z0-9-_]/g, '_') + '.json'
       await window.api.fs.deleteFile(`${dir}/${fileName}`)
       await loadTemplates()
-    } catch { /* ignore */ }
+    } catch (err) { logError('TemplateManager', 'Failed to delete template', err) }
   }
 
   if (!show) return null

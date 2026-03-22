@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { ChangedFile, FileDiff, Commit, FileStatus, RepositoryTab } from '../types/repository'
 import { parseDiff } from '../lib/diff-parser'
+import { logWarn, logError } from './error-store'
 
 function parseStatusChar(c: string): FileStatus {
   switch (c) {
@@ -128,8 +129,8 @@ export const useRepositoryStore = create<RepositoryState>((set, get) => ({
         ahead: branch.ahead,
         behind: branch.behind
       })
-    } catch {
-      // Not a git repo or git error
+    } catch (err) {
+      logWarn('repository', 'Not a git repository or git unavailable', err)
     }
   },
 
@@ -144,7 +145,8 @@ export const useRepositoryStore = create<RepositoryState>((set, get) => ({
         : await window.api.git.diff(path)
       const diff = parseDiff(diffText)
       set({ selectedDiff: { ...diff, path } })
-    } catch {
+    } catch (err) {
+      logError('repository', 'Failed to load file diff', err)
       set({ selectedDiff: null })
     }
   },
@@ -229,7 +231,8 @@ export const useRepositoryStore = create<RepositoryState>((set, get) => ({
           authorEmail: c.author_email
         }))
       })
-    } catch {
+    } catch (err) {
+      logError('repository', 'Failed to load commit history', err)
       set({ commits: [] })
     }
   },

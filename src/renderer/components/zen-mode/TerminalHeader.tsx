@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { X, Settings, Copy, Clipboard } from 'lucide-react'
 import { useTerminalStore } from '../../stores/terminal-store'
+import { logWarn } from '../../stores/error-store'
 import { useZenStore } from '../../stores/zen-store'
 import { useToastStore } from '../../stores/toast-store'
 import { cn } from '../../lib/cn'
@@ -175,7 +176,7 @@ export function TerminalHeader({
             try {
               const text = await navigator.clipboard.readText()
               if (text) window.api.pty.write(sessionId, text)
-            } catch {}
+            } catch (err) { logWarn('TerminalHeader', 'Clipboard paste failed', err) }
           }}
           className="p-1 rounded hover:bg-[var(--bg-muted)] opacity-50 hover:opacity-100 transition-opacity"
           title="Paste"

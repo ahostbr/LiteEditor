@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { PullRequest, Issue, IssueComment, Review, ReviewComment, PendingReviewComment, PrFilter, IssueFilter, GitHubLabel } from '../types/github'
 import { parseDiff } from '../lib/diff-parser'
 import type { FileDiff } from '../types/repository'
+import { logWarn } from './error-store'
 
 interface GitHubState {
   // CLI status
@@ -104,7 +105,8 @@ export const useGitHubStore = create<GitHubState>((set, get) => ({
         ghCliAuthenticated: result.authenticated,
         ghCliReady: result.installed && result.authenticated
       })
-    } catch {
+    } catch (err) {
+      logWarn('github', 'GitHub CLI check failed', err)
       set({ ghCliInstalled: false, ghCliAuthenticated: false, ghCliReady: false })
     }
   },
@@ -271,14 +273,14 @@ export const useGitHubStore = create<GitHubState>((set, get) => ({
     try {
       const labels = (await window.api.github.labelsList()) as GitHubLabel[]
       set({ labels })
-    } catch { /* ignore */ }
+    } catch (err) { logWarn('github', 'Failed to load labels', err) }
   },
 
   loadCollaborators: async () => {
     try {
       const collaborators = await window.api.github.collaboratorsList()
       set({ collaborators })
-    } catch { /* ignore */ }
+    } catch (err) { logWarn('github', 'Failed to load collaborators', err) }
   },
 
   loadPrTemplate: async () => {

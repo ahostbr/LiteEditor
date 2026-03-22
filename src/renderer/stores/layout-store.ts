@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { logWarn, logError } from './error-store'
 
 export type LayoutMode = 'grid' | 'splitter' | 'window' | 'tabs'
 export type GridLayout = 'auto' | '2x2' | '3x3'
@@ -121,7 +122,7 @@ export const useLayoutStore = create<LayoutState>((set, get) => ({
           set({ gridLayout: s.zenGridLayout as GridLayout })
         }
       }
-    } catch { /* ignore */ }
+    } catch (err) { logWarn('layout', 'Failed to load layout settings', err) }
   },
 
   saveLayout: async () => {
@@ -132,6 +133,6 @@ export const useLayoutStore = create<LayoutState>((set, get) => ({
       data.zenLayoutMode = state.layoutMode
       data.zenGridLayout = state.gridLayout
       await window.api.settings.save(JSON.stringify(data, null, 2))
-    } catch { /* ignore */ }
+    } catch (err) { logError('layout', 'Failed to save layout settings', err) }
   }
 }))

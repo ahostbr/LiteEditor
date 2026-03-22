@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { logWarn } from '../../stores/error-store'
 import { Terminal, FileCode, Globe, X, GitBranch } from 'lucide-react'
 import { useCanvasStore, type CanvasPaneType } from '../../stores/canvas-store'
 import { openFileInCurrentMode } from '../../lib/open-file'
@@ -69,7 +70,7 @@ export function AddPaneMenu({ show: externalShow, onClose, anchorX, anchorY }: A
     try {
       const path = await window.api.dialog.openFile()
       if (path) await openFileInCurrentMode(path)
-    } catch { /* ignore */ }
+    } catch (err) { logWarn('AddPaneMenu', 'File open cancelled or failed', err) }
     setInternalShow(false)
     onClose?.()
   }

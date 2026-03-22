@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { logWarn } from '../../stores/error-store'
 import { Minus, Square, X, Copy, PanelLeft, PanelBottom, Terminal, Code, Plus, LayoutGrid, GripVertical, Layers, PanelTop, ChevronDown, FileCode, Monitor, Globe, Map } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { useUiStore } from '../../stores/ui-store'
@@ -99,7 +100,7 @@ export function Titlebar() {
     try {
       const path = await window.api.dialog.openFile()
       if (path) await openFileInCurrentMode(path)
-    } catch { /* ignore */ }
+    } catch (err) { logWarn('Titlebar', 'File open cancelled or failed', err) }
   }
 
   return (

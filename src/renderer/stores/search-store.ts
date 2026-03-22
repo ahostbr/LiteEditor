@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { logError } from './error-store'
 
 export interface SearchMatch {
   line: number
@@ -59,7 +60,8 @@ export const useSearchStore = create<SearchState>((set, get) => ({
         wholeWord: isWholeWord
       }) as SearchResult[]
       set({ results, isSearching: false })
-    } catch {
+    } catch (err) {
+      logError('search', 'Failed to execute search', err)
       set({ results: [], isSearching: false })
     }
   },

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { ChevronRight, ChevronDown } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { FileIcon } from '../shared/FileIcon'
+import { logError } from '../../stores/error-store'
 
 export interface FileNode {
   name: string
@@ -63,7 +64,8 @@ export function TreeNode({ node, depth, onFileClick, refreshSignal }: TreeNodePr
         try {
           const loaded = await window.api.fs.readDir(node.path) as FileNode[]
           if (mountedRef.current) setChildren(loaded)
-        } catch {
+        } catch (err) {
+          logError('TreeNode', `Failed to read directory: ${node.path}`, err)
           if (mountedRef.current) setChildren([])
         } finally {
           if (mountedRef.current) setIsLoading(false)

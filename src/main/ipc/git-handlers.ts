@@ -125,4 +125,10 @@ export function registerGitHandlers(): void {
   ipcMain.handle('git:branch-list', async () => {
     return getGit().branchList()
   })
+
+  // Get porcelain status for an arbitrary path (used by sidebar per-project dirty indicator)
+  ipcMain.handle('git:status-porcelain-for-path', async (_e, rootPath: string) => {
+    const tempGit = new GitService(rootPath)
+    return tempGit.statusPorcelain()
+  })
 }

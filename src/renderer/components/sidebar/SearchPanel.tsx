@@ -4,6 +4,7 @@ import { cn } from '../../lib/cn'
 import { useSearchStore, type SearchResult } from '../../stores/search-store'
 import { useEditorStore } from '../../stores/editor-store'
 import { openFileInCurrentMode } from '../../lib/open-file'
+import { logError } from '../../stores/error-store'
 
 export function SearchPanel() {
   const {
@@ -32,7 +33,7 @@ export function SearchPanel() {
     const fullPath = `${projectRoot}/${result.file}`.replace(/\//g, '\\')
     try {
       await openFileInCurrentMode(fullPath)
-    } catch { /* ignore */ }
+    } catch (err) { logError('SearchPanel', `Failed to open search result: ${fullPath}`, err) }
   }
 
   const totalMatches = results.reduce((sum, r) => sum + r.matches.length, 0)

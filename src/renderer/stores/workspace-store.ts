@@ -1,6 +1,8 @@
 import { create } from 'zustand'
-import { useCanvasStore, type CanvasPaneState } from './canvas-store'
+import { useCanvasStore, setWorkspaceIdProvider, type CanvasPaneState } from './canvas-store'
 import { useEditorStore } from './editor-store'
+import { useProjectStore } from './project-store'
+import { logWarn } from './error-store'
 
 export interface Workspace {
   id: string
@@ -117,14 +119,20 @@ export const useWorkspaceStore = create<WorkspaceStoreState>((set, get) => ({
     if (!target) return
 
     // Load full workspace data from disk
-    const full = (await window.api.workspaces.load(target.projectId, workspaceId)) as Workspace | null
-    const canvasState = full?.canvas as PersistedCanvasState | null
+    let canvasState: PersistedCanvasState | null = null
+    try {
+      const full = (await window.api.workspaces.load(target.projectId, workspaceId)) as Workspace | null
+      canvasState = full?.canvas as PersistedCanvasState | null
+    } catch (err) {
+      logWarn('workspace-store', `Failed to load workspace ${workspaceId}, starting with empty canvas`, err)
+    }
 
     // Restore canvas with terminal persistence
     restoreWorkspacePanes(workspaceId, canvasState)
 
-    // Set project root to worktree path or main project root
-    const effectivePath = target.worktreePath || useEditorStore.getState().projectRoot
+    // Set project root — look up from project-store (not stale editor-store)
+    const project = useProjectStore.getState().projects.find((p) => p.id === target.projectId)
+    const effectivePath = target.worktreePath || project?.rootPath || useEditorStore.getState().projectRoot
     if (effectivePath) {
       useEditorStore.getState().setProjectRoot(effectivePath)
     }
@@ -183,6 +191,11 @@ export const useWorkspaceStore = create<WorkspaceStoreState>((set, get) => ({
   getEffectiveRootPath: () => {
     const ws = get().getActiveWorkspace()
     if (ws?.worktreePath) return ws.worktreePath
-    return useEditorStore.getState().projectRoot
+    // Look up project root from project-store (authoritative) rather than editor-store (may be stale)
+    const project = useProjectStore.getState().projects.find((p) => p.id === get().activeProjectId)
+    return project?.rootPath || useEditorStore.getState().projectRoot
   }
 }))
+
+// Wire up the workspace ID provider for canvas-store (avoids circular import)
+setWorkspaceIdProvider(() => useWorkspaceStore.getState().activeWorkspaceId)

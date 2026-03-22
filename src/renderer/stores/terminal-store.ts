@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import { useEditorStore } from './editor-store'
-import { useSettingsStore } from './settings-store'
+import { logWarn, logError } from './error-store'
+import { resolveTerminalCwd } from '../lib/terminal-utils'
 
 export interface TerminalSession {
   id: string
@@ -23,16 +23,6 @@ interface TerminalState {
   setActiveSession: (id: string) => void
   reorderTerminals: (fromIndex: number, toIndex: number) => void
   restartTerminal: (id: string, cwd: string) => Promise<string | null>
-}
-
-function resolveTerminalCwd(cwd?: string): string | undefined {
-  const explicitCwd = typeof cwd === 'string' ? cwd.trim() : ''
-  if (explicitCwd) return explicitCwd
-
-  const configuredCwd = useSettingsStore.getState().defaultTerminalCwd.trim()
-  if (configuredCwd) return configuredCwd
-
-  return useEditorStore.getState().projectRoot || undefined
 }
 
 export const useTerminalStore = create<TerminalState>((set, get) => ({
@@ -118,7 +108,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   removeTerminal: (id) => {
     const exists = get().sessions.some((s) => s.id === id)
     if (exists) {
-      try { window.api.pty.kill(id) } catch { /* ignore */ }
+      try { window.api.pty.kill(id) } catch (err) { logWarn('terminal', `Failed to kill PTY session ${id}`, err) }
     }
     set((state) => {
       const sessions = state.sessions.filter((s) => s.id !== id)
@@ -150,7 +140,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
 
     try {
       const newId = await window.api.pty.create(shell || undefined, resolvedCwd)
-      try { window.api.pty.kill(id) } catch { /* ignore */ }
+      try { window.api.pty.kill(id) } catch (err) { logWarn('terminal', `Failed to kill old PTY session ${id}`, err) }
 
       set((state) => ({
         sessions: state.sessions.map((s) =>

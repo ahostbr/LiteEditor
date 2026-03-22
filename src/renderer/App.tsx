@@ -33,7 +33,9 @@ import { AddPaneMenu } from './components/canvas/AddPaneMenu'
 import { getLanguageFromPath, getLanguageDisplayName } from './lib/language-map'
 import { ConfirmDialog } from './components/shared/ConfirmDialog'
 import { ToastViewport } from './components/shared/ToastViewport'
+import { ErrorBoundary } from './components/shared/ErrorBoundary'
 import { openFileInCurrentMode, ensureEditorVisible } from './lib/open-file'
+import { logWarn, logError } from './stores/error-store'
 
 async function loadWorkspaceForProject(projectRoot: string): Promise<void> {
   try {
@@ -58,7 +60,7 @@ async function loadWorkspaceForProject(projectRoot: string): Promise<void> {
       const { useCanvasStore } = await import('./stores/canvas-store')
       useCanvasStore.getState().restoreCanvasState(data.canvas as any)
     }
-  } catch { /* workspace file missing or corrupt — start fresh */ }
+  } catch (err) { logWarn('App', 'Workspace file missing or corrupt — starting fresh', err) }
 }
 
 async function saveWorkspaceForProject(projectRoot: string): Promise<void> {
@@ -69,7 +71,7 @@ async function saveWorkspaceForProject(projectRoot: string): Promise<void> {
     const canvasState = useCanvasStore.getState().getCanvasState()
     const workspace = { editor: editorState, ui: uiState, canvas: canvasState }
     await window.api.workspace.saveState(projectRoot, JSON.stringify(workspace, null, 2))
-  } catch { /* ignore */ }
+  } catch (err) { logWarn('App', 'Failed to save workspace state', err) }
 }
 
 function applyStringEdits(base: string, editsValue: unknown): string {
@@ -109,7 +111,8 @@ function getActiveSelectionText(): string {
 
   try {
     return String(model.getValueInRange(selection) ?? '')
-  } catch {
+  } catch (err) {
+    logWarn('App', 'Failed to get active selection text', err)
     return ''
   }
 }
@@ -309,7 +312,7 @@ export default function App() {
             const dir = launchFile.replace(/[\\/][^\\/]+$/, '')
             useEditorStore.getState().setProjectRoot(dir)
           }
-        } catch { /* ignore unreadable files */ }
+        } catch (err) { logWarn('App', 'Failed to open launch file', err) }
       }
     }
     init().catch(() => {})
@@ -324,7 +327,15 @@ export default function App() {
           const dir = filePath.replace(/[\\/][^\\/]+$/, '')
           useEditorStore.getState().setProjectRoot(dir)
         }
-      } catch { /* ignore unreadable files */ }
+      } catch (err) { logWarn('App', 'Failed to open file from OS', err) }
+    })
+    return unsub
+  }, [])
+
+  // Listen for IPC health warnings from main process
+  useEffect(() => {
+    const unsub = window.api.onIpcHealthWarning((missingChannels: string[]) => {
+      logError('IPC', `Critical IPC handlers missing: ${missingChannels.join(', ')}. Some features may not work.`)
     })
     return unsub
   }, [])
@@ -412,7 +423,7 @@ export default function App() {
             let original = ''
             try {
               if (originalFilePath) original = await window.api.fs.readFile(originalFilePath)
-            } catch { /* ignore missing file */ }
+            } catch (err) { logWarn('App', 'Failed to read original file for diff', err) }
             const modified = applyStringEdits(original, requestPayload.edits)
 
             useUiStore.getState().setAppMode('editor')
@@ -429,7 +440,7 @@ export default function App() {
               let original = ''
               try {
                 if (originalFilePath) original = await window.api.fs.readFile(originalFilePath)
-              } catch { /* ignore */ }
+              } catch (err) { logWarn('App', 'Failed to read file for diff', err) }
               const modified = applyStringEdits(original, (fileDiff as any).edits)
               useUiStore.getState().setAppMode('editor')
               useEditorStore.getState().openDiff(newFilePath || originalFilePath || 'Claude Diff', original, modified)
@@ -461,7 +472,8 @@ export default function App() {
                 hasChanges: files.length > 0,
                 branch: branch?.name ?? null
               }
-            } catch {
+            } catch (err) {
+              logWarn('App', 'Git status check failed', err)
               return { isClean: true, hasChanges: false, branch: null }
             }
           }
@@ -598,6 +610,7 @@ export default function App() {
     <div className="flex flex-col h-screen w-screen overflow-hidden">
       <EmberSparks particleDensity={particleDensity} particleSpeed={particleSpeed} particleLifespan={particleLifespan} reduceMotion={reduceMotion} />
       <Titlebar />
+      <ErrorBoundary>
       <div className="flex flex-1 overflow-hidden bg-gradient-to-br from-[var(--bg-base)] to-black p-2 gap-2">
         <ActivityBar />
         {sidebarVisible && (
@@ -645,6 +658,7 @@ export default function App() {
           )}
         </div>
       </div>
+      </ErrorBoundary>
       <StatusBar />
       {appMode === 'canvas' && <AddPaneMenu />}
       <ToastViewport />

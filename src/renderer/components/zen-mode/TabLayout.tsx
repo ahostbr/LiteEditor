@@ -3,6 +3,7 @@ import { X, Plus, Terminal, FileCode } from 'lucide-react'
 import { PanelRenderer } from './PanelRenderer'
 import { useZenStore, type ZenPanel } from '../../stores/zen-store'
 import { openFileInCurrentMode } from '../../lib/open-file'
+import { logWarn } from '../../stores/error-store'
 import { useSettingsStore } from '../../stores/settings-store'
 import { useUiStore } from '../../stores/ui-store'
 import { cn } from '../../lib/cn'
@@ -99,7 +100,7 @@ export function TabLayout({ panels }: TabLayoutProps) {
     try {
       const path = await window.api.dialog.openFile()
       if (path) await openFileInCurrentMode(path)
-    } catch { /* ignore */ }
+    } catch (err) { logWarn('TabLayout', 'File open cancelled or failed', err) }
   }
 
   return (

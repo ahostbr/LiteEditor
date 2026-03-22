@@ -143,7 +143,9 @@ const api = {
     worktreeRemove: (path: string): Promise<void> =>
       ipcRenderer.invoke('git:worktree-remove', path),
     branchList: (): Promise<unknown[]> =>
-      ipcRenderer.invoke('git:branch-list')
+      ipcRenderer.invoke('git:branch-list'),
+    statusPorcelainForPath: (rootPath: string): Promise<string> =>
+      ipcRenderer.invoke('git:status-porcelain-for-path', rootPath)
   },
 
   pty: {
@@ -265,6 +267,17 @@ const api = {
   about: {
     getInfo: () => ipcRenderer.invoke('about:get-info'),
     getIcon: () => ipcRenderer.invoke('about:get-icon'),
+  },
+
+  scripts: {
+    detect: (rootPath: string): Promise<unknown[]> =>
+      ipcRenderer.invoke('scripts:detect', rootPath),
+    start: (projectId: string, scriptName: string, cwd: string): Promise<string> =>
+      ipcRenderer.invoke('scripts:start', projectId, scriptName, cwd),
+    stop: (sessionId: string): Promise<void> =>
+      ipcRenderer.invoke('scripts:stop', sessionId),
+    running: (): Promise<unknown[]> =>
+      ipcRenderer.invoke('scripts:running')
   },
 
   shell: {
@@ -438,6 +451,12 @@ const api = {
     const handler = (_e: unknown, filePath: string) => callback(filePath)
     ipcRenderer.on('file:open', handler)
     return () => ipcRenderer.removeListener('file:open', handler)
+  },
+
+  onIpcHealthWarning: (callback: (missingChannels: string[]) => void): (() => void) => {
+    const handler = (_e: unknown, channels: string[]) => callback(channels)
+    ipcRenderer.on('ipc:health-warning', handler)
+    return () => ipcRenderer.removeListener('ipc:health-warning', handler)
   }
 }
 

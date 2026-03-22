@@ -44,7 +44,7 @@ interface ProjectStoreState {
   loadFromDisk: () => Promise<void>
   addProject: (path: string, name?: string) => Promise<string>
   removeProject: (id: string) => Promise<void>
-  setActiveProject: (id: string) => void
+  setActiveProject: (id: string) => Promise<void>
   updateProject: (id: string, updates: Partial<ProjectState>) => void
   renameProject: (id: string, name: string) => Promise<void>
   togglePin: (id: string) => Promise<void>
@@ -102,9 +102,9 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
     })
   },
 
-  setActiveProject: (id) => {
+  setActiveProject: async (id) => {
     set({ activeProjectId: id })
-    window.api.project.update(id, { lastActivity: Date.now() })
+    await window.api.project.update(id, { lastActivity: Date.now() })
   },
 
   updateProject: (id, updates) => {

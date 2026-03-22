@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useRepositoryStore } from '../../stores/repository-store'
+import { logWarn } from '../../stores/error-store'
 import type { Commit } from '../../types/repository'
 
 function formatDate(dateStr: string): string {
@@ -14,7 +15,8 @@ function formatDate(dateStr: string): string {
     const days = Math.floor(hours / 24)
     if (days < 30) return `${days}d ago`
     return d.toLocaleDateString()
-  } catch {
+  } catch (err) {
+    logWarn('HistoryPanel', `Failed to parse date: ${dateStr}`, err)
     return dateStr
   }
 }

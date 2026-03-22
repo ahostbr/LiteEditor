@@ -1,6 +1,5 @@
-import { app, BrowserWindow, ipcMain, dialog, shell, screen } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell, screen, nativeTheme } from 'electron'
 import { join } from 'path'
-import { spawn, ChildProcess } from 'child_process'
 import { statSync } from 'fs'
 import { registerFsHandlers, shutdownFsHandlers } from './ipc/fs-handlers'
 import { registerGitHandlers } from './ipc/git-handlers'
@@ -13,6 +12,7 @@ import { registerWorkspaceHandlers } from './ipc/workspace-handlers'
 import { registerProjectHandlers } from './ipc/project-handlers'
 import { registerWorkspaceCrudHandlers } from './ipc/workspace-crud-handlers'
 import { registerIntegrationsHandlers, shutdownIntegrationsHandlers } from './ipc/integrations-handlers'
+import { registerScriptHandlers, shutdownScriptHandlers } from './ipc/script-handlers'
 import { registerGitHubHandlers } from './ipc/github-handlers'
 import { AgentBridge } from './services/agent-bridge'
 import { registerAboutHandlers } from 'lite-ui/app-info-handler'
@@ -25,61 +25,9 @@ let pendingFilePath: string | null = null
 let forceQuit = false
 let preSpanBounds: Electron.Rectangle | null = null
 let isSpanned = false
-let mcpServer: ChildProcess | null = null
+// MCP is now handled by LiteCore (litemcp + mcp_0ne gateway).
+// The Agent Bridge HTTP API remains — LiteCore's litemcp `editor` tool connects to it.
 const agentBridge = new AgentBridge(ptyManager, browserManager, () => mainWindow)
-
-function startMcpServer(): void {
-  const serverScript = app.isPackaged
-    ? join(process.resourcesPath, 'mcp-server', 'server.py')
-    : join(app.getAppPath(), 'src', 'mcp-server', 'server.py')
-
-  mcpServer = spawn('python', [serverScript], {
-    stdio: 'ignore',
-    env: { ...process.env, MCP_TRANSPORT: 'sse', MCP_PORT: '7422', BRIDGE_TOKEN: agentBridge.token }
-  })
-
-  mcpServer.on('error', (err) => {
-    console.error('MCP server failed to start:', err)
-    mcpServer = null
-  })
-  mcpServer.on('exit', (code) => {
-    console.log('MCP server exited with code:', code)
-    mcpServer = null
-  })
-}
-
-function stopMcpServer(): void {
-  if (mcpServer && !mcpServer.killed) {
-    const pid = mcpServer.pid
-    mcpServer.kill()
-    // On Windows, child_process.kill() sends SIGTERM which Python ignores.
-    // Force-kill the process tree to prevent zombie Python processes.
-    if (pid && process.platform === 'win32') {
-      try {
-        require('child_process').execSync(`taskkill /pid ${pid} /T /F`, { windowsHide: true, stdio: 'ignore' })
-      } catch { /* already dead */ }
-    }
-    mcpServer = null
-  }
-}
-
-function killOrphanedMcpServers(): void {
-  if (process.platform !== 'win32') return
-  try {
-    const { execSync } = require('child_process')
-    const result = execSync(
-      'wmic process where "commandline like \'%mcp-server%server.py%\'" get processid /format:csv',
-      { windowsHide: true, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }
-    )
-    const pids = result.split('\n')
-      .map((line: string) => line.trim().split(',').pop()?.trim())
-      .filter((pid: string | undefined) => pid && /^\d+$/.test(pid))
-    for (const pid of pids) {
-      try { execSync(`taskkill /pid ${pid} /T /F`, { windowsHide: true, stdio: 'ignore' }) } catch { /* */ }
-    }
-    if (pids.length > 0) console.log(`Killed ${pids.length} orphaned MCP server(s)`)
-  } catch { /* no orphans */ }
-}
 
 function getUnionBounds(): Electron.Rectangle {
   const displays = screen.getAllDisplays()
@@ -152,6 +100,9 @@ if (!gotTheLock) {
 }
 
 function createWindow(): void {
+  // Force dark mode for all native views (browser, Claude, Codex WebContentsViews)
+  nativeTheme.themeSource = 'dark'
+
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -328,6 +279,7 @@ function createWindow(): void {
   try { registerClaudeHandlers(mainWindow!) } catch (e) { console.error('Failed to register claude handlers:', e) }
   try { registerCodexHandlers(mainWindow!) } catch (e) { console.error('Failed to register codex handlers:', e) }
   try { registerIntegrationsHandlers(mainWindow!) } catch (e) { console.error('Failed to register integrations handlers:', e) }
+  try { registerScriptHandlers() } catch (e) { console.error('Failed to register script handlers:', e) }
   try { registerGitHubHandlers() } catch (e) { console.error('Failed to register GitHub handlers:', e) }
   try {
     registerAboutHandlers({
@@ -339,6 +291,21 @@ function createWindow(): void {
       ],
     })
   } catch (e) { console.error('Failed to register about handlers:', e) }
+
+  // Verify critical IPC handlers are registered
+  const criticalChannels = ['fs:read-file', 'fs:read-tree', 'fs:write-file', 'dialog:open-file']
+  const registeredChannels = (ipcMain as any)._invokeHandlers
+    ? Object.keys((ipcMain as any)._invokeHandlers)
+    : []
+  const missingChannels = criticalChannels.filter((ch) => !registeredChannels.includes(ch))
+  if (missingChannels.length > 0) {
+    console.error('[IPC Health Check] CRITICAL: Missing IPC handlers:', missingChannels.join(', '))
+    mainWindow.webContents.once('did-finish-load', () => {
+      mainWindow?.webContents.send('ipc:health-warning', missingChannels)
+    })
+  } else {
+    console.log('[IPC Health Check] All critical handlers registered')
+  }
 
   // Load renderer — pass launch file as query param so renderer can open it
   // after workspace restoration (avoids race condition with file:open IPC)
@@ -355,15 +322,12 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
-  killOrphanedMcpServers()
   try {
     await agentBridge.start()
   } catch (err) {
     console.error('Failed to start Agent Bridge:', err)
   }
-  startMcpServer()
   createWindow()
-
 })
 
 app.on('before-quit', () => {
@@ -373,13 +337,12 @@ app.on('before-quit', () => {
   shutdownClaudeHandlers()
   shutdownCodexHandlers()
   shutdownIntegrationsHandlers()
+  shutdownScriptHandlers()
   agentBridge.stop()
-  stopMcpServer()
 })
 
 app.on('window-all-closed', () => {
   agentBridge.stop()
-  stopMcpServer()
   app.quit()
 })
 

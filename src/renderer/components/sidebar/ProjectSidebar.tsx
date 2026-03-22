@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { Plus, FolderOpen } from 'lucide-react'
 import { useProjectStore, type ProjectState } from '../../stores/project-store'
+import { useWorkspaceStore } from '../../stores/workspace-store'
 import { useEditorStore } from '../../stores/editor-store'
+import { logWarn } from '../../stores/error-store'
 import { ProjectEntry } from './ProjectEntry'
 import { WorkspaceCreateDialog } from './WorkspaceCreateDialog'
 import { ProjectSettingsDialog } from './ProjectSettingsDialog'
@@ -12,9 +14,14 @@ export function ProjectSidebar() {
   const loaded = useProjectStore((s) => s.loaded)
   const addProject = useProjectStore((s) => s.addProject)
   const setActiveProject = useProjectStore((s) => s.setActiveProject)
+  const reorderProjects = useProjectStore((s) => s.reorderProjects)
   const loadFromDisk = useProjectStore((s) => s.loadFromDisk)
   const [createDialogProjectId, setCreateDialogProjectId] = useState<string | null>(null)
   const [settingsProject, setSettingsProject] = useState<ProjectState | null>(null)
+
+  // Drag state
+  const [dragIdx, setDragIdx] = useState<number | null>(null)
+  const [dropIdx, setDropIdx] = useState<number | null>(null)
 
   // Load projects from disk on mount
   useEffect(() => {
@@ -37,16 +44,65 @@ export function ProjectSidebar() {
         await addProject(path)
         useEditorStore.getState().setProjectRoot(path)
       }
-    } catch { /* ignore */ }
+    } catch (err) { logWarn('ProjectSidebar', 'Folder open cancelled or failed', err) }
   }, [addProject])
 
-  const handleSelectProject = useCallback((id: string) => {
-    setActiveProject(id)
+  const handleSelectProject = useCallback(async (id: string) => {
+    if (id === activeProjectId) return
+
+    // Save current workspace before switching
+    try {
+      await useWorkspaceStore.getState().saveCurrentWorkspace()
+    } catch { /* ignore if no active workspace */ }
+
+    await setActiveProject(id)
     const project = useProjectStore.getState().projects.find((p) => p.id === id)
     if (project) {
       useEditorStore.getState().setProjectRoot(project.rootPath)
+
+      // Load workspaces and switch to last active
+      await useWorkspaceStore.getState().loadWorkspacesForProject(id)
+      if (project.lastActiveWorkspaceId) {
+        await useWorkspaceStore.getState().switchWorkspace(project.lastActiveWorkspaceId)
+      }
     }
-  }, [setActiveProject])
+  }, [activeProjectId, setActiveProject])
+
+  // Drag handlers
+  const handleDragStart = useCallback((e: React.DragEvent, idx: number) => {
+    setDragIdx(idx)
+    e.dataTransfer.effectAllowed = 'move'
+    // Set a transparent drag image
+    const el = e.currentTarget as HTMLElement
+    e.dataTransfer.setDragImage(el, 0, 0)
+  }, [])
+
+  const handleDragOver = useCallback((e: React.DragEvent, idx: number) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDropIdx(idx)
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent, idx: number) => {
+    e.preventDefault()
+    if (dragIdx !== null && dragIdx !== idx) {
+      // Map sorted indices back to original indices
+      const fromProject = sortedProjects[dragIdx]
+      const toProject = sortedProjects[idx]
+      const fromOriginal = projects.indexOf(fromProject)
+      const toOriginal = projects.indexOf(toProject)
+      if (fromOriginal >= 0 && toOriginal >= 0) {
+        reorderProjects(fromOriginal, toOriginal)
+      }
+    }
+    setDragIdx(null)
+    setDropIdx(null)
+  }, [dragIdx, sortedProjects, projects, reorderProjects])
+
+  const handleDragEnd = useCallback(() => {
+    setDragIdx(null)
+    setDropIdx(null)
+  }, [])
 
   return (
     <div className="flex flex-col h-full">
@@ -72,15 +128,28 @@ export function ProjectSidebar() {
 
       {/* Project list */}
       <div className="flex-1 overflow-y-auto py-0.5">
-        {sortedProjects.map((project) => (
-          <ProjectEntry
+        {sortedProjects.map((project, idx) => (
+          <div
             key={project.id}
-            project={project}
-            isActive={project.id === activeProjectId}
-            onSelect={() => handleSelectProject(project.id)}
-            onCreateWorkspace={() => setCreateDialogProjectId(project.id)}
-            onOpenSettings={() => setSettingsProject(project)}
-          />
+            draggable
+            onDragStart={(e) => handleDragStart(e, idx)}
+            onDragOver={(e) => handleDragOver(e, idx)}
+            onDrop={(e) => handleDrop(e, idx)}
+            onDragEnd={handleDragEnd}
+            style={{
+              opacity: dragIdx === idx ? 0.5 : 1,
+              borderTop: dropIdx === idx && dragIdx !== null && dragIdx > idx ? '2px solid var(--accent)' : '2px solid transparent',
+              borderBottom: dropIdx === idx && dragIdx !== null && dragIdx < idx ? '2px solid var(--accent)' : undefined
+            }}
+          >
+            <ProjectEntry
+              project={project}
+              isActive={project.id === activeProjectId}
+              onSelect={() => handleSelectProject(project.id)}
+              onCreateWorkspace={() => setCreateDialogProjectId(project.id)}
+              onOpenSettings={() => setSettingsProject(project)}
+            />
+          </div>
         ))}
 
         {projects.length === 0 && (

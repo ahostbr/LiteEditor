@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useGitStore, type ChangedFile } from '../../stores/git-store'
 import { useEditorStore } from '../../stores/editor-store'
+import { logWarn, logError } from '../../stores/error-store'
 import { StatusBadge } from '../shared/StatusBadge'
 import { ContextMenu, type ContextMenuItem } from '../shared/ContextMenu'
 
@@ -19,10 +20,10 @@ export function GitFileItem({ file }: { file: ChangedFile }) {
       let original = ''
       try {
         original = await window.api.git.getFileAtRevision(file.path, 'HEAD')
-      } catch { /* new file */ }
+      } catch (err) { logWarn('GitFileItem', `No HEAD revision for ${file.path} (likely new file)`, err) }
       const modified = await window.api.fs.readFile(fullPath)
       openDiff(file.path, original, modified)
-    } catch { /* ignore */ }
+    } catch (err) { logError('GitFileItem', `Failed to open diff for ${file.path}`, err) }
   }
 
   const handleContextMenu = (e: React.MouseEvent) => {

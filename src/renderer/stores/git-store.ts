@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { logWarn, logError } from './error-store'
 
 export interface ChangedFile {
   path: string
@@ -82,8 +83,8 @@ export const useGitStore = create<GitState>((set, get) => ({
       const files = await window.api.git.status() as ChangedFile[]
       const branch = await window.api.git.currentBranch() as BranchInfo
       set({ changedFiles: files, currentBranch: branch })
-    } catch {
-      // Not a git repo or other error
+    } catch (err) {
+      logWarn('git', 'Not a git repository or git unavailable', err)
     } finally {
       set({ isLoading: false })
     }
@@ -94,7 +95,8 @@ export const useGitStore = create<GitState>((set, get) => ({
     try {
       const diff = await window.api.git.diff(path)
       set({ selectedFileDiff: diff })
-    } catch {
+    } catch (err) {
+      logError('git', 'Failed to load file diff', err)
       set({ selectedFileDiff: null })
     }
   },
@@ -109,21 +111,21 @@ export const useGitStore = create<GitState>((set, get) => ({
         await window.api.git.stage(path)
       }
       await get().refreshStatus()
-    } catch { /* ignore */ }
+    } catch (err) { logError('git', 'Failed to toggle staged state', err) }
   },
 
   stageAll: async () => {
     try {
       await window.api.git.stageAll()
       await get().refreshStatus()
-    } catch { /* ignore */ }
+    } catch (err) { logError('git', 'Failed to stage all files', err) }
   },
 
   unstageAll: async () => {
     try {
       await window.api.git.unstageAll()
       await get().refreshStatus()
-    } catch { /* ignore */ }
+    } catch (err) { logError('git', 'Failed to unstage all files', err) }
   },
 
   setCommitSummary: (s) => set({ commitSummary: s }),
@@ -136,7 +138,7 @@ export const useGitStore = create<GitState>((set, get) => ({
       await window.api.git.commit(commitSummary, commitDescription || undefined)
       set({ commitSummary: '', commitDescription: '' })
       await get().refreshStatus()
-    } catch { /* ignore */ }
+    } catch (err) { logError('git', 'Failed to create commit', err) }
   },
 
   pushOrigin: async () => {
@@ -144,7 +146,7 @@ export const useGitStore = create<GitState>((set, get) => ({
     try {
       await window.api.git.push()
       await get().refreshStatus()
-    } catch { /* ignore */ }
+    } catch (err) { logError('git', 'Failed to push to origin', err) }
     finally { set({ isPushing: false }) }
   },
 
@@ -153,7 +155,7 @@ export const useGitStore = create<GitState>((set, get) => ({
     try {
       await window.api.git.pull()
       await get().refreshStatus()
-    } catch { /* ignore */ }
+    } catch (err) { logError('git', 'Failed to pull from origin', err) }
     finally { set({ isPulling: false }) }
   },
 
@@ -163,7 +165,7 @@ export const useGitStore = create<GitState>((set, get) => ({
       await window.api.git.fetch()
       set({ lastFetched: new Date() })
       await get().refreshStatus()
-    } catch { /* ignore */ }
+    } catch (err) { logError('git', 'Failed to fetch from origin', err) }
     finally { set({ isFetching: false }) }
   },
 
@@ -171,7 +173,7 @@ export const useGitStore = create<GitState>((set, get) => ({
     try {
       const result = await window.api.git.branches() as unknown as { current: string; branches: Branch[] }
       set({ branches: result.branches })
-    } catch { /* ignore */ }
+    } catch (err) { logError('git', 'Failed to load branches', err) }
   },
 
   switchBranch: async (name) => {
@@ -179,7 +181,7 @@ export const useGitStore = create<GitState>((set, get) => ({
       await window.api.git.checkout(name)
       await get().refreshStatus()
       await get().loadBranches()
-    } catch { /* ignore */ }
+    } catch (err) { logError('git', 'Failed to switch branch', err) }
   },
 
   createBranch: async (name) => {
@@ -187,27 +189,27 @@ export const useGitStore = create<GitState>((set, get) => ({
       await window.api.git.createBranch(name)
       await get().refreshStatus()
       await get().loadBranches()
-    } catch { /* ignore */ }
+    } catch (err) { logError('git', 'Failed to create branch', err) }
   },
 
   deleteBranch: async (name) => {
     try {
       await window.api.git.deleteBranch(name)
       await get().loadBranches()
-    } catch { /* ignore */ }
+    } catch (err) { logError('git', 'Failed to delete branch', err) }
   },
 
   loadHistory: async (limit = 50) => {
     try {
       const commits = await window.api.git.log(limit) as CommitInfo[]
       set({ commits })
-    } catch { /* ignore */ }
+    } catch (err) { logError('git', 'Failed to load commit history', err) }
   },
 
   discardChanges: async (path) => {
     try {
       await window.api.git.discardChanges(path)
       await get().refreshStatus()
-    } catch { /* ignore */ }
+    } catch (err) { logError('git', 'Failed to discard changes', err) }
   }
 }))

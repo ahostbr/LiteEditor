@@ -1,6 +1,11 @@
 import { create } from 'zustand'
-import { useTerminalStore } from './terminal-store'
-import { useBrowserStore } from './browser-store'
+import { cleanupPaneSession } from '../lib/session-cleanup'
+
+// Late-bound workspace ID provider to avoid circular import (workspace-store imports canvas-store)
+let _getActiveWorkspaceId: () => string | null = () => null
+export function setWorkspaceIdProvider(fn: () => string | null): void {
+  _getActiveWorkspaceId = fn
+}
 
 export type CanvasPaneType = 'terminal' | 'editor' | 'browser' | 'unified-editor' | 'claude' | 'codex' | 'git'
 export type PaneLayoutMode = 'single' | 'grid' | 'splitter' | 'window' | 'tabs'
@@ -229,6 +234,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       }
     }
 
+    // Tag pane with active workspace so it persists with the right workspace
+    const activeWorkspaceId = options.workspaceId ?? _getActiveWorkspaceId() ?? undefined
+
     const newPane: CanvasPaneState = {
       id,
       type,
@@ -247,7 +255,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       codexSessionId: options.codexSessionId,
       hasNotification: false,
       notificationCount: 0,
-      minimized: false
+      minimized: false,
+      workspaceId: activeWorkspaceId
     }
 
     const newPanes = new Map(state.panes)
@@ -289,24 +298,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const pane = state.panes.get(id)
 
     // Clean up backend sessions before removing from state
-    if (pane) {
-      if (pane.type === 'terminal') {
-        const sessions = pane.terminalSessionIds || (pane.terminalSessionId ? [pane.terminalSessionId] : [])
-        for (const sid of sessions) {
-          useTerminalStore.getState().removeTerminal(sid)
-        }
-      }
-      if (pane.type === 'browser' && pane.browserSessionId) {
-        window.api.browser.destroyView(pane.browserSessionId)
-        useBrowserStore.getState().removeSession(pane.browserSessionId)
-      }
-      if (pane.type === 'claude' && pane.claudeSessionId) {
-        window.api.claude.destroySession(pane.claudeSessionId)
-      }
-      if (pane.type === 'codex' && pane.codexSessionId) {
-        window.api.codex.destroySession(pane.codexSessionId)
-      }
-    }
+    if (pane) cleanupPaneSession(pane)
 
     const newPanes = new Map(state.panes)
     newPanes.delete(id)

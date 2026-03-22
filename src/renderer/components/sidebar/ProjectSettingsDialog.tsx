@@ -57,25 +57,37 @@ export function ProjectSettingsDialog({ project, onClose }: ProjectSettingsDialo
     }
   }, [project, removeProject, onClose])
 
+  const deleteWorkspace = useWorkspaceStore((s) => s.deleteWorkspace)
+  const workspaces = useWorkspaceStore((s) => s.workspaces)
+
   const handleRemoveWorktree = useCallback(async (wt: WorktreeInfo) => {
     const result = await window.api.dialog.showMessageBox({
       type: 'warning',
       title: 'Remove Worktree',
       message: `Remove worktree for branch "${wt.branch}"?`,
-      detail: `Path: ${wt.path}\nThis will delete the working directory.`,
+      detail: `Path: ${wt.path}\nThis will delete the working directory and its associated workspace.`,
       buttons: ['Remove', 'Cancel'],
       defaultId: 1,
       cancelId: 1
     })
     if (result === 0) {
       try {
+        // Remove git worktree
         await window.api.git.worktreeRemove(wt.path)
         setWorktrees((prev) => prev.filter((w) => w.path !== wt.path))
+
+        // Also delete matching workspace entry to prevent orphaned references
+        const matchingWorkspace = workspaces.find(
+          (ws) => ws.type === 'worktree' && ws.worktreePath === wt.path
+        )
+        if (matchingWorkspace) {
+          await deleteWorkspace(project.id, matchingWorkspace.id)
+        }
       } catch (e) {
         console.error('Failed to remove worktree:', e)
       }
     }
-  }, [])
+  }, [workspaces, deleteWorkspace, project.id])
 
   return (
     <div

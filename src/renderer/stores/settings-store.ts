@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { DEFAULT_SETTINGS } from '../lib/constants'
+import { logWarn, logError } from './error-store'
 
 type AutoSave = 'off' | 'afterDelay' | 'onFocusChange'
 type WordWrap = 'on' | 'off'
@@ -91,7 +92,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       } else {
         set({ isLoaded: true })
       }
-    } catch {
+    } catch (err) {
+      logWarn('settings', 'Failed to load settings', err)
       set({ isLoaded: true })
     }
   },
@@ -101,7 +103,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const toSave = getGlobalSettingsObject(state)
     try {
       await window.api.settings.save(JSON.stringify(toSave, null, 2))
-    } catch { /* ignore */ }
+    } catch (err) { logError('settings', 'Failed to save settings', err) }
   },
 
   loadWorkspaceSettings: async (projectRoot: string) => {
@@ -120,7 +122,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       } else {
         set({ workspaceOverrides: {}, activeProjectRoot: projectRoot })
       }
-    } catch {
+    } catch (err) {
+      logWarn('settings', 'Failed to load workspace settings', err)
       set({ workspaceOverrides: {}, activeProjectRoot: projectRoot })
     }
   },
