@@ -12,6 +12,8 @@ export interface PersistedProject {
   lastActivity: number
   pinned: boolean
   createdAt: number
+  /** Project icon — preset name (e.g. "code", "python") or custom path */
+  icon?: string
 }
 
 /** Full runtime state (persisted fields + ephemeral UI state) */

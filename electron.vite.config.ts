@@ -44,6 +44,7 @@ export default defineConfig({
         '@': resolve('src/renderer')
       }
     },
+    publicDir: resolve('src/renderer/public'),
     define: buildDefines,
     plugins: [react()],
     css: {

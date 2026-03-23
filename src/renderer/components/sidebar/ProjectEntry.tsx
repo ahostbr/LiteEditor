@@ -6,6 +6,7 @@ import { useEditorStore } from '../../stores/editor-store'
 import { WorkspaceEntry } from './WorkspaceEntry'
 import { ScriptsSection } from './ScriptsSection'
 import { StatusDot, aggregateStatus, type StatusDotState } from './StatusDot'
+import { ProjectIcon, ProjectIconPicker } from './ProjectIcon'
 import { cn } from '../../lib/cn'
 
 interface ProjectEntryProps {
@@ -48,11 +49,18 @@ export function ProjectEntry({ project, isActive, onSelect, onCreateWorkspace, o
   const [isEditing, setIsEditing] = useState(false)
   const [editName, setEditName] = useState(project.name)
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null)
+  const [showIconPicker, setShowIconPicker] = useState(false)
+  const iconPickerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const removeProject = useProjectStore((s) => s.removeProject)
   const renameProject = useProjectStore((s) => s.renameProject)
   const togglePin = useProjectStore((s) => s.togglePin)
   const updateProject = useProjectStore((s) => s.updateProject)
+
+  const handleSetIcon = useCallback(async (icon: string) => {
+    updateProject(project.id, { icon } as any)
+    await window.api.project.update(project.id, { icon })
+  }, [project.id, updateProject])
 
   // Workspace state
   const workspaces = useWorkspaceStore((s) => s.workspaces)
@@ -169,14 +177,30 @@ export function ProjectEntry({ project, isActive, onSelect, onCreateWorkspace, o
             style={{ backgroundColor: 'var(--accent)' }}
           />
         )}
-        {/* Expand/collapse chevron */}
-        <button
-          onClick={handleExpand}
-          className="shrink-0 p-0"
-          style={{ color: 'var(--text-muted)' }}
-        >
-          {expanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-        </button>
+        {/* Project icon (click to expand, right-click for icon picker) */}
+        <div className="relative shrink-0" ref={iconPickerRef}>
+          <button
+            onClick={handleExpand}
+            onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setShowIconPicker(true) }}
+            className="p-0 transition-transform hover:scale-110"
+            title="Right-click to change icon"
+          >
+            {project.icon ? (
+              <ProjectIcon icon={project.icon} size={16} />
+            ) : (
+              expanded ? <ChevronDown size={11} style={{ color: 'var(--text-muted)' }} /> : <ChevronRight size={11} style={{ color: 'var(--text-muted)' }} />
+            )}
+          </button>
+          {showIconPicker && (
+            <div className="absolute left-0 top-5 z-50">
+              <ProjectIconPicker
+                currentIcon={project.icon}
+                onSelect={handleSetIcon}
+                onClose={() => setShowIconPicker(false)}
+              />
+            </div>
+          )}
+        </div>
 
         {/* Project name + branch (stacked) */}
         <div className="flex flex-col min-w-0 flex-1 gap-0 leading-none">
@@ -298,6 +322,10 @@ export function ProjectEntry({ project, isActive, onSelect, onCreateWorkspace, o
             <ContextMenuItem
               label={project.pinned ? 'Unpin' : 'Pin to Top'}
               onClick={() => { setContextMenuPos(null); togglePin(project.id) }}
+            />
+            <ContextMenuItem
+              label="Change Icon"
+              onClick={() => { setContextMenuPos(null); setShowIconPicker(true) }}
             />
             <ContextMenuItem
               label="Settings"
