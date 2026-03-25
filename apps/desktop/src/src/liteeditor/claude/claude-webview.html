@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Claude Code</title>
+    <style>
+      /* Map VS Code CSS variables to LiteEditor dark theme values */
+      :root {
+        --vscode-editor-background: #0c0c0f;
+        --vscode-editor-foreground: #cccccc;
+        --vscode-sideBar-background: #111114;
+        --vscode-sideBar-foreground: #cccccc;
+        --vscode-sideBarSectionHeader-background: #18181b;
+        --vscode-panel-background: #0c0c0f;
+        --vscode-panel-border: #2a2a2e;
+        --vscode-input-background: #18181b;
+        --vscode-input-foreground: #cccccc;
+        --vscode-input-border: #2a2a2e;
+        --vscode-input-placeholderForeground: #666666;
+        --vscode-button-background: #6366f1;
+        --vscode-button-foreground: #ffffff;
+        --vscode-button-hoverBackground: #818cf8;
+        --vscode-button-secondaryBackground: #2a2a2e;
+        --vscode-button-secondaryForeground: #cccccc;
+        --vscode-focusBorder: #6366f1;
+        --vscode-foreground: #cccccc;
+        --vscode-descriptionForeground: #888888;
+        --vscode-errorForeground: #f87171;
+        --vscode-textLink-foreground: #818cf8;
+        --vscode-textLink-activeForeground: #a5b4fc;
+        --vscode-font-family: system-ui, -apple-system, sans-serif;
+        --vscode-font-size: 13px;
+        --vscode-editor-font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", monospace;
+        --vscode-editor-font-size: 13px;
+        --vscode-list-activeSelectionBackground: #2a2a2e;
+        --vscode-list-activeSelectionForeground: #ffffff;
+        --vscode-list-hoverBackground: #1e1e22;
+        --vscode-scrollbarSlider-background: rgba(255, 255, 255, 0.1);
+        --vscode-scrollbarSlider-hoverBackground: rgba(255, 255, 255, 0.15);
+        --vscode-scrollbarSlider-activeBackground: rgba(255, 255, 255, 0.2);
+        --vscode-badge-background: #6366f1;
+        --vscode-badge-foreground: #ffffff;
+        --vscode-progressBar-background: #6366f1;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--vscode-editor-background);
+        color: var(--vscode-editor-foreground);
+        font-family: var(--vscode-font-family);
+        font-size: var(--vscode-font-size);
+      }
+
+      /* Hide any potential scrollbar flicker */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--vscode-scrollbarSlider-background);
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--vscode-scrollbarSlider-hoverBackground);
+      }
+    </style>
+    <script>
+      // Set up initial configuration before the webview JS loads
+      window.initialConfiguration = {};
+      window.IS_SIDEBAR = false;
+
+      // Parse extension path from URL query param
+      (function () {
+        const params = new URLSearchParams(window.location.search);
+        const extPath = params.get("extPath");
+        if (extPath) {
+          // Inject the CSS link
+          const link = document.createElement("link");
+          link.rel = "stylesheet";
+          link.href = "file:///" + extPath.replace(/\\/g, "/") + "/webview/index.css";
+          document.head.appendChild(link);
+
+          // Inject the JS module after DOM is ready
+          window.addEventListener("DOMContentLoaded", function () {
+            const script = document.createElement("script");
+            script.type = "module";
+            script.src = "file:///" + extPath.replace(/\\/g, "/") + "/webview/index.js";
+            document.body.appendChild(script);
+          });
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

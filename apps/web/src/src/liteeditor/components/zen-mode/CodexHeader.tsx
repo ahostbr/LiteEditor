@@ -1,0 +1,75 @@
+// @ts-nocheck
+import { GripHorizontal, X } from "lucide-react";
+import { useZenStore } from "../../stores/zen-store";
+import { cn } from "../../lib/cn";
+import codexIcon from "../../assets/img/codex.png";
+
+interface CodexHeaderProps {
+  panelId: string;
+  title: string;
+  isActive: boolean;
+  onFocus: () => void;
+  draggable?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
+}
+
+export function CodexHeader({
+  panelId,
+  title,
+  isActive,
+  onFocus,
+  draggable,
+  onDragStart,
+  onDragOver,
+  onDrop,
+}: CodexHeaderProps) {
+  const removePanel = useZenStore((s) => s.removePanel);
+
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-between px-3 h-[36px] shrink-0 cursor-default overflow-hidden",
+        isActive ? "border-t-2" : "border-t-2 border-transparent",
+      )}
+      style={{
+        backgroundColor: "var(--bg-surface)",
+        borderTopColor: isActive ? "var(--accent)" : "transparent",
+        borderBottom: "1px solid var(--border)",
+      }}
+      onClick={onFocus}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+    >
+      <div className="flex items-center gap-2 min-w-0 flex-1">
+        <GripHorizontal size={14} style={{ color: "var(--text-muted)" }} />
+        <img
+          src={codexIcon}
+          alt=""
+          width={14}
+          height={14}
+          style={{ imageRendering: "pixelated" }}
+        />
+        <span
+          className="text-sm truncate"
+          style={{ color: isActive ? "var(--text-primary)" : "var(--text-muted)" }}
+        >
+          {title}
+        </span>
+      </div>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          removePanel(panelId);
+        }}
+        className="p-1 rounded hover:bg-[var(--bg-muted)] opacity-50 hover:opacity-100 transition-opacity"
+        title="Close Codex Panel"
+      >
+        <X size={14} style={{ color: "var(--text-muted)" }} />
+      </button>
+    </div>
+  );
+}
