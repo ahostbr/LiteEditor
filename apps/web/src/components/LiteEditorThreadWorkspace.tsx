@@ -146,20 +146,38 @@ export default function LiteEditorThreadWorkspace(props: LiteEditorThreadWorkspa
         }
       }
 
-      if (!hasChat) {
-        canvas.addPane("chat", {
-          title: "Chat",
-          x: 20,
-          y: 20,
-          threadId: props.threadId,
-        });
-      }
-      if (!hasTerminal) {
-        canvas.addPane("terminal", {
-          title: "Terminal",
-          x: 740,
-          y: 20,
-        });
+      if (!hasChat || !hasTerminal) {
+        // Calculate viewport-relative pane sizes
+        // The canvas container is the main area minus sidebar (~160px) and titlebar (~40px) + statusbar (~24px)
+        const viewW = Math.max(window.innerWidth - 180, 600);
+        const viewH = Math.max(window.innerHeight - 80, 400);
+        const gap = 20;
+        const margin = 10;
+
+        // Split: chat gets 55% width, terminal gets 45%
+        const chatW = Math.round(viewW * 0.55 - gap);
+        const termW = Math.round(viewW * 0.45 - gap);
+        const paneH = viewH - margin * 2;
+
+        if (!hasChat) {
+          canvas.addPane("chat", {
+            title: "Chat",
+            x: margin,
+            y: margin,
+            width: chatW,
+            height: paneH,
+            threadId: props.threadId,
+          });
+        }
+        if (!hasTerminal) {
+          canvas.addPane("terminal", {
+            title: "Terminal",
+            x: margin + chatW + gap,
+            y: margin,
+            width: termW,
+            height: paneH,
+          });
+        }
       }
     }
 
