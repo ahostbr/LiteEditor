@@ -18,7 +18,7 @@ const PANE_GAP = 24;
 const DEFAULT_X = 40;
 const DEFAULT_Y = 40;
 
-let syncing = false;
+let syncDepth = 0;
 
 /** Find auto-cascade position for a new canvas pane */
 function getAutoCascadePosition(): { x: number; y: number } {
@@ -198,8 +198,8 @@ function zenSyncIds(panels: Array<{ syncId?: string }>): Set<string> {
 export function initPaneSync(): () => void {
   // Subscribe to canvas-store changes
   const unsubCanvas = useCanvasStore.subscribe((state, prev) => {
-    if (syncing) return;
-    syncing = true;
+    if (syncDepth > 0) return;
+    syncDepth++;
     try {
       const prevIds = canvasSyncIds(prev.panes);
       const currIds = canvasSyncIds(state.panes);
@@ -249,16 +249,25 @@ export function initPaneSync(): () => void {
             });
           }
         }
+
+        // Sync title renames (canvas → zen)
+        if (pane.title !== prevPane.title) {
+          const zenPanels = useZenStore.getState().panels;
+          const zenPanel = zenPanels.find((p) => p.syncId === pane.syncId);
+          if (zenPanel && zenPanel.title !== pane.title) {
+            useZenStore.getState().renamePanel(zenPanel.id, pane.title);
+          }
+        }
       }
     } finally {
-      syncing = false;
+      syncDepth--;
     }
   });
 
   // Subscribe to zen-store changes
   const unsubZen = useZenStore.subscribe((state, prev) => {
-    if (syncing) return;
-    syncing = true;
+    if (syncDepth > 0) return;
+    syncDepth++;
     try {
       const prevIds = zenSyncIds(prev.panels);
       const currIds = zenSyncIds(state.panels);
@@ -302,9 +311,19 @@ export function initPaneSync(): () => void {
             }
           }
         }
+
+        // Sync title renames (zen → canvas)
+        if (panel.title !== prevPanel.title) {
+          for (const [id, pane] of useCanvasStore.getState().panes) {
+            if (pane.syncId === panel.syncId && pane.title !== panel.title) {
+              useCanvasStore.getState().updatePane(id, { title: panel.title });
+              break;
+            }
+          }
+        }
       }
     } finally {
-      syncing = false;
+      syncDepth--;
     }
   });
 
@@ -349,7 +368,7 @@ export function addPaneToCurrentMode(
  * Populates the target mode from the source if the target is empty.
  */
 export function syncOnModeSwitch(targetMode: "canvas" | "zen"): void {
-  syncing = true;
+  syncDepth++;
   try {
     if (targetMode === "zen") {
       // Populate zen from canvas
@@ -372,6 +391,6 @@ export function syncOnModeSwitch(targetMode: "canvas" | "zen"): void {
       }
     }
   } finally {
-    syncing = false;
+    syncDepth--;
   }
 }

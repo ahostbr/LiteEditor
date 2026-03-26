@@ -6,7 +6,8 @@ import { useCanvasStore, type CanvasPaneType } from "../../stores/canvas-store";
 import { useUiStore } from "../../stores/ui-store";
 import { openFileInCurrentMode } from "../../lib/open-file";
 import { addPaneToCurrentMode } from "../../lib/pane-sync";
-import { getLiteEditorHostConfig } from "../../hostMode";
+import { useProjectStore } from "../../stores/project-store";
+import { useToastStore } from "../../stores/toast-store";
 import claudeIcon from "../../assets/img/claude.png";
 import codexIcon from "../../assets/img/codex.png";
 
@@ -57,16 +58,14 @@ export function AddPaneMenu({ show: externalShow, onClose, anchorX, anchorY }: A
   if (!show) return null;
 
   const addPaneOfType = (type: CanvasPaneType, extra?: Record<string, unknown>) => {
-    if (!getLiteEditorHostConfig()) {
+    if (!useProjectStore.getState().activeProjectId) {
+      useToastStore.getState().pushToast(
+        "Select a project from the sidebar to start",
+        "warning",
+        3200
+      );
       setInternalShow(false);
       onClose?.();
-      // Show a toast notification
-      const toast = document.createElement("div");
-      toast.textContent = "Select a thread first";
-      toast.className = "fixed top-4 left-1/2 -translate-x-1/2 z-[9999] px-4 py-2 rounded-lg text-sm font-medium shadow-lg";
-      toast.style.cssText = "background: var(--color-ember, #c9a24d); color: var(--color-void, #0a0a0b);";
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 2000);
       return;
     }
     addPaneToCurrentMode(type, extra);

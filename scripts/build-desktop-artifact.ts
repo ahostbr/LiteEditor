@@ -456,6 +456,10 @@ const createBuildConfig = Effect.fn("createBuildConfig")(function* (
     directories: {
       buildResources: "apps/desktop/resources",
     },
+    // Skip native module rebuild — node-pty ships with prebuilds,
+    // and building from source fails on Windows (GetCommitHash.bat missing).
+    // better-sqlite3 also ships prebuilds for Electron.
+    npmRebuild: false,
   };
   const publishConfig = resolveGitHubPublishConfig();
   if (publishConfig) {
