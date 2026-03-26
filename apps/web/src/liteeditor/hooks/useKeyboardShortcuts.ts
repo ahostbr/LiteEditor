@@ -225,8 +225,10 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Ctrl+1-9: Switch projects by sidebar position
+      // Ctrl+1-9: Switch projects by sidebar position (only when NOT in canvas mode,
+      // since canvas mode uses Ctrl+1-9 for pane focus above)
       if (
+        !isCanvas &&
         !isLiteEditorHostManaged() &&
         ctrl &&
         !shift &&

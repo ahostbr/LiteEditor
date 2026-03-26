@@ -63,15 +63,37 @@ export function Canvas() {
     }
   }, []);
 
-  // Auto-create a terminal pane if canvas is empty (delayed to let restore run first)
+  // Auto-create a terminal pane if canvas is empty AFTER workspace restore completes.
+  // Waits for the `restored` flag instead of a fixed timeout to avoid duplicate panes.
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const store = useCanvasStore.getState();
-      if (store.panes.size === 0) {
-        store.addPane("terminal", { x: 40, y: 40, width: 900, height: 600 });
+    // If already restored and empty, create immediately
+    const store = useCanvasStore.getState();
+    if (store.restored && store.panes.size === 0) {
+      store.addPane("terminal", { x: 40, y: 40, width: 900, height: 600 });
+      return;
+    }
+
+    // Otherwise subscribe and wait for restore to complete
+    const unsub = useCanvasStore.subscribe((state) => {
+      if (state.restored && state.panes.size === 0) {
+        unsub();
+        useCanvasStore.getState().addPane("terminal", { x: 40, y: 40, width: 900, height: 600 });
       }
-    }, 100);
-    return () => clearTimeout(timer);
+    });
+
+    // Fallback: if no restore happens within 3s (e.g. fresh install), create terminal
+    const fallback = setTimeout(() => {
+      const s = useCanvasStore.getState();
+      if (s.panes.size === 0) {
+        unsub();
+        s.addPane("terminal", { x: 40, y: 40, width: 900, height: 600 });
+      }
+    }, 3000);
+
+    return () => {
+      unsub();
+      clearTimeout(fallback);
+    };
   }, []);
 
   const zoomPercent = Math.round(zoom * 100);
@@ -95,14 +117,14 @@ export function Canvas() {
       {/* Theme background effects — rendered inside Canvas within the stacking context */}
       {activeTheme === "matrix" ? (
         <MatrixRain />
-      ) : (
+      ) : !reduceMotion && particleDensity > 0 ? (
         <EmberSparks
           particleDensity={particleDensity}
           particleSpeed={particleSpeed}
           particleLifespan={particleLifespan}
-          reduceMotion={reduceMotion}
+          reduceMotion={false}
         />
-      )}
+      ) : null}
 
       {/* Canvas surface with CSS transform for panning + zooming */}
       <div

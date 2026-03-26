@@ -193,6 +193,9 @@ interface CanvasState {
   // Persistence
   getCanvasState: () => PersistedCanvasState;
   restoreCanvasState: (state: PersistedCanvasState) => void;
+
+  // Workspace restore tracking — true after restoreCanvasState has been called at least once
+  restored: boolean;
 }
 
 // Default pane dimensions
@@ -222,6 +225,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   columns: [],
   activeColumnIdx: 0,
   springTarget: null,
+  restored: false,
 
   hasPane: (type) => {
     for (const pane of get().panes.values()) {
@@ -825,6 +829,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       viewportY: saved.viewportY,
       zoom: saved.zoom,
       focusedPaneId: saved.panes.length > 0 ? saved.panes[0].id : null,
+      restored: true,
     });
   },
 }));
