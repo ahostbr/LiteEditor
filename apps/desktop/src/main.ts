@@ -1025,12 +1025,23 @@ function stopBackend(): void {
   if (!child) return;
 
   if (child.exitCode === null && child.signalCode === null) {
-    child.kill("SIGTERM");
-    setTimeout(() => {
-      if (child.exitCode === null && child.signalCode === null) {
-        child.kill("SIGKILL");
+    // On Windows, SIGTERM doesn't work for child processes.
+    // Use taskkill /t to kill the process tree (includes any grandchildren).
+    if (process.platform === "win32" && child.pid) {
+      try {
+        ChildProcess.execSync(`taskkill /f /t /pid ${child.pid}`, { stdio: "ignore" });
+      } catch {
+        // Process may have already exited
+        child.kill();
       }
-    }, 2_000).unref();
+    } else {
+      child.kill("SIGTERM");
+      setTimeout(() => {
+        if (child.exitCode === null && child.signalCode === null) {
+          child.kill("SIGKILL");
+        }
+      }, 2_000).unref();
+    }
   }
 }
 
@@ -1321,6 +1332,13 @@ function createWindow(): BrowserWindow {
   window.on("closed", () => {
     if (mainWindow === window) {
       mainWindow = null;
+    }
+    // On Windows, ensure backend is stopped when window closes
+    // (before-quit may not fire reliably on all close paths)
+    if (process.platform === "win32" && !isQuitting) {
+      isQuitting = true;
+      shutdownLiteEditorDesktop();
+      stopBackend();
     }
   });
 
