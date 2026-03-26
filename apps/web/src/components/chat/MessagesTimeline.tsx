@@ -55,6 +55,7 @@ import {
   formatInlineTerminalContextLabel,
   textContainsInlineTerminalContextLabels,
 } from "./userMessageTerminalContexts";
+import { WorkLogRichCard } from "./WorkLogRichCard";
 
 const MAX_VISIBLE_WORK_LOG_ENTRIES = 6;
 const ALWAYS_UNVIRTUALIZED_TAIL_ROWS = 8;
@@ -302,6 +303,13 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       [turnId]: !(current[turnId] ?? true),
     }));
   }, []);
+  const [expandedRichCards, setExpandedRichCards] = useState<Record<string, boolean>>({});
+  const onToggleRichCard = useCallback((entryId: string) => {
+    setExpandedRichCards((current) => ({
+      ...current,
+      [entryId]: !current[entryId],
+    }));
+  }, []);
 
   const renderRowContent = (row: TimelineRow) => (
     <div
@@ -344,9 +352,21 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                 </div>
               )}
               <div className="space-y-0.5">
-                {visibleEntries.map((workEntry) => (
-                  <SimpleWorkEntryRow key={`work-row:${workEntry.id}`} workEntry={workEntry} />
-                ))}
+                {visibleEntries.map((workEntry) => {
+                  const hasRichCard = !!workEntry.rawPayload;
+                  const isRichCardExpanded = expandedRichCards[workEntry.id] ?? false;
+                  return (
+                    <div key={`work-row:${workEntry.id}`}>
+                      <div
+                        className={hasRichCard ? "cursor-pointer" : undefined}
+                        onClick={hasRichCard ? () => onToggleRichCard(workEntry.id) : undefined}
+                      >
+                        <SimpleWorkEntryRow workEntry={workEntry} />
+                      </div>
+                      {isRichCardExpanded && <WorkLogRichCard workEntry={workEntry} />}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );

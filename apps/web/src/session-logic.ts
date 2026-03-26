@@ -43,6 +43,8 @@ export interface WorkLogEntry {
   toolTitle?: string;
   itemType?: ToolLifecycleItemType;
   requestKind?: PendingApproval["requestKind"];
+  /** Raw activity payload for rich card rendering. Only set for tool.completed activities. */
+  rawPayload?: Record<string, unknown>;
 }
 
 interface DerivedWorkLogEntry extends WorkLogEntry {
@@ -520,6 +522,9 @@ function toDerivedWorkLogEntry(activity: OrchestrationThreadActivity): DerivedWo
   }
   if (requestKind) {
     entry.requestKind = requestKind;
+  }
+  if (activity.kind === "tool.completed" && payload) {
+    entry.rawPayload = payload;
   }
   const collapseKey = deriveToolLifecycleCollapseKey(entry);
   if (collapseKey) {
