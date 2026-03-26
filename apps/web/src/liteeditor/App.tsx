@@ -27,7 +27,7 @@ import { openFileInCurrentMode, ensureEditorVisible } from "./lib/open-file";
 import { logWarn, logError } from "./stores/error-store";
 import { initPaneSync, syncOnModeSwitch } from "./lib/pane-sync";
 
-async function loadWorkspaceForProject(projectRoot: string): Promise<void> {
+async function loadWorkspaceForProject(projectRoot: string, opts?: { skipCanvas?: boolean }): Promise<void> {
   try {
     const data = (await window.api.workspace.loadState(projectRoot)) as {
       editor?: unknown;
@@ -49,7 +49,7 @@ async function loadWorkspaceForProject(projectRoot: string): Promise<void> {
     }
 
     // Restore canvas state (pane layout, viewport)
-    if (data.canvas && typeof data.canvas === "object") {
+    if (!opts?.skipCanvas && data.canvas && typeof data.canvas === "object") {
       const { useCanvasStore } = await import("./stores/canvas-store");
       useCanvasStore.getState().restoreCanvasState(data.canvas as any);
     }
@@ -240,7 +240,7 @@ export default function App() {
               : useUiStore.getState().activeSidebarPanel,
         });
         useEditorStore.getState().setProjectRoot(hostConfig.projectRoot);
-        await loadWorkspaceForProject(hostConfig.projectRoot);
+        await loadWorkspaceForProject(hostConfig.projectRoot, { skipCanvas: true });
         await useSettingsStore.getState().loadWorkspaceSettings(hostConfig.projectRoot);
         prevProjectRootRef.current = hostConfig.projectRoot;
         return;

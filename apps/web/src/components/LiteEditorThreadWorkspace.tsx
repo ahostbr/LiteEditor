@@ -129,19 +129,38 @@ export default function LiteEditorThreadWorkspace(props: LiteEditorThreadWorkspa
         }
       }
     } else {
-      // No saved state — create default layout: Chat + Terminal
-      canvas.clearPanes();
-      canvas.addPane("chat", {
-        title: "Chat",
-        x: 20,
-        y: 20,
-        threadId: props.threadId,
-      });
-      canvas.addPane("terminal", {
-        title: "Terminal",
-        x: 740,
-        y: 20,
-      });
+      // No saved state — update existing panes in-place or create default layout.
+      // Avoid clearPanes() which destroys terminal sessions via pane-sync cleanup.
+      const currentPanes = useCanvasStore.getState().panes;
+      let hasChat = false;
+      let hasTerminal = false;
+
+      for (const [id, pane] of currentPanes) {
+        if (pane.type === "chat") {
+          // Update the existing chat pane's threadId instead of destroying it
+          useCanvasStore.getState().updatePane(id, { threadId: props.threadId });
+          hasChat = true;
+        }
+        if (pane.type === "terminal") {
+          hasTerminal = true;
+        }
+      }
+
+      if (!hasChat) {
+        canvas.addPane("chat", {
+          title: "Chat",
+          x: 20,
+          y: 20,
+          threadId: props.threadId,
+        });
+      }
+      if (!hasTerminal) {
+        canvas.addPane("terminal", {
+          title: "Terminal",
+          x: 740,
+          y: 20,
+        });
+      }
     }
 
     // Save canvas state on unmount
