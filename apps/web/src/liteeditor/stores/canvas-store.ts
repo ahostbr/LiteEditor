@@ -853,7 +853,7 @@ function getDefaultWidth(type: CanvasPaneType): number {
     case "search":
       return 400;
     case "settings":
-      return 500;
+      return 900;
     default:
       return DEFAULT_PANE_WIDTH;
   }

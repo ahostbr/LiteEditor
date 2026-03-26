@@ -43,7 +43,7 @@ export function AppearanceSection({
   const setActiveTheme = useSettingsStore((s) => s.setActiveTheme);
 
   return (
-    <div className="flex flex-col gap-6 max-w-2xl">
+    <div className="flex flex-col gap-6">
       <h3 className="font-display italic text-xl text-bone">Appearance</h3>
 
       {/* Theme selector */}

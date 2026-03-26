@@ -289,7 +289,7 @@ export function UnifiedSettings() {
   };
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="w-full h-full flex-1 overflow-y-auto">
       <div className="p-5">
         {/* Header */}
         <div className="mb-5">
@@ -301,7 +301,7 @@ export function UnifiedSettings() {
         <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))" }}>
 
           {/* Providers */}
-          <SettingsCard icon={Zap} title="Providers" description="AI provider status and updates" span="full">
+          <SettingsCard icon={Zap} title="Providers" description="AI provider status and updates">
             <ProviderStatus icon={Terminal} title="Claude Code"
               version={integrationStatus.claude?.installedVersion ?? "—"}
               status={integrationVariant("claude")} statusLabel={integrationLabel("claude")}
@@ -316,7 +316,7 @@ export function UnifiedSettings() {
           </SettingsCard>
 
           {/* Appearance */}
-          <SettingsCard icon={Palette} title="Appearance" description="Theme, accent color, and effects" span="full">
+          <SettingsCard icon={Palette} title="Appearance" description="Theme, accent color, and effects">
             <AppearanceSection
               accentColor={settings.accentColor}
               setAccentColor={(v) => settings.setSetting("accentColor", v)}
