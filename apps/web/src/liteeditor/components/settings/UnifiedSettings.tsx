@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Palette,
-  Sparkles,
   Code2,
   Cpu,
   Box,
@@ -532,60 +531,7 @@ export function UnifiedSettings() {
           />
         </div>
 
-        {/* ---- Section 3: Effects ---- */}
-        <div className="bg-secondary/30 border border-border/50 rounded-lg p-4">
-          <SettingSection
-            icon={Sparkles}
-            title="Effects"
-            description="Particle system and glass blur configuration"
-          >
-            <div className="space-y-4">
-              <SliderRow
-                label="Particle Density"
-                value={settings.particleDensity}
-                onChange={(v) => settings.setSetting("particleDensity", v)}
-                min={0}
-                max={100}
-                step={5}
-              />
-              <SliderRow
-                label="Particle Speed"
-                value={settings.particleSpeed}
-                onChange={(v) => settings.setSetting("particleSpeed", v)}
-                min={0}
-                max={20}
-                step={0.5}
-                suffix="x"
-              />
-              <SliderRow
-                label="Particle Lifespan"
-                value={settings.particleLifespan}
-                onChange={(v) => settings.setSetting("particleLifespan", v)}
-                min={0}
-                max={30}
-                step={0.5}
-                suffix="s"
-              />
-              <SliderRow
-                label="Glass Blur"
-                value={settings.glassBlur}
-                onChange={(v) => settings.setSetting("glassBlur", v)}
-                min={0}
-                max={40}
-                step={2}
-                suffix="px"
-              />
-              <ToggleRow
-                label="Reduce Motion"
-                description="Disables particle effects and animations"
-                checked={settings.reduceMotion}
-                onChange={(v) => settings.setSetting("reduceMotion", v)}
-              />
-            </div>
-          </SettingSection>
-        </div>
-
-        {/* ---- Section 4: Editor ---- */}
+        {/* ---- Section 3: Editor ---- */}
         <div className="bg-secondary/30 border border-border/50 rounded-lg p-4">
           <SettingSection
             icon={Code2}
