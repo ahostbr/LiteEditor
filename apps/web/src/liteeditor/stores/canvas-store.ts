@@ -83,6 +83,7 @@ export interface PersistedPane {
   browserTabs?: Array<{ url: string; title: string; workspaceColor?: string }>;
   browserActiveTabIndex?: number;
   browserSidebarCollapsed?: boolean;
+  threadId?: string;
 }
 
 export interface PersistedCanvasState {
@@ -784,6 +785,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         browserTabs: pane.browserShellTabs?.map(({ url, title, workspaceColor }) => ({ url, title, workspaceColor })),
         browserActiveTabIndex: pane.browserShellActiveTabIndex,
         browserSidebarCollapsed: pane.browserShellSidebarCollapsed,
+        threadId: pane.threadId,
       });
     }
     return {
