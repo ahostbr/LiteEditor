@@ -18,6 +18,7 @@ import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useCanvasNavigation } from "./hooks/useCanvasNavigation";
 import { useWorkspacePersistence } from "./hooks/useWorkspacePersistence";
 import { useProjectStore } from "./stores/project-store";
+import { useWorkspaceStore } from "./stores/workspace-store";
 import { getLiteEditorHostConfig, isLiteEditorHostManaged } from "./hostMode";
 import { ConfirmDialog } from "./components/shared/ConfirmDialog";
 import { ToastViewport } from "./components/shared/ToastViewport";

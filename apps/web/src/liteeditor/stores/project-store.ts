@@ -62,11 +62,23 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
   loaded: false,
 
   loadFromDisk: async () => {
-    const persisted = (await window.api.project.list()) as PersistedProject[];
-    set({
-      projects: persisted.map(toProjectState),
-      loaded: true,
-    });
+    // Retry up to 3 times with increasing delay — backend IPC may not be ready on cold start
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const persisted = (await window.api.project.list()) as PersistedProject[];
+        set({
+          projects: persisted.map(toProjectState),
+          loaded: true,
+        });
+        return;
+      } catch {
+        if (attempt < 2) {
+          await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+        }
+      }
+    }
+    // All retries failed — mark as loaded with empty list so UI doesn't hang
+    set({ loaded: true });
   },
 
   addProject: async (path, name) => {

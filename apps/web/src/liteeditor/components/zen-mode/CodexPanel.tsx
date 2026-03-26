@@ -58,7 +58,10 @@ export function CodexPanel({ panelId, visible = true }: CodexPanelProps) {
       // Check both stores for existing session (pane sync shares panels across modes)
       const zenPanel = useZenStore.getState().panels.find((p) => p.id === panelId);
       const canvasPane = useCanvasStore.getState().panes.get(panelId);
-      let sessionId = zenPanel?.codexSessionId || canvasPane?.codexSessionId || null;
+      const syncId = zenPanel?.syncId || canvasPane?.syncId;
+      const zenMirror = !zenPanel && syncId ? useZenStore.getState().panels.find((p) => p.syncId === syncId) : null;
+      const canvasMirror = !canvasPane && syncId ? [...useCanvasStore.getState().panes.values()].find((p) => p.syncId === syncId) : null;
+      let sessionId = zenPanel?.codexSessionId || canvasPane?.codexSessionId || zenMirror?.codexSessionId || canvasMirror?.codexSessionId || null;
 
       if (sessionId) {
         sessionIdRef.current = sessionId;

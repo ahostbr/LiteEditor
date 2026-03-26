@@ -56,9 +56,14 @@ export function ClaudePanel({ panelId, visible = true }: ClaudePanelProps) {
 
     const init = async () => {
       // Check both stores for existing session (pane sync shares panels across modes)
+      // Look up by ID first (direct owner), then by syncId (cross-mode mirror)
       const zenPanel = useZenStore.getState().panels.find((p) => p.id === panelId);
       const canvasPane = useCanvasStore.getState().panes.get(panelId);
-      let sessionId = zenPanel?.claudeSessionId || canvasPane?.claudeSessionId || null;
+      // Cross-store lookup via syncId (zen IDs are zen-claude-N, canvas IDs are canvas-pane-N)
+      const syncId = zenPanel?.syncId || canvasPane?.syncId;
+      const zenMirror = !zenPanel && syncId ? useZenStore.getState().panels.find((p) => p.syncId === syncId) : null;
+      const canvasMirror = !canvasPane && syncId ? [...useCanvasStore.getState().panes.values()].find((p) => p.syncId === syncId) : null;
+      let sessionId = zenPanel?.claudeSessionId || canvasPane?.claudeSessionId || zenMirror?.claudeSessionId || canvasMirror?.claudeSessionId || null;
 
       if (sessionId) {
         sessionIdRef.current = sessionId;
