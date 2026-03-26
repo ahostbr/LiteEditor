@@ -456,9 +456,8 @@ const createBuildConfig = Effect.fn("createBuildConfig")(function* (
     directories: {
       buildResources: "apps/desktop/resources",
     },
-    // Skip native module rebuild — node-pty ships with prebuilds,
-    // and building from source fails on Windows (GetCommitHash.bat missing).
-    // better-sqlite3 also ships prebuilds for Electron.
+    // Disable blanket rebuild — node-pty fails to build from source on Windows.
+    // We manually rebuild better-sqlite3 for Electron before packaging (see below).
     npmRebuild: false,
   };
   const publishConfig = resolveGitHubPublishConfig();
@@ -685,6 +684,18 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
     buildEnv.npm_config_msvs_version = buildEnv.npm_config_msvs_version ?? "2022";
     buildEnv.GYP_MSVS_VERSION = buildEnv.GYP_MSVS_VERSION ?? "2022";
   }
+
+  // Rebuild better-sqlite3 for Electron's Node version.
+  // We do this manually because npmRebuild is disabled (node-pty fails to build from source on Windows).
+  yield* Effect.log("[desktop-artifact] Rebuilding better-sqlite3 for Electron...");
+  yield* runCommand(
+    ChildProcess.make({
+      cwd: stageAppDir,
+      env: buildEnv,
+      ...commandOutputOptions(options.verbose),
+      shell: process.platform === "win32",
+    })`bunx @electron/rebuild --version ${electronVersion.replace(/[^0-9.]/g, "")} --module-dir . --only better-sqlite3`,
+  );
 
   yield* Effect.log(
     `[desktop-artifact] Building ${options.platform}/${options.target} (arch=${options.arch}, version=${appVersion})...`,
