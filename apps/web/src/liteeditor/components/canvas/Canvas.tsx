@@ -63,38 +63,10 @@ export function Canvas() {
     }
   }, []);
 
-  // Auto-create a terminal pane if canvas is empty AFTER workspace restore completes.
-  // Waits for the `restored` flag instead of a fixed timeout to avoid duplicate panes.
-  useEffect(() => {
-    // If already restored and empty, create immediately
-    const store = useCanvasStore.getState();
-    if (store.restored && store.panes.size === 0) {
-      store.addPane("terminal", { x: 40, y: 40, width: 900, height: 600 });
-      return;
-    }
-
-    // Otherwise subscribe and wait for restore to complete
-    const unsub = useCanvasStore.subscribe((state) => {
-      if (state.restored && state.panes.size === 0) {
-        unsub();
-        useCanvasStore.getState().addPane("terminal", { x: 40, y: 40, width: 900, height: 600 });
-      }
-    });
-
-    // Fallback: if no restore happens within 3s (e.g. fresh install), create terminal
-    const fallback = setTimeout(() => {
-      const s = useCanvasStore.getState();
-      if (s.panes.size === 0) {
-        unsub();
-        s.addPane("terminal", { x: 40, y: 40, width: 900, height: 600 });
-      }
-    }, 3000);
-
-    return () => {
-      unsub();
-      clearTimeout(fallback);
-    };
-  }, []);
+  // NOTE: Canvas does NOT auto-create panes. Pane creation is handled by:
+  // - LiteEditorThreadWorkspace (creates Chat + Terminal when a thread is selected)
+  // - AddPaneMenu (user manually adds panes via + button)
+  // - Template picker (shown when canvas is empty)
 
   const zoomPercent = Math.round(zoom * 100);
 
