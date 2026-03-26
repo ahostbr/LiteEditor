@@ -55,10 +55,15 @@ async function waitForApp() {
 async function testBlankCanvas() {
   console.log("\nTest 1: App launches to blank canvas");
 
+  // Clean env — ELECTRON_RUN_AS_NODE causes crash loops if inherited
+  const cleanEnv = { ...process.env };
+  delete cleanEnv.ELECTRON_RUN_AS_NODE;
+
   app = await electron.launch({
     executablePath: electronBinary,
     args: [desktopMain],
     timeout: 30000,
+    env: cleanEnv,
   });
 
   page = await app.firstWindow();
