@@ -13,7 +13,7 @@ import { useLayoutStore } from "./stores/layout-store";
 import { useZenStore } from "./stores/zen-store";
 import { useCanvasStore } from "./stores/canvas-store";
 import { useAppearance } from "./hooks/useAppearance";
-import { EmberSparks } from "./components/effects/EmberSparks";
+
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useCanvasNavigation } from "./hooks/useCanvasNavigation";
 import { useWorkspacePersistence } from "./hooks/useWorkspacePersistence";
@@ -24,6 +24,7 @@ import { ToastViewport } from "./components/shared/ToastViewport";
 import { ErrorBoundary } from "./components/shared/ErrorBoundary";
 import { openFileInCurrentMode, ensureEditorVisible } from "./lib/open-file";
 import { logWarn, logError } from "./stores/error-store";
+import { initPaneSync, syncOnModeSwitch } from "./lib/pane-sync";
 
 async function loadWorkspaceForProject(projectRoot: string): Promise<void> {
   try {
@@ -318,6 +319,17 @@ export default function App() {
     return unsub;
   }, []);
 
+  // Initialize bidirectional pane sync between canvas and zen stores
+  useEffect(() => {
+    const cleanup = initPaneSync();
+    return cleanup;
+  }, []);
+
+  // Sync panes when switching between canvas and zen modes
+  useEffect(() => {
+    syncOnModeSwitch(appMode);
+  }, [appMode]);
+
   // Extra hardening: when leaving Zen mode, force-hide and zero native views.
   useEffect(() => {
     const previousMode = prevAppModeRef.current;
@@ -553,6 +565,7 @@ export default function App() {
   }, []);
 
   // Appearance: sync accent, glass blur, particles, etc. to CSS variables
+  const activeTheme = useSettingsStore((s) => s.activeTheme);
   const accentColor = useSettingsStore((s) => s.accentColor);
   const glassBlur = useSettingsStore((s) => s.glassBlur);
   const reduceMotion = useSettingsStore((s) => s.reduceMotion);
@@ -625,14 +638,16 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden">
-      <EmberSparks
-        particleDensity={particleDensity}
-        particleSpeed={particleSpeed}
-        particleLifespan={particleLifespan}
-        reduceMotion={reduceMotion}
-      />
       <ErrorBoundary>
-        <div className="flex-1 min-h-0 overflow-hidden" style={{ backgroundColor: "var(--bg-base)" }}>
+        <div
+          className="flex-1 min-h-0 overflow-hidden"
+          style={{
+            backgroundColor: activeTheme === "matrix" ? "#000" : "var(--bg-base)",
+            backgroundImage: activeTheme !== "matrix" && appMode === "zen" ? "url('/hero-background.png')" : undefined,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        >
           {appMode === "canvas" ? (
             <Suspense
               fallback={<div className="h-full" style={{ backgroundColor: "var(--bg-base)" }} />}

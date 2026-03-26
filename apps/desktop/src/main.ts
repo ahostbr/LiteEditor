@@ -4,6 +4,16 @@ import * as FS from "node:fs";
 import * as OS from "node:os";
 import * as Path from "node:path";
 
+// Suppress EPIPE errors from writing to dead child process pipes.
+// These occur when the backend child exits and the main process tries to
+// log via console.error (which writes to the now-dead inherited stdio).
+process.stdout?.on?.("error", (err: NodeJS.ErrnoException) => {
+  if (err.code === "EPIPE") return;
+});
+process.stderr?.on?.("error", (err: NodeJS.ErrnoException) => {
+  if (err.code === "EPIPE") return;
+});
+
 import {
   app,
   BrowserWindow,

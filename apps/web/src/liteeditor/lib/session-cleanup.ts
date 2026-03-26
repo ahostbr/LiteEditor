@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useTerminalStore } from "../stores/terminal-store";
 import { useBrowserStore } from "../stores/browser-store";
+import { useBrowserShellStore } from "../stores/browser-shell-store";
 import { logWarn } from "../stores/error-store";
 
 interface CleanupTarget {
@@ -10,6 +11,8 @@ interface CleanupTarget {
   browserSessionId?: string;
   claudeSessionId?: string;
   codexSessionId?: string;
+  // Browser shell multi-tab — paneId used to destroy all tab sessions via shell store
+  id?: string;
 }
 
 /**
@@ -29,12 +32,21 @@ export function cleanupPaneSession(pane: CleanupTarget): void {
     }
   }
 
-  if (pane.type === "browser" && pane.browserSessionId) {
-    try {
-      window.api.browser.destroyView(pane.browserSessionId);
-      useBrowserStore.getState().removeSession(pane.browserSessionId);
-    } catch (err) {
-      logWarn("session-cleanup", `Failed to destroy browser session ${pane.browserSessionId}`, err);
+  if (pane.type === "browser") {
+    // Browser shell: destroy all tabs tracked by the shell store for this pane
+    if (pane.id) {
+      useBrowserShellStore.getState().destroyPane(pane.id).catch((err) => {
+        logWarn("session-cleanup", `Failed to destroy browser shell pane ${pane.id}`, err);
+      });
+    }
+    // Legacy single-session fallback
+    if (pane.browserSessionId) {
+      try {
+        window.api.browser.destroyView(pane.browserSessionId);
+        useBrowserStore.getState().removeSession(pane.browserSessionId);
+      } catch (err) {
+        logWarn("session-cleanup", `Failed to destroy browser session ${pane.browserSessionId}`, err);
+      }
     }
   }
 

@@ -154,12 +154,27 @@ export function useCanvasViewport() {
   }, []);
 
   // --- Wheel: scroll or zoom ---
+  // Pane types whose content should capture mouse wheel for internal scrolling.
+  // Other pane types (terminal handles its own scroll) let wheel pass to the canvas.
+  const SCROLL_CAPTURE_TYPES = new Set(["chat", "browser", "settings", "files", "search", "git", "unified-editor", "claude", "codex"]);
+
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
+      // Check if the wheel event originated inside a pane that captures scroll
+      const target = e.target as HTMLElement;
+      const paneEl = target.closest("[data-pane-type]") as HTMLElement | null;
+      if (paneEl && !e.ctrlKey && !e.metaKey) {
+        const paneType = paneEl.dataset.paneType;
+        if (paneType && SCROLL_CAPTURE_TYPES.has(paneType)) {
+          // Let the pane's internal scroll handle this event
+          return;
+        }
+      }
+
       e.preventDefault();
       e.stopPropagation();
 
-      // Ctrl+wheel = zoom
+      // Ctrl+wheel = zoom (always handled by canvas, even inside panes)
       if (e.ctrlKey || e.metaKey) {
         const store = useCanvasStore.getState();
         const oldZoom = store.zoom;

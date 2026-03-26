@@ -8,6 +8,7 @@ import { useCanvasStore } from "../stores/canvas-store";
 import { useProjectStore } from "../stores/project-store";
 import { useWorkspaceStore } from "../stores/workspace-store";
 import { confirmAndSaveTab } from "../lib/close-helpers";
+import { addPaneToCurrentMode } from "../lib/pane-sync";
 
 export function useKeyboardShortcuts() {
   const openFile = useEditorStore((s) => s.openFile);
@@ -102,12 +103,7 @@ export function useKeyboardShortcuts() {
       // Ctrl+\: Split pane (mode-aware)
       if (ctrl && e.key === "\\") {
         e.preventDefault();
-        const mode = useUiStore.getState().appMode;
-        if (mode === "canvas") {
-          useCanvasStore.getState().addPane("unified-editor");
-        } else {
-          splitPane();
-        }
+        addPaneToCurrentMode("unified-editor");
         return;
       }
 
@@ -174,12 +170,7 @@ export function useKeyboardShortcuts() {
       // Ctrl+Shift+B: New browser panel (zen mode or canvas mode)
       if (ctrl && shift && e.key === "B") {
         e.preventDefault();
-        const mode = useUiStore.getState().appMode;
-        if (mode === "zen") {
-          useZenStore.getState().addBrowserPanel();
-        } else if (mode === "canvas") {
-          useCanvasStore.getState().addPane("browser");
-        }
+        addPaneToCurrentMode("browser");
         return;
       }
 
@@ -207,9 +198,9 @@ export function useKeyboardShortcuts() {
       }
 
       // Ctrl+Shift+N: Add terminal pane
-      if (isCanvas && ctrl && shift && e.key === "N") {
+      if (ctrl && shift && e.key === "N") {
         e.preventDefault();
-        useCanvasStore.getState().addPane("terminal");
+        addPaneToCurrentMode("terminal");
         return;
       }
 

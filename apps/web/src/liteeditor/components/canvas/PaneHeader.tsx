@@ -15,6 +15,7 @@ import {
   FolderOpen,
   MessageSquare,
   Search,
+  Loader2,
 } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { useCanvasStore, type CanvasPaneState } from "../../stores/canvas-store";
@@ -22,6 +23,7 @@ import { useTerminalStore } from "../../stores/terminal-store";
 import { useSettingsStore } from "../../stores/settings-store";
 import { useEditorStore } from "../../stores/editor-store";
 import { useUiStore } from "../../stores/ui-store";
+import { useBrowserShellStore } from "../../stores/browser-shell-store";
 import { cn } from "../../lib/cn";
 
 interface PaneHeaderProps {
@@ -219,7 +221,23 @@ export function PaneHeader({ pane, isFocused, onDragStart, maximized }: PaneHead
     }
   };
 
-  const headerHeight = maximized ? 40 : (pane.type === "terminal" && cwd ? 44 : 32);
+  // Browser shell info — shown in header when browser pane is focused
+  const browserActiveTab = useBrowserShellStore((s) =>
+    pane.type === "browser" ? s.getActiveTab(pane.id) : undefined,
+  );
+  const browserTabCount = useBrowserShellStore((s) => {
+    if (pane.type !== "browser") return 0;
+    return s.getPane(pane.id)?.tabs.length ?? 0;
+  });
+  const showBrowserInfo = pane.type === "browser" && isFocused && browserActiveTab;
+
+  const headerHeight = maximized
+    ? 40
+    : pane.type === "terminal" && cwd
+      ? 44
+      : showBrowserInfo
+        ? 44
+        : 32;
   const btnSize = maximized ? "w-[28px] h-[28px]" : "w-[20px] h-[20px]";
   const iconSize = maximized ? 14 : 11;
 
@@ -355,6 +373,35 @@ export function PaneHeader({ pane, isFocused, onDragStart, maximized }: PaneHead
           >
             <FolderOpen size={9} className="shrink-0 opacity-60" />
             <span className="font-mono truncate">{cwd}</span>
+          </div>
+        )}
+        {showBrowserInfo && (
+          <div
+            className="flex items-center gap-1 text-[10px] leading-none"
+            style={{ color: "var(--text-muted)" }}
+          >
+            {browserActiveTab.isLoading ? (
+              <Loader2 size={9} className="shrink-0 animate-spin" style={{ opacity: 0.7 }} />
+            ) : (
+              <Globe size={9} className="shrink-0" style={{ opacity: 0.6 }} />
+            )}
+            <span className="truncate" title={browserActiveTab.url}>
+              {browserActiveTab.title && browserActiveTab.title !== browserActiveTab.url
+                ? browserActiveTab.title
+                : browserActiveTab.url}
+            </span>
+            {browserTabCount > 1 && (
+              <span
+                className="ml-1 shrink-0 px-1 rounded-full text-[9px]"
+                style={{
+                  backgroundColor: "var(--bg-overlay)",
+                  color: "var(--text-muted)",
+                  border: "1px solid var(--border)",
+                }}
+              >
+                {browserTabCount}
+              </span>
+            )}
           </div>
         )}
       </div>

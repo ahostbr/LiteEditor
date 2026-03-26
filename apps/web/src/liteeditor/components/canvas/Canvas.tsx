@@ -9,8 +9,16 @@ import { AddPaneMenu } from "./AddPaneMenu";
 import { useTerminalNotifications } from "../../hooks/useTerminalNotifications";
 import { TemplateManager } from "./TemplateManager";
 import { useTemplateStore } from "../../stores/template-store";
+import { useSettingsStore } from "../../stores/settings-store";
+import { MatrixRain } from "../effects/MatrixRain";
+import { EmberSparks } from "../effects/EmberSparks";
 
 export function Canvas() {
+  const activeTheme = useSettingsStore((s) => s.activeTheme);
+  const particleDensity = useSettingsStore((s) => s.particleDensity);
+  const particleSpeed = useSettingsStore((s) => s.particleSpeed);
+  const particleLifespan = useSettingsStore((s) => s.particleLifespan);
+  const reduceMotion = useSettingsStore((s) => s.reduceMotion);
   const panes = useCanvasStore((s) => s.panes);
   const viewportX = useCanvasStore((s) => s.viewportX);
   const viewportY = useCanvasStore((s) => s.viewportY);
@@ -73,11 +81,29 @@ export function Canvas() {
       ref={containerRef}
       className="relative flex-1 h-full overflow-hidden"
       data-canvas-container
-      style={{ backgroundColor: "var(--bg-base)", contain: "strict" }}
+      style={{
+        backgroundColor: activeTheme === "matrix" ? "#000" : "var(--bg-base)",
+        backgroundImage: activeTheme !== "matrix" ? "url('/hero-background.png')" : undefined,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        contain: "strict",
+      }}
       onWheel={handleWheel}
       onClick={handleCanvasClick}
       onContextMenu={handleContextMenu}
     >
+      {/* Theme background effects — rendered inside Canvas within the stacking context */}
+      {activeTheme === "matrix" ? (
+        <MatrixRain />
+      ) : (
+        <EmberSparks
+          particleDensity={particleDensity}
+          particleSpeed={particleSpeed}
+          particleLifespan={particleLifespan}
+          reduceMotion={reduceMotion}
+        />
+      )}
+
       {/* Canvas surface with CSS transform for panning + zooming */}
       <div
         data-canvas-surface="true"

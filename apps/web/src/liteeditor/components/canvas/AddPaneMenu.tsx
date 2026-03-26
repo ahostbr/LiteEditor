@@ -3,9 +3,9 @@ import { useState, useEffect, useRef } from "react";
 import { logWarn } from "../../stores/error-store";
 import { Terminal, FileCode, Globe, X, GitBranch, MessageSquare, FolderOpen, Search, Settings } from "lucide-react";
 import { useCanvasStore, type CanvasPaneType } from "../../stores/canvas-store";
-import { useZenStore } from "../../stores/zen-store";
 import { useUiStore } from "../../stores/ui-store";
 import { openFileInCurrentMode } from "../../lib/open-file";
+import { addPaneToCurrentMode } from "../../lib/pane-sync";
 import { getLiteEditorHostConfig } from "../../hostMode";
 import claudeIcon from "../../assets/img/claude.png";
 import codexIcon from "../../assets/img/codex.png";
@@ -69,24 +69,7 @@ export function AddPaneMenu({ show: externalShow, onClose, anchorX, anchorY }: A
       setTimeout(() => toast.remove(), 2000);
       return;
     }
-    if (isZen) {
-      const zen = useZenStore.getState();
-      const typeMap: Record<string, (() => void) | undefined> = {
-        chat: () => zen.addChatPanel?.(),
-        terminal: () => zen.addTerminalPanel?.(),
-        files: () => zen.addFilesPanel?.(),
-        search: () => zen.addSearchPanel?.(),
-        settings: () => zen.addSettingsPanel?.(),
-        git: () => zen.addGitPanel?.(),
-        browser: () => zen.addBrowserPanel?.(),
-        claude: () => zen.addClaudePanel?.(),
-        codex: () => zen.addCodexPanel?.(),
-        "unified-editor": () => zen.addUnifiedEditorPanel?.(),
-      };
-      typeMap[type]?.();
-    } else {
-      useCanvasStore.getState().addPane(type, extra as any);
-    }
+    addPaneToCurrentMode(type, extra);
     setInternalShow(false);
     onClose?.();
   };

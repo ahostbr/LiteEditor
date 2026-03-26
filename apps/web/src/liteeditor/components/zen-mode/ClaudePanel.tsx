@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useEffect, useRef } from "react";
 import { useZenStore } from "../../stores/zen-store";
+import { useCanvasStore } from "../../stores/canvas-store";
 import { useUiStore } from "../../stores/ui-store";
 import { nativeBoundsController } from "../../lib/native-bounds-controller";
 
@@ -54,8 +55,10 @@ export function ClaudePanel({ panelId, visible = true }: ClaudePanelProps) {
     let cancelled = false;
 
     const init = async () => {
+      // Check both stores for existing session (pane sync shares panels across modes)
       const zenPanel = useZenStore.getState().panels.find((p) => p.id === panelId);
-      let sessionId = zenPanel?.claudeSessionId || null;
+      const canvasPane = useCanvasStore.getState().panes.get(panelId);
+      let sessionId = zenPanel?.claudeSessionId || canvasPane?.claudeSessionId || null;
 
       if (sessionId) {
         sessionIdRef.current = sessionId;
@@ -70,11 +73,15 @@ export function ClaudePanel({ panelId, visible = true }: ClaudePanelProps) {
         sessionIdRef.current = sessionId;
         nativeBoundsController.updateSessionId(panelId, sessionId);
 
+        // Update whichever store owns this panel
         useZenStore.setState((state) => ({
           panels: state.panels.map((p) =>
             p.id === panelId ? { ...p, claudeSessionId: sessionId! } : p,
           ),
         }));
+        if (canvasPane || useCanvasStore.getState().panes.has(panelId)) {
+          useCanvasStore.getState().updatePane(panelId, { claudeSessionId: sessionId! });
+        }
       }
     };
 

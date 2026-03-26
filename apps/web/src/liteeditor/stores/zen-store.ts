@@ -37,6 +37,8 @@ export interface ZenPanel {
   codexSessionId?: string;
   // Chat panels
   threadId?: string;
+  // Cross-mode sync identity (shared with canvas-store)
+  syncId?: string;
 }
 
 interface ZenState {
@@ -44,17 +46,17 @@ interface ZenState {
   activePanelId: string | null;
   maximizedPanelId: string | null;
 
-  addTerminalPanel: (shell?: string, cwd?: string) => Promise<void>;
+  addTerminalPanel: (shell?: string, cwd?: string, syncId?: string, terminalSessionId?: string) => Promise<void>;
   addEditorPanel: (filePath: string, content: string) => void;
-  addBrowserPanel: (url?: string) => void;
-  addUnifiedEditorPanel: () => void;
-  addClaudePanel: () => void;
-  addCodexPanel: () => void;
-  addChatPanel: (threadId?: string) => void;
-  addFilesPanel: () => void;
-  addSearchPanel: () => void;
-  addSettingsPanel: () => void;
-  addGitPanel: () => void;
+  addBrowserPanel: (url?: string, syncId?: string, browserSessionId?: string) => void;
+  addUnifiedEditorPanel: (syncId?: string) => void;
+  addClaudePanel: (syncId?: string) => void;
+  addCodexPanel: (syncId?: string) => void;
+  addChatPanel: (threadId?: string, syncId?: string) => void;
+  addFilesPanel: (syncId?: string) => void;
+  addSearchPanel: (syncId?: string) => void;
+  addSettingsPanel: (syncId?: string) => void;
+  addGitPanel: (syncId?: string) => void;
   clearEditorPanels: () => void;
   removePanel: (id: string) => void;
   rebindTerminalPanelSession: (panelId: string, nextSessionId: string) => void;
@@ -72,11 +74,13 @@ export const useZenStore = create<ZenState>((set, get) => ({
   activePanelId: null,
   maximizedPanelId: null,
 
-  addTerminalPanel: async (shell?: string, cwd?: string) => {
+  addTerminalPanel: async (shell?: string, cwd?: string, syncId?: string, terminalSessionId?: string) => {
     const resolvedCwd = resolveTerminalCwd(cwd);
     try {
-      const sessionId = await window.api.pty.create(shell || undefined, resolvedCwd);
-      useTerminalStore.getState().createSession(sessionId, shell, resolvedCwd);
+      const sessionId = terminalSessionId || await window.api.pty.create(shell || undefined, resolvedCwd);
+      if (!terminalSessionId) {
+        useTerminalStore.getState().createSession(sessionId, shell, resolvedCwd);
+      }
       const id = `zen-term-${++panelCounter}`;
       const termCount = get().panels.filter((p) => p.type === "terminal").length + 1;
       set((state) => ({
@@ -87,6 +91,7 @@ export const useZenStore = create<ZenState>((set, get) => ({
             type: "terminal",
             title: `Terminal ${termCount}`,
             terminalSessionId: sessionId,
+            syncId: syncId || `sync-${id}`,
           },
         ],
         activePanelId: id,
@@ -96,7 +101,7 @@ export const useZenStore = create<ZenState>((set, get) => ({
     }
   },
 
-  addBrowserPanel: (url?: string) => {
+  addBrowserPanel: (url?: string, syncId?: string, browserSessionId?: string) => {
     const id = `zen-browser-${++panelCounter}`;
     const browserCount = get().panels.filter((p) => p.type === "browser").length + 1;
     set((state) => ({
@@ -107,18 +112,15 @@ export const useZenStore = create<ZenState>((set, get) => ({
           type: "browser",
           title: `Browser ${browserCount}`,
           browserUrl: url || "https://www.google.com",
+          browserSessionId,
+          syncId: syncId || `sync-${id}`,
         },
       ],
       activePanelId: id,
     }));
   },
 
-  addClaudePanel: () => {
-    const existing = get().panels.find((p) => p.type === "claude");
-    if (existing) {
-      set({ activePanelId: existing.id });
-      return;
-    }
+  addClaudePanel: (syncId?: string) => {
     const id = `zen-claude-${++panelCounter}`;
     set((state) => ({
       panels: [
@@ -127,18 +129,14 @@ export const useZenStore = create<ZenState>((set, get) => ({
           id,
           type: "claude",
           title: "Claude Code",
+          syncId: syncId || `sync-${id}`,
         },
       ],
       activePanelId: id,
     }));
   },
 
-  addCodexPanel: () => {
-    const existing = get().panels.find((p) => p.type === "codex");
-    if (existing) {
-      set({ activePanelId: existing.id });
-      return;
-    }
+  addCodexPanel: (syncId?: string) => {
     const id = `zen-codex-${++panelCounter}`;
     set((state) => ({
       panels: [
@@ -147,13 +145,14 @@ export const useZenStore = create<ZenState>((set, get) => ({
           id,
           type: "codex",
           title: "Codex",
+          syncId: syncId || `sync-${id}`,
         },
       ],
       activePanelId: id,
     }));
   },
 
-  addChatPanel: (threadId?: string) => {
+  addChatPanel: (threadId?: string, syncId?: string) => {
     const id = `zen-chat-${++panelCounter}`;
     set((state) => ({
       panels: [
@@ -163,13 +162,14 @@ export const useZenStore = create<ZenState>((set, get) => ({
           type: "chat",
           title: "Chat",
           threadId,
+          syncId: syncId || `sync-${id}`,
         },
       ],
       activePanelId: id,
     }));
   },
 
-  addFilesPanel: () => {
+  addFilesPanel: (syncId?: string) => {
     const existing = get().panels.find((p) => p.type === "files");
     if (existing) {
       set({ activePanelId: existing.id });
@@ -177,12 +177,12 @@ export const useZenStore = create<ZenState>((set, get) => ({
     }
     const id = `zen-files-${++panelCounter}`;
     set((state) => ({
-      panels: [...state.panels, { id, type: "files", title: "Files" }],
+      panels: [...state.panels, { id, type: "files", title: "Files", syncId: syncId || `sync-${id}` }],
       activePanelId: id,
     }));
   },
 
-  addSearchPanel: () => {
+  addSearchPanel: (syncId?: string) => {
     const existing = get().panels.find((p) => p.type === "search");
     if (existing) {
       set({ activePanelId: existing.id });
@@ -190,12 +190,12 @@ export const useZenStore = create<ZenState>((set, get) => ({
     }
     const id = `zen-search-${++panelCounter}`;
     set((state) => ({
-      panels: [...state.panels, { id, type: "search", title: "Search" }],
+      panels: [...state.panels, { id, type: "search", title: "Search", syncId: syncId || `sync-${id}` }],
       activePanelId: id,
     }));
   },
 
-  addSettingsPanel: () => {
+  addSettingsPanel: (syncId?: string) => {
     const existing = get().panels.find((p) => p.type === "settings");
     if (existing) {
       set({ activePanelId: existing.id });
@@ -203,12 +203,12 @@ export const useZenStore = create<ZenState>((set, get) => ({
     }
     const id = `zen-settings-${++panelCounter}`;
     set((state) => ({
-      panels: [...state.panels, { id, type: "settings", title: "Settings" }],
+      panels: [...state.panels, { id, type: "settings", title: "Settings", syncId: syncId || `sync-${id}` }],
       activePanelId: id,
     }));
   },
 
-  addGitPanel: () => {
+  addGitPanel: (syncId?: string) => {
     const existing = get().panels.find((p) => p.type === "git");
     if (existing) {
       set({ activePanelId: existing.id });
@@ -216,12 +216,12 @@ export const useZenStore = create<ZenState>((set, get) => ({
     }
     const id = `zen-git-${++panelCounter}`;
     set((state) => ({
-      panels: [...state.panels, { id, type: "git", title: "Git" }],
+      panels: [...state.panels, { id, type: "git", title: "Git", syncId: syncId || `sync-${id}` }],
       activePanelId: id,
     }));
   },
 
-  addUnifiedEditorPanel: () => {
+  addUnifiedEditorPanel: (syncId?: string) => {
     const existing = get().panels.find((p) => p.type === "unified-editor");
     if (existing) {
       set({ activePanelId: existing.id });
@@ -235,6 +235,7 @@ export const useZenStore = create<ZenState>((set, get) => ({
           id,
           type: "unified-editor",
           title: "Editor",
+          syncId: syncId || `sync-${id}`,
         },
       ],
       activePanelId: id,

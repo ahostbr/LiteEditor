@@ -39,9 +39,13 @@ export interface CanvasPaneState {
   // Editor panes
   filePath?: string;
   isDirty?: boolean;
-  // Browser panes
+  // Browser panes (single-session legacy)
   browserSessionId?: string;
   browserUrl?: string;
+  // Browser shell (multi-tab)
+  browserShellTabs?: Array<{ id: string; url: string; title: string; workspaceColor?: string }>;
+  browserShellActiveTabIndex?: number;
+  browserShellSidebarCollapsed?: boolean;
   // Claude panes
   claudeSessionId?: string;
   // Codex panes
@@ -57,6 +61,8 @@ export interface CanvasPaneState {
   workspaceId?: string;
   // Pane linking
   linkedPaneId?: string;
+  // Cross-mode sync identity (shared with zen-store)
+  syncId?: string;
 }
 
 // Serializable pane for persistence (no session IDs — those are ephemeral)
@@ -73,6 +79,10 @@ export interface PersistedPane {
   filePath?: string;
   browserUrl?: string;
   minimized?: boolean;
+  // Browser shell multi-tab persistence (URLs + titles only, no session IDs)
+  browserTabs?: Array<{ url: string; title: string; workspaceColor?: string }>;
+  browserActiveTabIndex?: number;
+  browserSidebarCollapsed?: boolean;
 }
 
 export interface PersistedCanvasState {
@@ -222,6 +232,17 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   addPane: (type, options = {}) => {
     const state = get();
+
+    // Singleton dedup for utility panes — focus existing instead of creating
+    const SINGLETON_TYPES = new Set(["settings", "files", "search", "git"]);
+    if (SINGLETON_TYPES.has(type)) {
+      const existing = [...state.panes.values()].find(p => p.type === type);
+      if (existing) {
+        set({ focusedPaneId: existing.id });
+        return existing.id;
+      }
+    }
+
     const id = options.id || nextPaneId();
 
     // Per-type default dimensions
@@ -281,6 +302,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       notificationCount: 0,
       minimized: false,
       workspaceId: activeWorkspaceId,
+      syncId: options.syncId || `sync-${id}`,
     };
 
     const newPanes = new Map(state.panes);
@@ -755,6 +777,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         filePath: pane.filePath,
         browserUrl: pane.browserUrl,
         minimized: pane.minimized,
+        browserTabs: pane.browserShellTabs?.map(({ url, title, workspaceColor }) => ({ url, title, workspaceColor })),
+        browserActiveTabIndex: pane.browserShellActiveTabIndex,
+        browserSidebarCollapsed: pane.browserShellSidebarCollapsed,
       });
     }
     return {
@@ -788,6 +813,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         terminalTabNames: p.terminalTabNames,
         hasNotification: false,
         notificationCount: 0,
+        browserShellTabs: p.browserTabs?.map((t) => ({ id: `tab-restored-${Math.random().toString(36).slice(2)}`, url: t.url, title: t.title, workspaceColor: t.workspaceColor })),
+        browserShellActiveTabIndex: p.browserActiveTabIndex,
+        browserShellSidebarCollapsed: p.browserSidebarCollapsed,
       });
     }
     paneCounter = maxCounter;

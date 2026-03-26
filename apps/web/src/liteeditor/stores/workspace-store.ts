@@ -4,6 +4,7 @@ import { useCanvasStore, setWorkspaceIdProvider, type CanvasPaneState } from "./
 import { useEditorStore } from "./editor-store";
 import { useProjectStore } from "./project-store";
 import { logWarn } from "./error-store";
+import { cleanupPaneSession } from "../lib/session-cleanup";
 
 export interface Workspace {
   id: string;
@@ -79,6 +80,12 @@ function restoreWorkspacePanes(workspaceId: string, state: PersistedCanvasState 
     } else if (!pane.workspaceId || pane.workspaceId !== workspaceId) {
       // Remove untagged non-terminal panes (legacy cleanup)
       if (pane.type !== "terminal") {
+        // Destroy backend sessions before removing pane to prevent leaks
+        try {
+          cleanupPaneSession(pane);
+        } catch (err) {
+          logWarn("workspace-store", `Failed to cleanup pane ${id} during workspace switch`, err);
+        }
         currentPanes.delete(id);
       }
     }
