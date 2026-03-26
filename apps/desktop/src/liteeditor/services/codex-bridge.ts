@@ -112,7 +112,14 @@ export class CodexBridge {
 
       case "open-in-browser":
         if (message.url) {
-          shell.openExternal(message.url);
+          try {
+            const parsed = new URL(message.url);
+            if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+              shell.openExternal(parsed.toString());
+            }
+          } catch {
+            // Reject malformed URLs
+          }
         }
         break;
 

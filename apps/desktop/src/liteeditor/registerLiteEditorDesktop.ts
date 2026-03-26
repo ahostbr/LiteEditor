@@ -225,7 +225,14 @@ function registerBridgeHandlers(options: LiteEditorDesktopRegistrationOptions): 
 
   ipcMain.on(SHELL_OPEN_EXTERNAL_CHANNEL, (_event, rawUrl: unknown) => {
     if (typeof rawUrl === "string" && rawUrl.length > 0) {
-      void shell.openExternal(rawUrl);
+      try {
+        const parsed = new URL(rawUrl);
+        if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+          void shell.openExternal(parsed.toString());
+        }
+      } catch {
+        // Reject malformed URLs silently
+      }
     }
   });
 

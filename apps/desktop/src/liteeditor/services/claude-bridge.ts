@@ -639,7 +639,16 @@ export class ClaudeBridge {
       }
       case "open_url": {
         const url = typeof request.url === "string" ? request.url : null;
-        if (url) await shell.openExternal(url);
+        if (url) {
+          try {
+            const parsed = new URL(url);
+            if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+              await shell.openExternal(parsed.toString());
+            }
+          } catch {
+            // Reject malformed URLs
+          }
+        }
         return { success: true };
       }
       case "open_folder": {

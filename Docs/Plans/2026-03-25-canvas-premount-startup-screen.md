@@ -157,4 +157,4 @@ cd C:/Projects/LiteEditor && npx playwright test e2e/browser-shell.spec.ts
 - Quizmaster variant: small
 - This is Phase 1 of the startup screen — later plans will add welcome content, recent projects, quick actions
 - The browser shell E2E tests depend on the canvas pre-mount fix landing first
-- Ryan said "figure it out later" for web-mode fallback — not in scope
+- "Figure it out later" for web-mode fallback — not in scope

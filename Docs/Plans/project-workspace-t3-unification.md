@@ -297,7 +297,7 @@ cat ~/.liteeditor/projects.json  # Should match sidebar state
 2. Port detection parses terminal stdout for common patterns (localhost:XXXX, :XXXX, "port XXXX")
 3. Pane linking is workspace-scoped (terminal CWD matches workspace root)
 4. Full canvas swap = serialize → clear → deserialize with CSS-hidden terminal persistence
-5. Data migration is one-time, only needs to work for Ryan's machine
+5. Data migration is one-time, only needs to work for the developer's machine
 6. Ctrl+1-9 maps to sidebar position (pinned first, then custom order)
 7. Drag reorder persists to projects.json as an `order` field or array position
 8. "This session" = prioritize core functionality (Phases 0-2), polish follows if time allows

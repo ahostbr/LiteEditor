@@ -330,4 +330,4 @@ After implementing this plan, revisit:
 - **Domains covered:** Intent, Scope, Environment, Workflow/UX, Dependencies, Verification
 - **Gang of Four consulted:** Gamma, Helm, Johnson, Vlissides — all four analyzed the architecture
 - **Key insight from Theo's browser video:** Vertical real estate is king. Zen browser's sidebar is the gold standard. Cmd+Shift+C is non-negotiable. Polish in micro-interactions matters.
-- **Origin:** Ryan saw Arc browser in a Theo livestream screenshot, wanted the browser panel inside LiteEditor to feel like that.
+- **Origin:** Inspired by Arc browser from a Theo livestream screenshot — wanted the browser panel inside LiteEditor to feel like that.
