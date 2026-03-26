@@ -244,7 +244,7 @@ export function PaneHeader({ pane, isFocused, onDragStart, maximized }: PaneHead
   return (
     <div
       className={cn(
-        "flex items-center justify-between px-2 shrink-0 select-none overflow-hidden",
+        "flex items-center justify-between px-2 shrink-0 select-none overflow-hidden relative z-10",
         isFocused ? "border-t-2" : "border-t-2 border-transparent",
       )}
       style={{
