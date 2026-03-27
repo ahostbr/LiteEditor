@@ -7,7 +7,7 @@ import {
   ThreadId,
   TurnId,
   type OrchestrationEvent,
-} from "@t3tools/contracts";
+} from "@liteeditor/contracts";
 import { Effect, Layer, ManagedRuntime, Queue, Stream } from "effect";
 import { describe, expect, it } from "vitest";
 
@@ -36,7 +36,7 @@ const asCheckpointRef = (value: string): CheckpointRef => CheckpointRef.makeUnsa
 
 async function createOrchestrationSystem() {
   const ServerConfigLayer = ServerConfig.layerTest(process.cwd(), {
-    prefix: "t3-orchestration-engine-test-",
+    prefix: "liteeditor-orchestration-engine-test-",
   });
   const orchestrationLayer = OrchestrationEngineLive.pipe(
     Layer.provide(OrchestrationProjectionPipelineLive),
@@ -321,7 +321,7 @@ describe("OrchestrationEngine", () => {
     };
 
     const ServerConfigLayer = ServerConfig.layerTest(process.cwd(), {
-      prefix: "t3-orchestration-engine-test-",
+      prefix: "liteeditor-orchestration-engine-test-",
     });
 
     const runtime = ManagedRuntime.make(

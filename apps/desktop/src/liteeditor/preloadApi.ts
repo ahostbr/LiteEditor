@@ -57,7 +57,7 @@ type IntegrationProgress = {
   message?: string;
 };
 
-const commitHash = process.env.T3CODE_COMMIT_HASH ?? "unknown";
+const commitHash = process.env.LITEEDITOR_COMMIT_HASH ?? "unknown";
 const buildDate = process.env.BUILD_DATE ?? new Date(0).toISOString();
 const homeDir = process.env.USERPROFILE || process.env.HOME || "";
 

@@ -1,5 +1,5 @@
 {
-  "name": "@t3tools/desktop",
+  "name": "@liteeditor/desktop",
   "version": "0.0.13",
   "private": true,
   "main": "dist-electron/main.js",
@@ -23,8 +23,8 @@
     "simple-git": "^3.27.0"
   },
   "devDependencies": {
-    "@t3tools/contracts": "workspace:*",
-    "@t3tools/shared": "workspace:*",
+    "@liteeditor/contracts": "workspace:*",
+    "@liteeditor/shared": "workspace:*",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "catalog:",
     "tsdown": "catalog:",

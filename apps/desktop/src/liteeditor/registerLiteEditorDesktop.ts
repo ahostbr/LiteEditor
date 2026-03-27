@@ -344,7 +344,7 @@ function registerBridgeHandlers(options: LiteEditorDesktopRegistrationOptions): 
       links: [
         {
           label: "LiteEditor",
-          url: "https://github.com/t3tools/t3code",
+          url: "https://github.com/litesuite/liteeditor",
         },
       ],
     };

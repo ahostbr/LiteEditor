@@ -14,7 +14,7 @@ export default defineConfig([
       main: "src/main.ts",
     },
     clean: true,
-    noExternal: (id) => id.startsWith("@t3tools/"),
+    noExternal: (id) => id.startsWith("@liteeditor/"),
   },
   {
     ...shared,

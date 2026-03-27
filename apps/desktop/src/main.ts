@@ -31,12 +31,12 @@ import type {
   DesktopTheme,
   DesktopUpdateActionResult,
   DesktopUpdateState,
-} from "@t3tools/contracts";
+} from "@liteeditor/contracts";
 import { autoUpdater } from "electron-updater";
 
-import type { ContextMenuItem } from "@t3tools/contracts";
-import { NetService } from "@t3tools/shared/Net";
-import { RotatingFileSink } from "@t3tools/shared/logging";
+import type { ContextMenuItem } from "@liteeditor/contracts";
+import { NetService } from "@liteeditor/shared/Net";
+import { RotatingFileSink } from "@liteeditor/shared/logging";
 import { showDesktopConfirmDialog } from "./confirmDialog";
 import {
   registerLiteEditorDesktop,
@@ -70,9 +70,9 @@ const UPDATE_STATE_CHANNEL = "desktop:update-state";
 const UPDATE_GET_STATE_CHANNEL = "desktop:update-get-state";
 const UPDATE_DOWNLOAD_CHANNEL = "desktop:update-download";
 const UPDATE_INSTALL_CHANNEL = "desktop:update-install";
-const BASE_DIR = process.env.T3CODE_HOME?.trim() || Path.join(OS.homedir(), ".t3");
+const BASE_DIR = process.env.LITEEDITOR_HOME?.trim() || Path.join(OS.homedir(), ".liteeditor/ProjectData");
 const STATE_DIR = Path.join(BASE_DIR, "userdata");
-const DESKTOP_SCHEME = "t3";
+const DESKTOP_SCHEME = "liteeditor";
 const ROOT_DIR = Path.resolve(__dirname, "../../..");
 const isDevelopment = Boolean(process.env.VITE_DEV_SERVER_URL);
 const APP_DISPLAY_NAME = isDevelopment ? "LiteEditor (Dev)" : "LiteEditor (Alpha)";
@@ -372,8 +372,8 @@ function resolveEmbeddedCommitHash(): string | null {
 
   try {
     const raw = FS.readFileSync(packageJsonPath, "utf8");
-    const parsed = JSON.parse(raw) as { t3codeCommitHash?: unknown };
-    return normalizeCommitHash(parsed.t3codeCommitHash);
+    const parsed = JSON.parse(raw) as { liteeditorCommitHash?: unknown };
+    return normalizeCommitHash(parsed.liteeditorCommitHash);
   } catch {
     return null;
   }
@@ -384,7 +384,7 @@ function resolveAboutCommitHash(): string | null {
     return aboutCommitHashCache;
   }
 
-  const envCommitHash = normalizeCommitHash(process.env.T3CODE_COMMIT_HASH);
+  const envCommitHash = normalizeCommitHash(process.env.LITEEDITOR_COMMIT_HASH);
   if (envCommitHash) {
     aboutCommitHashCache = envCommitHash;
     return aboutCommitHashCache;
@@ -546,7 +546,7 @@ function handleCheckForUpdatesMenuClick(): void {
     isPackaged: app.isPackaged,
     platform: process.platform,
     appImage: process.env.APPIMAGE,
-    disabledByEnv: process.env.T3CODE_DISABLE_AUTO_UPDATE === "1",
+    disabledByEnv: process.env.LITEEDITOR_DISABLE_AUTO_UPDATE === "1",
   });
   if (disabledReason) {
     console.info("[desktop-updater] Manual update check requested, but updates are disabled.");
@@ -694,7 +694,7 @@ function resolveIconPath(ext: "ico" | "icns" | "png"): string | null {
  * parentheses (e.g. `~/.config/LiteEditor (Alpha)` on Linux). This is
  * unfriendly for shell usage and violates Linux naming conventions.
  *
- * We override it to a clean lowercase name (`t3code`). If the legacy
+ * We override it to a clean lowercase name (`liteeditor`). If the legacy
  * directory already exists we keep using it so existing users don't
  * lose their Chromium profile data (localStorage, cookies, sessions).
  */
@@ -765,7 +765,7 @@ function shouldEnableAutoUpdates(): boolean {
       isPackaged: app.isPackaged,
       platform: process.platform,
       appImage: process.env.APPIMAGE,
-      disabledByEnv: process.env.T3CODE_DISABLE_AUTO_UPDATE === "1",
+      disabledByEnv: process.env.LITEEDITOR_DISABLE_AUTO_UPDATE === "1",
     }) === null
   );
 }
@@ -850,7 +850,7 @@ function configureAutoUpdater(): void {
   updaterConfigured = true;
 
   const githubToken =
-    process.env.T3CODE_DESKTOP_UPDATE_GITHUB_TOKEN?.trim() || process.env.GH_TOKEN?.trim() || "";
+    process.env.LITEEDITOR_DESKTOP_UPDATE_GITHUB_TOKEN?.trim() || process.env.GH_TOKEN?.trim() || "";
   if (githubToken) {
     // When a token is provided, re-configure the feed with `private: true` so
     // electron-updater uses the GitHub API (api.github.com) instead of the
@@ -949,11 +949,11 @@ function configureAutoUpdater(): void {
 function backendEnv(): NodeJS.ProcessEnv {
   return {
     ...process.env,
-    T3CODE_MODE: "desktop",
-    T3CODE_NO_BROWSER: "1",
-    T3CODE_PORT: String(backendPort),
-    T3CODE_HOME: BASE_DIR,
-    T3CODE_AUTH_TOKEN: backendAuthToken,
+    LITEEDITOR_MODE: "desktop",
+    LITEEDITOR_NO_BROWSER: "1",
+    LITEEDITOR_PORT: String(backendPort),
+    LITEEDITOR_HOME: BASE_DIR,
+    LITEEDITOR_AUTH_TOKEN: backendAuthToken,
   };
 }
 
@@ -1391,7 +1391,7 @@ async function bootstrap(): Promise<void> {
   writeDesktopLogHeader(`reserved backend port via NetService port=${backendPort}`);
   backendAuthToken = Crypto.randomBytes(24).toString("hex");
   backendWsUrl = `ws://127.0.0.1:${backendPort}/?token=${encodeURIComponent(backendAuthToken)}`;
-  process.env.T3CODE_DESKTOP_WS_URL = backendWsUrl;
+  process.env.LITEEDITOR_DESKTOP_WS_URL = backendWsUrl;
   writeDesktopLogHeader(`bootstrap resolved websocket url=${backendWsUrl}`);
 
   registerIpcHandlers();
