@@ -83,6 +83,7 @@ export interface PersistedPane {
   browserActiveTabIndex?: number;
   browserSidebarCollapsed?: boolean;
   threadId?: string;
+  syncId?: string;
 }
 
 export interface PersistedCanvasState {
@@ -800,6 +801,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         browserActiveTabIndex: pane.browserShellActiveTabIndex,
         browserSidebarCollapsed: pane.browserShellSidebarCollapsed,
         threadId: pane.threadId,
+        syncId: pane.syncId,
       });
     }
     return {
@@ -829,6 +831,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         filePath: p.filePath,
         browserUrl: p.browserUrl,
         threadId: p.threadId,
+        syncId: p.syncId || `sync-${p.id}`,
         minimized: p.minimized,
         terminalTabNames: p.terminalTabNames,
         hasNotification: false,
