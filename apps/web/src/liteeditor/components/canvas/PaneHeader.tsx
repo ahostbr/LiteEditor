@@ -21,7 +21,7 @@ import { useCanvasStore, type CanvasPaneState } from "../../stores/canvas-store"
 import { useTerminalStore } from "../../stores/terminal-store";
 import { useSettingsStore } from "../../stores/settings-store";
 import { useEditorStore } from "../../stores/editor-store";
-import { useUiStore } from "../../stores/ui-store";
+
 import { useBrowserShellStore } from "../../stores/browser-shell-store";
 import { cn } from "../../lib/cn";
 
@@ -212,11 +212,42 @@ export function PaneHeader({ pane, isFocused, onDragStart, maximized }: PaneHead
     setRenamingTabIndex(null);
   };
 
+  // --- Terminal cog dropdown (directory picker, same as zen mode) ---
+  const [showTermCog, setShowTermCog] = useState(false);
+  const termCogRef = useRef<HTMLDivElement>(null);
+  const termCogBtnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!showTermCog) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        termCogRef.current && !termCogRef.current.contains(e.target as Node) &&
+        termCogBtnRef.current && !termCogBtnRef.current.contains(e.target as Node)
+      ) {
+        setShowTermCog(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showTermCog]);
+
+  const handleChangeDirectory = async () => {
+    if (!activeSessionId) return;
+    try {
+      const folder = await window.api.dialog.openFolder();
+      if (folder) {
+        window.api.pty.write(activeSessionId, `cd "${folder}"\r`);
+      }
+    } catch { /* cancelled */ }
+    setShowTermCog(false);
+  };
+
   const handleOpenSettings = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const ui = useUiStore.getState();
-    if (!ui.settingsPanelVisible) {
-      ui.toggleSettingsPanel();
+    if (pane.type === "terminal") {
+      setShowTermCog((v) => !v);
+    } else {
+      useCanvasStore.getState().addPane("settings");
     }
   };
 
@@ -243,7 +274,7 @@ export function PaneHeader({ pane, isFocused, onDragStart, maximized }: PaneHead
   return (
     <div
       className={cn(
-        "flex items-center justify-between px-2 shrink-0 select-none overflow-hidden relative z-10",
+        "flex items-center justify-between px-2 shrink-0 select-none relative z-10",
         isFocused ? "border-t-2" : "border-t-2 border-transparent",
       )}
       style={{
@@ -404,15 +435,44 @@ export function PaneHeader({ pane, isFocused, onDragStart, maximized }: PaneHead
         className={cn("flex items-center shrink-0", maximized ? "gap-1 pr-1" : "gap-0.5")}
         onPointerDown={(e) => e.stopPropagation()}
       >
-        {/* Settings */}
-        <button
-          onClick={handleOpenSettings}
-          className={cn("flex items-center justify-center rounded transition-colors hover:bg-[var(--bg-overlay)]", btnSize)}
-          style={{ color: "var(--text-muted)" }}
-          title="Settings"
-        >
-          <Settings size={iconSize} />
-        </button>
+        {/* Settings / Terminal cog */}
+        <div className="relative">
+          <button
+            ref={pane.type === "terminal" ? termCogBtnRef : undefined}
+            onClick={handleOpenSettings}
+            className={cn("flex items-center justify-center rounded transition-colors hover:bg-[var(--bg-overlay)]", btnSize)}
+            style={{ color: "var(--text-muted)" }}
+            title={pane.type === "terminal" ? "Terminal Settings" : "Settings"}
+          >
+            <Settings size={iconSize} />
+          </button>
+          {pane.type === "terminal" && showTermCog && (
+            <div
+              ref={termCogRef}
+              className="absolute right-0 top-full mt-1 z-50 rounded border shadow-lg py-2 px-3 min-w-[270px]"
+              style={{
+                backgroundColor: "var(--bg-surface)",
+                borderColor: "var(--border)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                className="text-[13px] mb-1.5 truncate"
+                style={{ color: "var(--text-muted)" }}
+                title={cwd || "Default"}
+              >
+                {cwd || "Default"}
+              </div>
+              <button
+                onClick={handleChangeDirectory}
+                className="text-sm w-full text-left px-2 py-1.5 rounded hover:bg-[var(--bg-muted)] transition-colors"
+                style={{ color: "var(--text-primary)" }}
+              >
+                Change directory...
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Fullscreen */}
         <button

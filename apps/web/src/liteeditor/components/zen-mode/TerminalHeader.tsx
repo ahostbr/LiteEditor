@@ -121,7 +121,7 @@ export function TerminalHeader({
   return (
     <div
       className={cn(
-        "flex items-center justify-between px-3 h-[40px] shrink-0 cursor-default overflow-hidden",
+        "flex items-center justify-between px-3 h-[40px] shrink-0 cursor-default",
         isActive ? "border-t-2" : "border-t-2 border-transparent",
       )}
       style={{

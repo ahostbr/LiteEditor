@@ -122,6 +122,13 @@ export const useBrowserShellStore = create<BrowserShellState>((set, get) => ({
 
     // Create native session
     try {
+      // Hide the previously active tab's native view before creating new one
+      const prevPane = get().panes.get(paneId);
+      const prevTab = prevPane?.tabs[prevPane.activeTabIndex - 1]; // tab before the new one
+      if (prevTab?.sessionId) {
+        try { browserDriver.hideView(prevTab.sessionId); } catch {}
+      }
+
       const sessionId = await browserDriver.createView(url);
       tab.sessionId = sessionId;
       tab.isLoading = true;
@@ -134,6 +141,10 @@ export const useBrowserShellStore = create<BrowserShellState>((set, get) => ({
         panes.set(paneId, { ...pane, tabs });
         return { panes };
       });
+
+      // Show the new tab's native view and update bounds controller
+      nativeBoundsController.updateSessionId(paneId, sessionId);
+      try { browserDriver.showView(sessionId); } catch {}
 
       return sessionId;
     } catch (err) {

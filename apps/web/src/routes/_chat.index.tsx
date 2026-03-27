@@ -1,11 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect } from "react";
 import LiteEditorApp from "../liteeditor/App";
 import "../liteeditor/app.css";
+import { useCanvasStore } from "../liteeditor/stores/canvas-store";
+import { setLiteEditorHostConfig } from "../liteeditor/hostMode";
 
 function ChatIndexRouteView() {
-  // Render the full LiteEditor canvas as the home screen.
-  // Previously this showed a splash logo with "No active thread" —
-  // now the canvas is always available, with TemplatePicker shown when empty.
+  // When navigating to the home route (no thread selected), clear any
+  // thread-specific canvas state so panes from a previous thread don't bleed through.
+  useEffect(() => {
+    setLiteEditorHostConfig(null);
+    useCanvasStore.getState().clearPanes();
+  }, []);
+
   return <LiteEditorApp />;
 }
 
