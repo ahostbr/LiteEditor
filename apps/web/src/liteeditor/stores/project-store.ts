@@ -65,8 +65,21 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const persisted = (await window.api.project.list()) as PersistedProject[];
+        const projects = persisted.map(toProjectState);
+
+        // Auto-restore last active project: check localStorage first (fast), then fall
+        // back to the most recently active project.
+        let lastId = localStorage.getItem("liteeditor:lastProjectId");
+        if (lastId && !projects.some((p) => p.id === lastId)) lastId = null;
+        if (!lastId && projects.length > 0) {
+          // Pick the project with the most recent lastActivity
+          const sorted = [...projects].sort((a, b) => (b.lastActivity ?? 0) - (a.lastActivity ?? 0));
+          lastId = sorted[0].id;
+        }
+
         set({
-          projects: persisted.map(toProjectState),
+          projects,
+          activeProjectId: lastId,
           loaded: true,
         });
         return;
@@ -94,6 +107,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       projects: [...s.projects, project],
       activeProjectId: persisted.id,
     }));
+    localStorage.setItem("liteeditor:lastProjectId", persisted.id);
 
     // Auto-create Default workspace for new projects
     if (!persisted.lastActiveWorkspaceId) {
@@ -118,6 +132,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
 
   setActiveProject: async (id) => {
     set({ activeProjectId: id });
+    localStorage.setItem("liteeditor:lastProjectId", id);
     await window.api.project.update(id, { lastActivity: Date.now() });
   },
 

@@ -137,13 +137,6 @@ export class AgentBridge {
       return;
     }
 
-    if (method === "POST" && url.startsWith("/browser/")) {
-      this.readJsonBody(req, res, (parsed) => {
-        this.handleBrowserPost(url, res, parsed);
-      });
-      return;
-    }
-
     // --- Panel CRUD endpoints ---
 
     if (method === "POST" && url === "/pty/create") {
@@ -153,6 +146,13 @@ export class AgentBridge {
 
     if (method === "POST" && url === "/browser/create") {
       this.readJsonBody(req, res, (parsed) => this.handleBrowserCreate(res, parsed), true);
+      return;
+    }
+
+    if (method === "POST" && url.startsWith("/browser/")) {
+      this.readJsonBody(req, res, (parsed) => {
+        this.handleBrowserPost(url, res, parsed);
+      });
       return;
     }
 

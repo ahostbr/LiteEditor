@@ -56,18 +56,47 @@ export function AddPaneMenu({ show: externalShow, onClose, anchorX, anchorY }: A
 
   if (!show) return null;
 
-  const addPaneOfType = (type: CanvasPaneType, extra?: Record<string, unknown>) => {
-    if (!useProjectStore.getState().activeProjectId) {
+  // Pane types that require an active project
+  const PROJECT_REQUIRED: ReadonlySet<string> = new Set(["chat", "git", "search"]);
+
+  const addPaneOfType = async (type: CanvasPaneType, extra?: Record<string, unknown>) => {
+    if (PROJECT_REQUIRED.has(type) && !useProjectStore.getState().activeProjectId) {
       useToastStore.getState().pushToast(
-        "Select a project from the sidebar to start",
+        "Open a project folder first to use this pane",
         "warning",
-        3200
+        3200,
       );
       setInternalShow(false);
       onClose?.();
       return;
     }
-    addPaneToCurrentMode(type, extra);
+
+    // Terminal without a project: ask for a working directory
+    if (type === "terminal" && !useProjectStore.getState().activeProjectId) {
+      try {
+        const folder = await window.api.dialog.openFolder();
+        if (!folder) {
+          setInternalShow(false);
+          onClose?.();
+          return;
+        }
+        addPaneToCurrentMode(type, { ...extra, cwd: folder });
+
+        // Offer to register as a project
+        useToastStore.getState().pushToast(
+          `Terminal opened in ${folder.replace(/^.*[\\/]/, "")}`,
+          "info",
+          3000,
+        );
+      } catch {
+        setInternalShow(false);
+        onClose?.();
+        return;
+      }
+    } else {
+      addPaneToCurrentMode(type, extra);
+    }
+
     setInternalShow(false);
     onClose?.();
   };

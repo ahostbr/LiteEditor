@@ -222,32 +222,32 @@ export function Canvas() {
   );
 }
 
+/** Short label for each pane type shown inside the spatial preview. */
+function paneTypeLabel(type: string): string {
+  switch (type) {
+    case "chat": return "Chat";
+    case "terminal": return "Term";
+    case "unified-editor": return "Editor";
+    case "browser": return "Web";
+    case "git": return "Git";
+    case "files": return "Files";
+    case "search": return "Search";
+    default: return type.charAt(0).toUpperCase() + type.slice(1);
+  }
+}
+
 function TemplatePreview({ panes }: { panes: Array<{ type: string; x: number; y: number; width: number; height: number }> }) {
-  const previewW = 180;
-  const previewH = 60;
+  const previewW = 160;
+  const previewH = 56;
 
   if (panes.length === 0) return null;
 
-  // Find bounds
   const minX = Math.min(...panes.map(p => p.x));
   const minY = Math.min(...panes.map(p => p.y));
   const maxX = Math.max(...panes.map(p => p.x + p.width));
   const maxY = Math.max(...panes.map(p => p.y + p.height));
   const totalW = maxX - minX || 1;
   const totalH = maxY - minY || 1;
-
-  // Map pane type to color
-  const typeColor = (type: string) => {
-    switch (type) {
-      case "chat": return "var(--accent)";
-      case "terminal": return "var(--text-muted)";
-      case "unified-editor": return "var(--info, #7ca8cf)";
-      case "browser": return "var(--success, #4a8c5e)";
-      case "git": return "var(--warning, #c9a24d)";
-      case "files": return "var(--text-secondary)";
-      default: return "var(--text-muted)";
-    }
-  };
 
   return (
     <div className="relative" style={{ width: previewW, height: previewH }}>
@@ -259,16 +259,23 @@ function TemplatePreview({ panes }: { panes: Array<{ type: string; x: number; y:
         return (
           <div
             key={i}
-            className="absolute rounded-sm"
+            className="absolute rounded flex items-center justify-center"
             style={{
               left: x + 1,
               top: y + 1,
-              width: Math.max(w - 2, 8),
-              height: Math.max(h - 2, 8),
-              backgroundColor: typeColor(pane.type),
-              opacity: 0.6,
+              width: Math.max(w - 2, 20),
+              height: Math.max(h - 2, 14),
+              border: "1px solid color-mix(in srgb, var(--text-muted) 30%, transparent)",
+              backgroundColor: "color-mix(in srgb, var(--text-muted) 8%, transparent)",
             }}
-          />
+          >
+            <span
+              className="text-[8px] font-medium leading-none select-none"
+              style={{ color: "var(--text-muted)", opacity: 0.9 }}
+            >
+              {paneTypeLabel(pane.type)}
+            </span>
+          </div>
         );
       })}
     </div>
