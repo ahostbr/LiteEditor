@@ -1,10 +1,21 @@
-// @ts-nocheck
 import { ipcMain, BrowserWindow } from "electron";
 import { PtyManager } from "../services/pty-manager";
 
 const ptyManager = new PtyManager();
 
 export { ptyManager };
+
+let bridgeToken: string | null = null;
+
+export function setBridgeToken(token: string): void {
+  bridgeToken = token;
+}
+
+function getBridgeEnv(): Record<string, string> {
+  return bridgeToken
+    ? { LITEEDITOR_BRIDGE_TOKEN: bridgeToken, LITEEDITOR_BRIDGE_URL: "http://127.0.0.1:7423" }
+    : {};
+}
 
 export function shutdownPtyHandlers(): void {
   ptyManager.killAll();
@@ -27,6 +38,7 @@ export function registerPtyHandlers(): void {
           win.webContents.send(`pty:exit:${sessionId}`, exitCode);
         }
       },
+      getBridgeEnv(),
     );
     return sessionId;
   });

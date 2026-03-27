@@ -3,6 +3,8 @@ import { ipcMain, BrowserWindow } from "electron";
 import { ClaudeManager } from "../services/claude-manager";
 import { ClaudeBridge } from "../services/claude-bridge";
 import { ptyManager } from "./pty-handlers";
+import { browserManager } from "./browser-handlers";
+import { sessionRegistry } from "../services/session-registry";
 import { type NativeViewBounds } from "../services/native-view-bounds";
 
 const claudeManager = new ClaudeManager();
@@ -42,6 +44,9 @@ async function invokeRendererHostOp(
 
 const claudeBridge = new ClaudeBridge(claudeManager, {
   ptyManager,
+  browserManager,
+  sessionRegistry,
+  getMainWindow: () => activeMainWindow,
   invokeRendererOp: invokeRendererHostOp,
 });
 
