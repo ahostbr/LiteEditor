@@ -22,15 +22,15 @@ interface BufferedAnalyticsEvent {
 }
 
 const TelemetryEnvConfig = Config.all({
-  posthogKey: Config.string("T3CODE_POSTHOG_KEY").pipe(
+  posthogKey: Config.string("LITEEDITOR_POSTHOG_KEY").pipe(
     Config.withDefault(""),
   ),
-  posthogHost: Config.string("T3CODE_POSTHOG_HOST").pipe(
+  posthogHost: Config.string("LITEEDITOR_POSTHOG_HOST").pipe(
     Config.withDefault("https://us.i.posthog.com"),
   ),
-  enabled: Config.boolean("T3CODE_TELEMETRY_ENABLED").pipe(Config.withDefault(true)),
-  flushBatchSize: Config.number("T3CODE_TELEMETRY_FLUSH_BATCH_SIZE").pipe(Config.withDefault(20)),
-  maxBufferedEvents: Config.number("T3CODE_TELEMETRY_MAX_BUFFERED_EVENTS").pipe(
+  enabled: Config.boolean("LITEEDITOR_TELEMETRY_ENABLED").pipe(Config.withDefault(true)),
+  flushBatchSize: Config.number("LITEEDITOR_TELEMETRY_FLUSH_BATCH_SIZE").pipe(Config.withDefault(20)),
+  maxBufferedEvents: Config.number("LITEEDITOR_TELEMETRY_MAX_BUFFERED_EVENTS").pipe(
     Config.withDefault(1_000),
   ),
 });
@@ -85,7 +85,7 @@ const makeAnalyticsService = Effect.gen(function* () {
             platform: process.platform,
             wsl: process.env.WSL_DISTRO_NAME,
             arch: process.arch,
-            t3CodeVersion: version,
+            liteeditorVersion: version,
             clientType,
           },
           timestamp: event.capturedAt,

@@ -36,7 +36,7 @@ import {
   ThreadId,
   TurnId,
   type UserInputQuestion,
-} from "@t3tools/contracts";
+} from "@liteeditor/contracts";
 import {
   applyClaudePromptEffortPrefix,
   getEffectiveClaudeCodeEffort,
@@ -45,7 +45,7 @@ import {
   supportsClaudeFastMode,
   supportsClaudeThinkingToggle,
   supportsClaudeUltrathinkKeyword,
-} from "@t3tools/shared/model";
+} from "@liteeditor/shared/model";
 import {
   Cause,
   DateTime,
