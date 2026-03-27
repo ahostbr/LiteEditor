@@ -33,7 +33,7 @@ import {
   ThreadId,
   type GitStatusResult,
   type ResolvedKeybindingsConfig,
-} from "@t3tools/contracts";
+} from "@liteeditor/contracts";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useAppSettings } from "../appSettings";

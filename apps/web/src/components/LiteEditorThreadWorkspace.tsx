@@ -1,4 +1,4 @@
-import { type ThreadId } from "@t3tools/contracts";
+import { type ThreadId } from "@liteeditor/contracts";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import LiteEditorApp from "../liteeditor/App";
 import "../liteeditor/app.css";
@@ -30,10 +30,10 @@ export default function LiteEditorThreadWorkspace(props: LiteEditorThreadWorkspa
     }
 
     return {
-      projectId: `t3-${project.id}`,
+      projectId: `liteeditor-${project.id}`,
       projectName: project.name,
       projectRoot: project.cwd,
-      workspaceId: `t3-${project.id}-default`,
+      workspaceId: `liteeditor-${project.id}-default`,
       workspaceName: "Thread Workspace",
       threadId: props.threadId,
     };

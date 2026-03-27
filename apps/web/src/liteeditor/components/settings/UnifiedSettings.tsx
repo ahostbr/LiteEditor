@@ -18,8 +18,8 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import { type ProviderKind } from "@t3tools/contracts";
-import { normalizeModelSlug } from "@t3tools/shared/model";
+import { type ProviderKind } from "@liteeditor/contracts";
+import { normalizeModelSlug } from "@liteeditor/shared/model";
 import {
   getCustomModelsForProvider,
   MAX_CUSTOM_MODEL_LENGTH,
@@ -29,8 +29,8 @@ import {
 } from "~/appSettings";
 import { serverConfigQueryOptions } from "~/lib/serverReactQuery";
 import { APP_VERSION } from "~/branding";
-import { DEFAULT_GIT_TEXT_GENERATION_MODEL } from "@t3tools/contracts";
-import { getModelOptions } from "@t3tools/shared/model";
+import { DEFAULT_GIT_TEXT_GENERATION_MODEL } from "@liteeditor/contracts";
+import { getModelOptions } from "@liteeditor/shared/model";
 import { getAppModelOptions } from "~/appSettings";
 import { ensureNativeApi } from "~/nativeApi";
 import { resolveAndPersistPreferredEditor } from "~/editorPreferences";

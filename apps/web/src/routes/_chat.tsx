@@ -1,4 +1,4 @@
-import { type ResolvedKeybindingsConfig } from "@t3tools/contracts";
+import { type ResolvedKeybindingsConfig } from "@liteeditor/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { useEffect } from "react";

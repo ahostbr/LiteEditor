@@ -5,12 +5,12 @@ import {
   ThreadId,
   type OrchestrationReadModel,
   type OrchestrationSessionStatus,
-} from "@t3tools/contracts";
+} from "@liteeditor/contracts";
 import {
   inferProviderForModel,
   resolveModelSlug,
   resolveModelSlugForProvider,
-} from "@t3tools/shared/model";
+} from "@liteeditor/shared/model";
 import { create } from "zustand";
 import { type ChatMessage, type Project, type Thread } from "./types";
 import { Debouncer } from "@tanstack/react-pacer";
@@ -23,8 +23,9 @@ export interface AppState {
   threadsHydrated: boolean;
 }
 
-const PERSISTED_STATE_KEY = "t3code:renderer-state:v8";
+const PERSISTED_STATE_KEY = "liteeditor:renderer-state:v8";
 const LEGACY_PERSISTED_STATE_KEYS = [
+  "t3code:renderer-state:v8",
   "t3code:renderer-state:v7",
   "t3code:renderer-state:v6",
   "t3code:renderer-state:v5",
