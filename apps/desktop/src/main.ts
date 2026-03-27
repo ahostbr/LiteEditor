@@ -174,6 +174,20 @@ function getSafeTheme(rawTheme: unknown): DesktopTheme | null {
   return null;
 }
 
+function extractFilePathFromArgv(argv: string[]): string | null {
+  // Skip electron binary and script args; look for a real file path
+  for (let i = 1; i < argv.length; i++) {
+    const arg = argv[i];
+    if (!arg || arg.startsWith("-") || arg.startsWith("--")) continue;
+    try {
+      if (Path.isAbsolute(arg) && FS.statSync(arg).isFile()) return arg;
+    } catch {
+      // not found or inaccessible
+    }
+  }
+  return null;
+}
+
 function writeDesktopStreamChunk(
   streamName: "stdout" | "stderr",
   chunk: unknown,
@@ -1352,6 +1366,21 @@ app.setPath("userData", resolveUserDataPath());
 
 configureAppIdentity();
 
+// --- File association: single-instance lock ---
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+}
+
+app.on("second-instance", (_event, argv) => {
+  const filePath = extractFilePathFromArgv(argv);
+  if (filePath && mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("file:open", filePath);
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+});
+
 async function bootstrap(): Promise<void> {
   writeDesktopLogHeader("bootstrap start");
   backendPort = await Effect.service(NetService).pipe(
@@ -1371,6 +1400,14 @@ async function bootstrap(): Promise<void> {
   writeDesktopLogHeader("bootstrap backend start requested");
   mainWindow = createWindow();
   writeDesktopLogHeader("bootstrap main window created");
+
+  // Handle file passed via command line (cold launch / file association)
+  const initialFile = extractFilePathFromArgv(process.argv);
+  if (initialFile) {
+    mainWindow.webContents.once("did-finish-load", () => {
+      mainWindow!.webContents.send("file:open", initialFile);
+    });
+  }
 }
 
 app.on("before-quit", () => {
@@ -1399,6 +1436,7 @@ app
         mainWindow = createWindow();
       }
     });
+
   })
   .catch((error) => {
     handleFatalStartupError("whenReady", error);

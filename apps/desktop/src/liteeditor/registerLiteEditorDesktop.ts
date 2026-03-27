@@ -4,8 +4,10 @@ import * as Path from "node:path";
 
 import { app, BrowserWindow, dialog, ipcMain, nativeImage, screen, shell } from "electron";
 import type { Rectangle } from "electron";
-import { registerBrowserHandlers, shutdownBrowserHandlers } from "./ipc/browser-handlers";
+import { registerBrowserHandlers, shutdownBrowserHandlers, browserManager } from "./ipc/browser-handlers";
 import { registerClaudeHandlers, shutdownClaudeHandlers } from "./ipc/claude-handlers";
+import { AgentBridge } from "./services/agent-bridge";
+import { ptyManager } from "./ipc/pty-handlers";
 import { registerCodexHandlers, shutdownCodexHandlers } from "./ipc/codex-handlers";
 import { registerFsHandlers, shutdownFsHandlers } from "./ipc/fs-handlers";
 import { registerGitHandlers } from "./ipc/git-handlers";
@@ -15,7 +17,7 @@ import {
   shutdownIntegrationsHandlers,
 } from "./ipc/integrations-handlers";
 import { registerProjectHandlers } from "./ipc/project-handlers";
-import { registerPtyHandlers, shutdownPtyHandlers } from "./ipc/pty-handlers";
+import { registerPtyHandlers, setBridgeToken, shutdownPtyHandlers } from "./ipc/pty-handlers";
 import { registerScriptHandlers, shutdownScriptHandlers } from "./ipc/script-handlers";
 import { registerSearchHandlers } from "./ipc/search-handlers";
 import { registerWorkspaceCrudHandlers } from "./ipc/workspace-crud-handlers";
@@ -55,6 +57,7 @@ const ABOUT_GET_ICON_CHANNEL = "about:get-icon";
 
 let globalHandlersRegistered = false;
 let bridgeHandlersRegistered = false;
+let agentBridge: AgentBridge | null = null;
 let activeMainWindow: BrowserWindow | null = null;
 const spanStateByWindow = new WeakMap<BrowserWindow, WindowSpanState>();
 const observedWindows = new WeakSet<BrowserWindow>();
@@ -382,12 +385,26 @@ export function registerLiteEditorDesktop(
   }
 
   registerBrowserHandlers(mainWindow);
+
+  if (!agentBridge) {
+    agentBridge = new AgentBridge(ptyManager, browserManager, getOwnerWindow);
+    setBridgeToken(agentBridge.token);
+    agentBridge.start().catch((err) => {
+      console.error("AgentBridge failed to start:", err);
+    });
+  }
+
   registerClaudeHandlers(mainWindow);
   registerCodexHandlers(mainWindow);
   registerIntegrationsHandlers(mainWindow);
 }
 
 export function shutdownLiteEditorDesktop(): void {
+  if (agentBridge) {
+    agentBridge.stop().catch(() => {});
+    agentBridge = null;
+  }
+
   shutdownIntegrationsHandlers();
   shutdownClaudeHandlers();
   shutdownCodexHandlers();

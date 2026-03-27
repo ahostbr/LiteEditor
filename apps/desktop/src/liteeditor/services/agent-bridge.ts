@@ -2,11 +2,14 @@
 import * as http from "http";
 import * as crypto from "crypto";
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
-import { app } from "electron";
-import type { BrowserWindow } from "electron";
+import { app, BrowserWindow } from "electron";
 import type { PtyManager } from "./pty-manager";
 import type { BrowserManager } from "./browser-manager";
+import { sessionRegistry } from "./session-registry";
+
+const VALID_CLI_TYPES = new Set(["claude", "codex", "shell", "unknown"]);
 import {
   DOM_INDEX_SCRIPT,
   getClickScript,
@@ -39,9 +42,8 @@ export class AgentBridge {
   private async focusTerminal(sessionId: string): Promise<void> {
     const win = this.getMainWindow();
     if (win) {
-      const safe = sessionId.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
       await win.webContents
-        .executeJavaScript(`window.__focusPtySession && window.__focusPtySession('${safe}')`)
+        .executeJavaScript(`window.__focusPtySession && window.__focusPtySession('${this.escapeForJs(sessionId)}')`)
         .catch(() => {});
     }
   }
@@ -115,20 +117,7 @@ export class AgentBridge {
     }
 
     if (method === "POST" && (url === "/pty/read" || url === "/pty/write" || url === "/pty/talk")) {
-      this.readBody(req, (err, body) => {
-        if (err) {
-          this.json(res, 400, { error: "Invalid request body" });
-          return;
-        }
-
-        let parsed: Record<string, unknown>;
-        try {
-          parsed = JSON.parse(body);
-        } catch {
-          this.json(res, 400, { error: "Invalid JSON" });
-          return;
-        }
-
+      this.readJsonBody(req, res, (parsed) => {
         if (url === "/pty/read") {
           this.handlePtyRead(res, parsed);
         } else if (url === "/pty/talk") {
@@ -148,23 +137,94 @@ export class AgentBridge {
       return;
     }
 
+    // --- Panel CRUD endpoints ---
+
+    if (method === "POST" && url === "/pty/create") {
+      this.readJsonBody(req, res, (parsed) => this.handlePtyCreate(res, parsed), true);
+      return;
+    }
+
+    if (method === "POST" && url === "/browser/create") {
+      this.readJsonBody(req, res, (parsed) => this.handleBrowserCreate(res, parsed), true);
+      return;
+    }
+
     if (method === "POST" && url.startsWith("/browser/")) {
-      this.readBody(req, (err, body) => {
-        if (err) {
-          this.json(res, 400, { error: "Invalid request body" });
-          return;
-        }
-
-        let parsed: Record<string, unknown>;
-        try {
-          parsed = JSON.parse(body);
-        } catch {
-          this.json(res, 400, { error: "Invalid JSON" });
-          return;
-        }
-
+      this.readJsonBody(req, res, (parsed) => {
         this.handleBrowserPost(url, res, parsed);
       });
+      return;
+    }
+
+    if (method === "POST" && url === "/editor/open") {
+      this.readJsonBody(req, res, (parsed) => this.handleEditorOpen(res, parsed));
+      return;
+    }
+
+    if (method === "DELETE" && url.startsWith("/pty/")) {
+      const sessionId = url.slice("/pty/".length);
+      if (!sessionId) {
+        this.json(res, 400, { error: "Missing session_id" });
+        return;
+      }
+      this.ptyManager.kill(sessionId);
+      this.json(res, 200, { success: true });
+      return;
+    }
+
+    if (method === "DELETE" && url.startsWith("/browser/")) {
+      const sessionId = url.slice("/browser/".length);
+      if (!sessionId) {
+        this.json(res, 400, { error: "Missing session_id" });
+        return;
+      }
+      this.browserManager.destroyView(sessionId);
+      this.json(res, 200, { success: true });
+      return;
+    }
+
+    // --- Session registry endpoints ---
+
+    if (method === "GET" && url === "/session/list") {
+      this.json(res, 200, { sessions: sessionRegistry.list() });
+      return;
+    }
+
+    if (method === "POST" && url === "/session/register") {
+      this.readJsonBody(req, res, (parsed) => {
+        const { session_id, cli_type, pid, cwd, shell, label, agent_id, claude_session_id } = parsed;
+        const rawCliType = String(cli_type || "unknown");
+        const session = sessionRegistry.register(String(session_id), {
+          cliType: VALID_CLI_TYPES.has(rawCliType) ? rawCliType as "claude" | "codex" | "shell" | "unknown" : "unknown",
+          pid: Number(pid) || 0,
+          cwd: String(cwd || ""),
+          shell: String(shell || ""),
+          label: label ? String(label) : undefined,
+          agentId: agent_id ? String(agent_id) : undefined,
+          claudeSessionId: claude_session_id ? String(claude_session_id) : undefined,
+        });
+        this.json(res, 200, { ok: true, session });
+      });
+      return;
+    }
+
+    if (method === "POST" && url === "/session/resolve") {
+      this.readJsonBody(req, res, (parsed) => {
+        const result = sessionRegistry.resolve({
+          agentId: parsed.agent_id ? String(parsed.agent_id) : undefined,
+          label: parsed.label ? String(parsed.label) : undefined,
+          claudeSessionId: parsed.claude_session_id ? String(parsed.claude_session_id) : undefined,
+          cliType: parsed.cli_type ? String(parsed.cli_type) : undefined,
+        });
+        this.json(res, 200, result);
+      });
+      return;
+    }
+
+    if (method === "DELETE" && url.startsWith("/session/")) {
+      const sessionId = url.slice("/session/".length);
+      const removed = sessionRegistry.unregister(sessionId);
+      this.json(res, 200, { ok: removed });
       return;
     }
 
@@ -407,6 +467,101 @@ export class AgentBridge {
     }
   }
 
+  // --- Panel CRUD handlers ---
+
+  private handlePtyCreate(res: http.ServerResponse, body: Record<string, unknown>): void {
+    const shell = body.shell as string | undefined;
+    const cwdRaw = body.cwd as string | undefined;
+
+    const defaultCwd = os.homedir();
+    let resolvedCwd: string;
+    if (!cwdRaw) {
+      resolvedCwd = defaultCwd;
+    } else if (path.isAbsolute(cwdRaw)) {
+      resolvedCwd = cwdRaw;
+    } else {
+      resolvedCwd = path.resolve(defaultCwd, cwdRaw);
+    }
+
+    const bridgeEnv: Record<string, string> = {
+      LITEEDITOR_BRIDGE_TOKEN: this.token,
+      LITEEDITOR_BRIDGE_URL: `http://${HOST}:${PORT}`,
+    };
+
+    const sessionId = this.ptyManager.create(
+      shell,
+      resolvedCwd,
+      (data: string) => {
+        for (const win of BrowserWindow.getAllWindows()) {
+          win.webContents.send(`pty:data:${sessionId}`, data);
+        }
+      },
+      (exitCode: number) => {
+        for (const win of BrowserWindow.getAllWindows()) {
+          win.webContents.send(`pty:exit:${sessionId}`, exitCode);
+        }
+      },
+      bridgeEnv,
+    );
+
+    const pid = this.ptyManager.getSessionInfo(sessionId)?.pid;
+
+    const win = this.getMainWindow();
+    if (win) {
+      const safe = this.escapeForJs(sessionId);
+      win.webContents
+        .executeJavaScript(`window.__createTerminalPane && window.__createTerminalPane('${safe}')`)
+        .catch(() => {});
+    }
+
+    this.json(res, 200, { session_id: sessionId, pid });
+  }
+
+  private async handleBrowserCreate(
+    res: http.ServerResponse,
+    body: Record<string, unknown>,
+  ): Promise<void> {
+    const url = (body.url as string | undefined) || "about:blank";
+
+    const win = this.getMainWindow();
+    if (!win) {
+      this.json(res, 500, { error: "No main window available" });
+      return;
+    }
+
+    try {
+      const sessionId = this.browserManager.createView(win, url);
+
+      win.webContents
+        .executeJavaScript(`window.__createBrowserPane && window.__createBrowserPane('${this.escapeForJs(sessionId)}')`)
+        .catch(() => {});
+
+      this.json(res, 200, { session_id: sessionId });
+    } catch (err) {
+      this.json(res, 500, { error: String(err) });
+    }
+  }
+
+  private async handleEditorOpen(
+    res: http.ServerResponse,
+    body: Record<string, unknown>,
+  ): Promise<void> {
+    const filePath = body.filePath as string | undefined;
+    if (!filePath) {
+      this.json(res, 400, { error: "Missing filePath" });
+      return;
+    }
+
+    const win = this.getMainWindow();
+    if (win) {
+      win.webContents
+        .executeJavaScript(`window.__openEditorFile && window.__openEditorFile('${this.escapeForJs(filePath)}')`)
+        .catch(() => {});
+    }
+
+    this.json(res, 200, { success: true });
+  }
+
   // --- Helpers ---
 
   private json(res: http.ServerResponse, status: number, data: unknown): void {
@@ -423,5 +578,31 @@ export class AgentBridge {
     req.on("data", (chunk: Buffer) => chunks.push(chunk));
     req.on("end", () => cb(null, Buffer.concat(chunks).toString("utf-8")));
     req.on("error", (err) => cb(err, ""));
+  }
+
+  private readJsonBody(
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    handler: (parsed: Record<string, unknown>) => void,
+    allowEmpty = false,
+  ): void {
+    this.readBody(req, (err, body) => {
+      if (err) {
+        this.json(res, 400, { error: "Invalid request body" });
+        return;
+      }
+      let parsed: Record<string, unknown>;
+      try {
+        parsed = allowEmpty && !body.trim() ? {} : JSON.parse(body);
+      } catch {
+        this.json(res, 400, { error: "Invalid JSON" });
+        return;
+      }
+      handler(parsed);
+    });
+  }
+
+  private escapeForJs(str: string): string {
+    return str.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
   }
 }

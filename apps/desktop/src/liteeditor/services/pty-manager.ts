@@ -26,6 +26,7 @@ export class PtyManager {
     cwd?: string,
     onData?: (data: string) => void,
     onExit?: (exitCode: number) => void,
+    env?: Record<string, string>,
   ): string {
     const id = `pty-${++counter}-${Date.now()}`;
     const defaultShell =
@@ -38,7 +39,7 @@ export class PtyManager {
       cols: 80,
       rows: 24,
       cwd: resolvedCwd,
-      env: process.env as Record<string, string>,
+      env: { ...process.env, ...(env ?? {}) } as Record<string, string>,
     });
 
     const session: PtySession = {

@@ -4,9 +4,12 @@ import { join } from "path";
 import { existsSync, readdirSync, readFileSync, statSync } from "fs";
 import { createReadStream } from "fs";
 import { createInterface } from "readline";
-import { WebContents, dialog, shell } from "electron";
+import { app, BrowserWindow, WebContents, dialog, shell } from "electron";
 import { ClaudeManager } from "./claude-manager";
+import { LiteEditorMcpServer } from "./mcp-server";
 import type { PtyManager } from "./pty-manager";
+import type { BrowserManager } from "./browser-manager";
+import type { SessionRegistry } from "./session-registry";
 
 interface ChannelProcess {
   proc: ChildProcess;
@@ -157,6 +160,9 @@ const KNOWN_HOST_REQUEST_TYPES: Set<HostRequestType> = new Set<HostRequestType>(
 
 interface ClaudeBridgeDeps {
   ptyManager?: PtyManager;
+  browserManager?: BrowserManager;
+  sessionRegistry?: SessionRegistry;
+  getMainWindow?: () => BrowserWindow | null;
   invokeRendererOp?: RendererHostOpInvoker;
 }
 
@@ -183,7 +189,11 @@ export class ClaudeBridge {
   private claudeExePath: string | null = null;
   private cachedCredentials: ClaudeCredentials | null = null;
   private ptyManager?: PtyManager;
+  private browserManager?: BrowserManager;
+  private sessionRegistry?: SessionRegistry;
+  private getMainWindow?: () => BrowserWindow | null;
   private invokeRendererOp?: RendererHostOpInvoker;
+  private mcpServer: LiteEditorMcpServer | null = null;
   private terminalAliases = new Map<string, string>();
   private defaultTerminalSessionId: string | null = null;
   private modelSetting = "default";
@@ -193,6 +203,9 @@ export class ClaudeBridge {
   constructor(claudeManager: ClaudeManager, deps: ClaudeBridgeDeps = {}) {
     this.claudeManager = claudeManager;
     this.ptyManager = deps.ptyManager;
+    this.browserManager = deps.browserManager;
+    this.sessionRegistry = deps.sessionRegistry;
+    this.getMainWindow = deps.getMainWindow;
     this.invokeRendererOp = deps.invokeRendererOp;
   }
 
@@ -739,8 +752,22 @@ export class ClaudeBridge {
         return this.createSafeStub(requestType, { installedPlugins: [], availablePlugins: [] });
       case "list_marketplaces":
         return this.createSafeStub(requestType, { marketplaces: [] });
-      case "get_mcp_servers":
-        return this.createSafeStub(requestType, { servers: [] });
+      case "get_mcp_servers": {
+        // Return LiteEditor's MCP server definition
+        const mcpServer = this.getMcpServer();
+        if (!mcpServer) {
+          return { servers: [] };
+        }
+        return {
+          servers: [
+            {
+              name: "liteeditor",
+              status: "connected",
+              tools: mcpServer.getTools(),
+            },
+          ],
+        };
+      }
       case "install_plugin":
       case "uninstall_plugin":
       case "set_plugin_enabled":
@@ -769,6 +796,21 @@ export class ClaudeBridge {
     }
   }
 
+  private getMcpServer(): LiteEditorMcpServer | null {
+    if (!this.mcpServer) {
+      if (!this.ptyManager || !this.browserManager || !this.sessionRegistry || !this.getMainWindow) {
+        return null;
+      }
+      this.mcpServer = new LiteEditorMcpServer({
+        ptyManager: this.ptyManager,
+        browserManager: this.browserManager,
+        sessionRegistry: this.sessionRegistry,
+        getMainWindow: this.getMainWindow,
+      });
+    }
+    return this.mcpServer;
+  }
+
   private buildInitState(): Record<string, unknown> {
     return {
       defaultCwd: process.cwd(),
@@ -779,7 +821,7 @@ export class ClaudeBridge {
       modelSetting: this.modelSetting,
       thinkingLevel: this.thinkingLevel,
       speechToTextEnabled: false,
-      browserIntegrationSupported: false,
+      browserIntegrationSupported: true,
       protocolVersion: "liteeditor-claude-bridge/1",
       chromeMcpState: { status: "disconnected" },
       debuggerMcpState: { status: "not_installed" },

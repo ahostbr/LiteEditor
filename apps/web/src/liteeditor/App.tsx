@@ -22,10 +22,11 @@ import { useWorkspaceStore } from "./stores/workspace-store";
 import { getLiteEditorHostConfig, isLiteEditorHostManaged } from "./hostMode";
 import { ConfirmDialog } from "./components/shared/ConfirmDialog";
 import { ToastViewport } from "./components/shared/ToastViewport";
+import { useToastStore } from "./stores/toast-store";
 import { ErrorBoundary } from "./components/shared/ErrorBoundary";
 import { openFileInCurrentMode, ensureEditorVisible } from "./lib/open-file";
 import { logWarn, logError } from "./stores/error-store";
-import { initPaneSync, syncOnModeSwitch } from "./lib/pane-sync";
+import { initPaneSync, syncOnModeSwitch, addPaneToCurrentMode } from "./lib/pane-sync";
 
 async function loadWorkspaceForProject(projectRoot: string, opts?: { skipCanvas?: boolean }): Promise<void> {
   try {
@@ -243,32 +244,53 @@ export default function App() {
         return;
       }
 
-      // Load project registry from disk
+      // Load project registry from disk (auto-selects last active project)
       await useProjectStore.getState().loadFromDisk();
 
       // Restore last workspace (global — projectRoot + zoomLevel)
       const data = (await window.api.workspace.load()) as Record<string, unknown> | null;
-      if (data) {
-        if (typeof data.zoomLevel === "number") {
-          window.api.window.setZoomLevel(data.zoomLevel);
-        }
-        if (data.projectRoot && typeof data.projectRoot === "string") {
-          // Register as project if not already known
-          const projects = useProjectStore.getState().projects;
-          const existing = projects.find((p) => p.rootPath === data.projectRoot);
-          if (!existing) {
-            await useProjectStore.getState().addProject(data.projectRoot as string);
-          } else {
-            useProjectStore.getState().setActiveProject(existing.id);
-          }
+      if (data && typeof data.zoomLevel === "number") {
+        window.api.window.setZoomLevel(data.zoomLevel);
+      }
 
-          useEditorStore.getState().setProjectRoot(data.projectRoot as string);
-          // Load per-project workspace state
-          await loadWorkspaceForProject(data.projectRoot as string);
-          // Load per-project settings overlay
-          await useSettingsStore.getState().loadWorkspaceSettings(data.projectRoot as string);
-          prevProjectRootRef.current = data.projectRoot as string;
+      // Determine project to restore: workspace.json projectRoot > project-store auto-selected
+      let restoreRoot: string | null = null;
+      if (data && data.projectRoot && typeof data.projectRoot === "string") {
+        restoreRoot = data.projectRoot as string;
+      }
+
+      // If workspace.json had a projectRoot, ensure the project is registered
+      if (restoreRoot) {
+        const projects = useProjectStore.getState().projects;
+        const existing = projects.find((p) => p.rootPath === restoreRoot);
+        if (!existing) {
+          await useProjectStore.getState().addProject(restoreRoot);
+        } else if (useProjectStore.getState().activeProjectId !== existing.id) {
+          await useProjectStore.getState().setActiveProject(existing.id);
         }
+      }
+
+      // Fall back to project-store's auto-selected project if no workspace root
+      if (!restoreRoot) {
+        const activeProject = useProjectStore.getState().getActiveProject();
+        if (activeProject) {
+          restoreRoot = activeProject.rootPath;
+        }
+      }
+
+      // Restore project workspace (pane layout, editor state, settings)
+      if (restoreRoot) {
+        useEditorStore.getState().setProjectRoot(restoreRoot);
+        await loadWorkspaceForProject(restoreRoot);
+        await useSettingsStore.getState().loadWorkspaceSettings(restoreRoot);
+        prevProjectRootRef.current = restoreRoot;
+      } else if (useProjectStore.getState().projects.length === 0) {
+        // First-ever launch — no projects exist
+        useToastStore.getState().pushToast(
+          "Open a folder to get started — or just add panes to the canvas",
+          "info",
+          5000,
+        );
       }
 
       // If launched with a file from Explorer, open it after workspace restore
@@ -277,11 +299,28 @@ export default function App() {
       const launchFile = params.get("openFile");
       if (launchFile) {
         try {
-          await openFileInCurrentMode(launchFile);
-          if (!useEditorStore.getState().projectRoot) {
-            const dir = launchFile.replace(/[\\/][^\\/]+$/, "");
-            useEditorStore.getState().setProjectRoot(dir);
+          // Check if launch file is inside a known project
+          const projects = useProjectStore.getState().projects;
+          const normalPath = launchFile.replace(/\\/g, "/").toLowerCase();
+          const matchingProject = projects.find((p) => {
+            const normRoot = p.rootPath.replace(/\\/g, "/").toLowerCase();
+            return normalPath.startsWith(normRoot + "/") || normalPath === normRoot;
+          });
+
+          if (matchingProject && useProjectStore.getState().activeProjectId !== matchingProject.id) {
+            await useProjectStore.getState().setActiveProject(matchingProject.id);
+            useEditorStore.getState().setProjectRoot(matchingProject.rootPath);
+            await loadWorkspaceForProject(matchingProject.rootPath);
+          } else if (!matchingProject) {
+            // Not in any known project — open in zen mode
+            useUiStore.getState().setAppMode("zen");
+            if (!useEditorStore.getState().projectRoot) {
+              const dir = launchFile.replace(/[\\/][^\\/]+$/, "");
+              useEditorStore.getState().setProjectRoot(dir);
+            }
           }
+
+          await openFileInCurrentMode(launchFile);
         } catch (err) {
           logWarn("App", "Failed to open launch file", err);
         }
@@ -294,10 +333,38 @@ export default function App() {
   useEffect(() => {
     const unsub = window.api.onOpenFile(async (filePath: string) => {
       try {
-        await openFileInCurrentMode(filePath);
-        if (!useEditorStore.getState().projectRoot) {
-          const dir = filePath.replace(/[\\/][^\\/]+$/, "");
-          useEditorStore.getState().setProjectRoot(dir);
+        // Check if this file belongs to a known project
+        const projects = useProjectStore.getState().projects;
+        const normalPath = filePath.replace(/\\/g, "/").toLowerCase();
+        const matchingProject = projects.find((p) => {
+          const normRoot = p.rootPath.replace(/\\/g, "/").toLowerCase();
+          return normalPath.startsWith(normRoot + "/") || normalPath === normRoot;
+        });
+
+        if (matchingProject) {
+          // File is inside a known project — switch to it and open
+          if (useProjectStore.getState().activeProjectId !== matchingProject.id) {
+            await useProjectStore.getState().setActiveProject(matchingProject.id);
+            useEditorStore.getState().setProjectRoot(matchingProject.rootPath);
+            await loadWorkspaceForProject(matchingProject.rootPath);
+          }
+          await openFileInCurrentMode(filePath);
+        } else {
+          // File is NOT in any known project — open in zen mode
+          useUiStore.getState().setAppMode("zen");
+          await openFileInCurrentMode(filePath);
+
+          // Offer to register parent folder as a project
+          const parentDir = filePath.replace(/[\\/][^\\/]+$/, "");
+          useToastStore.getState().pushToast(
+            `Opened in zen mode — open "${parentDir.replace(/^.*[\\/]/, "")}" as a project from the sidebar`,
+            "info",
+            5000,
+          );
+
+          if (!useEditorStore.getState().projectRoot) {
+            useEditorStore.getState().setProjectRoot(parentDir);
+          }
         }
       } catch (err) {
         logWarn("App", "Failed to open file from OS", err);
@@ -321,6 +388,25 @@ export default function App() {
   useEffect(() => {
     const cleanup = initPaneSync();
     return cleanup;
+  }, []);
+
+  // Register window globals for main-process executeJavaScript calls
+  // (AgentBridge + MCP server use these to create panes from the main process)
+  useEffect(() => {
+    (window as any).__createTerminalPane = (sessionId: string) => {
+      addPaneToCurrentMode("terminal", { terminalSessionId: sessionId });
+    };
+    (window as any).__createBrowserPane = (sessionId: string) => {
+      addPaneToCurrentMode("browser", { browserSessionId: sessionId });
+    };
+    (window as any).__openEditorFile = (filePath: string) => {
+      openFileInCurrentMode(filePath).catch(() => {});
+    };
+    return () => {
+      delete (window as any).__createTerminalPane;
+      delete (window as any).__createBrowserPane;
+      delete (window as any).__openEditorFile;
+    };
   }, []);
 
   // Sync panes when switching between canvas and zen modes
