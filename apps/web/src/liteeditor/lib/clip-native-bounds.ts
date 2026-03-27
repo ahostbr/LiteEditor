@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Clips native view bounds to the canvas container's visible area.
  * Native WebContentsViews don't respect CSS overflow:hidden or transforms,

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useRef, type KeyboardEvent } from "react";
 import {
   ArrowLeft,

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useEffect, useCallback } from "react";
 import { GitPullRequest, RefreshCw, Plus, Check, X, MessageSquare, Clock } from "lucide-react";
 import { useGitHubStore } from "../../stores/github-store";

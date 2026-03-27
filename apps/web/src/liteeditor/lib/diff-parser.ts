@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { DiffHunk, DiffLine, FileDiff } from "../types/repository";
 
 const HUNK_HEADER_RE = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(.*)$/;

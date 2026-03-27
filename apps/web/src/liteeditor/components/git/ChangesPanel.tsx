@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useCallback } from "react";
 import { Plus, Minus, RotateCcw, Check } from "lucide-react";
 import { useRepositoryStore } from "../../stores/repository-store";

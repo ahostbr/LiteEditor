@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useRef } from "react";
 import { GripHorizontal, X } from "lucide-react";
 import { TerminalInstance } from "./TerminalInstance";

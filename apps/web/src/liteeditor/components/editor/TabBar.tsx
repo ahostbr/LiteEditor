@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useRef, useCallback } from "react";
 import { Tab } from "./Tab";
 import { ContextMenu, type ContextMenuItem } from "../shared/ContextMenu";

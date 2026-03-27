@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useTerminalStore } from "../stores/terminal-store";
 import { useBrowserShellStore } from "../stores/browser-shell-store";
 import { logWarn } from "../stores/error-store";

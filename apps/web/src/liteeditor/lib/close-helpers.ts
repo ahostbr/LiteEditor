@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { getMonacoContent, type Tab } from "../stores/editor-store";
 import { useDialogStore } from "../stores/dialog-store";
 

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { FileExplorer } from "../sidebar/FileExplorer";
 
 export function FileExplorerPane() {

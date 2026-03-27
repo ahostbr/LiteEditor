@@ -1,6 +1,5 @@
-// @ts-nocheck
 import React, { useEffect } from "react";
-import { useGitStore } from "../../stores/git-store";
+import { useRepositoryStore } from "../../stores/repository-store";
 import { useEditorStore } from "../../stores/editor-store";
 import { GitChanges } from "./GitChanges";
 import { GitCommitForm } from "./GitCommitForm";
@@ -10,13 +9,13 @@ import { GitHistory } from "./GitHistory";
 
 export function GitPanel() {
   const projectRoot = useEditorStore((s) => s.projectRoot);
-  const { refreshStatus, loadBranches, loadHistory, isLoading } = useGitStore();
+  const initialize = useRepositoryStore((s) => s.initialize);
+  const shutdown = useRepositoryStore((s) => s.shutdown);
 
   useEffect(() => {
     if (projectRoot) {
-      refreshStatus();
-      loadBranches();
-      loadHistory();
+      initialize(projectRoot);
+      return () => shutdown();
     }
   }, [projectRoot]);
 

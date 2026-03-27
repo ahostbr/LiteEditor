@@ -1,11 +1,10 @@
-// @ts-nocheck
 import React from "react";
-import { CheckSquare, Square, Plus, Minus } from "lucide-react";
-import { useGitStore } from "../../stores/git-store";
+import { Plus, Minus } from "lucide-react";
+import { useRepositoryStore } from "../../stores/repository-store";
 import { GitFileItem } from "./GitFileItem";
 
 export function GitChanges() {
-  const { changedFiles, stageAll, unstageAll } = useGitStore();
+  const { changedFiles, stageAll, unstageAll } = useRepositoryStore();
 
   const stagedFiles = changedFiles.filter((f) => f.staged);
   const unstagedFiles = changedFiles.filter((f) => !f.staged);

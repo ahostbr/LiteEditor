@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useBrowserShellStore, initBrowserShellStoreListener } from "../../stores/browser-shell-store";
 import { useUiStore } from "../../stores/ui-store";

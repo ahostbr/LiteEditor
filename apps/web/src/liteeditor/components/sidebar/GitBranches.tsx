@@ -1,14 +1,58 @@
-// @ts-nocheck
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { GitBranch, Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
-import { useGitStore } from "../../stores/git-store";
+import { useRepositoryStore } from "../../stores/repository-store";
+import { logError } from "../../stores/error-store";
+
+interface Branch {
+  name: string;
+  current: boolean;
+}
 
 export function GitBranches() {
-  const { branches, currentBranch, switchBranch, createBranch, deleteBranch, loadBranches } =
-    useGitStore();
+  const currentBranch = useRepositoryStore((s) => s.currentBranch);
+  const refreshStatus = useRepositoryStore((s) => s.refreshStatus);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [newBranchName, setNewBranchName] = useState("");
   const [showCreate, setShowCreate] = useState(false);
+
+  const loadBranches = async () => {
+    try {
+      const result = await window.api.git.branches() as { current: string; branches: Branch[] };
+      setBranches(result.branches);
+    } catch (err) {
+      logError("GitBranches", "Failed to load branches", err);
+    }
+  };
+
+  const switchBranch = async (name: string) => {
+    try {
+      await window.api.git.checkout(name);
+      await refreshStatus();
+      await loadBranches();
+    } catch (err) {
+      logError("GitBranches", "Failed to switch branch", err);
+    }
+  };
+
+  const createBranch = async (name: string) => {
+    try {
+      await window.api.git.createBranch(name);
+      await refreshStatus();
+      await loadBranches();
+    } catch (err) {
+      logError("GitBranches", "Failed to create branch", err);
+    }
+  };
+
+  const deleteBranch = async (name: string) => {
+    try {
+      await window.api.git.deleteBranch(name);
+      await loadBranches();
+    } catch (err) {
+      logError("GitBranches", "Failed to delete branch", err);
+    }
+  };
 
   const handleCreate = () => {
     if (newBranchName.trim()) {

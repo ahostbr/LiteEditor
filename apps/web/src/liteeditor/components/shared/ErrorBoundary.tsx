@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React from "react";
 import { useErrorStore } from "../../stores/error-store";
 

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useCallback, useEffect, useRef, useState } from "react";
 import { X, Plus, Terminal, FileCode } from "lucide-react";
 import { PanelRenderer } from "./PanelRenderer";
@@ -176,14 +175,8 @@ export function TabLayout({ panels }: TabLayoutProps) {
             ref={addBtnRef}
             onClick={() => setShowAddMenu((v) => !v)}
             onMouseDown={(e) => e.preventDefault()}
-            className="flex items-center justify-center w-[28px] h-[28px] shrink-0 mx-0.5 rounded transition-colors"
+            className="flex items-center justify-center w-[28px] h-[28px] shrink-0 mx-0.5 rounded transition-colors hover:bg-[var(--bg-overlay)]"
             style={{ color: "var(--text-muted)" }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--bg-overlay)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-            }}
             title="Add Panel"
           >
             <Plus size={14} />

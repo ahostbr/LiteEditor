@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useEffect } from "react";
 import {
   Minus,
@@ -33,10 +32,8 @@ function SidebarToggleButton() {
     return (
       <button
         onClick={toggleSidebar}
-        className="ml-1 inline-flex size-5 items-center justify-center rounded transition-colors"
+        className="ml-1 inline-flex size-5 items-center justify-center rounded transition-colors hover:text-[var(--text-primary)] hover:bg-[var(--bg-overlay)]"
         style={{ color: "var(--text-muted)" }}
-        onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-primary)"; e.currentTarget.style.background = "var(--bg-overlay)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "transparent"; }}
         title="Show sidebar"
       >
         <PanelLeftOpen size={13} />
@@ -186,19 +183,8 @@ export function UnifiedTitlebar() {
         {/* Add Pane button */}
         {(appMode === "canvas" || appMode === "zen") && (
           <button
-            className="flex h-[22px] w-[26px] items-center justify-center rounded-sm transition-colors"
-            style={{
-              color: "var(--text-muted)",
-              background: "transparent",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--text-primary)";
-              e.currentTarget.style.background = "var(--bg-overlay)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--text-muted)";
-              e.currentTarget.style.background = "transparent";
-            }}
+            className="flex h-[22px] w-[26px] items-center justify-center rounded-sm transition-colors hover:text-[var(--text-primary)] hover:bg-[var(--bg-overlay)]"
+            style={{ color: "var(--text-muted)" }}
             onClick={() =>
               window.dispatchEvent(new Event("canvas:add-pane-menu"))
             }
@@ -244,32 +230,16 @@ export function UnifiedTitlebar() {
         {hasWindowApi && (
           <>
             <button
-              className="flex h-8 w-12 items-center justify-center transition-colors"
+              className="flex h-8 w-12 items-center justify-center transition-colors hover:text-[var(--text-primary)] hover:bg-[var(--bg-overlay)]"
               style={{ color: "var(--text-muted)" }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = "var(--text-primary)";
-                e.currentTarget.style.background = "var(--bg-overlay)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = "var(--text-muted)";
-                e.currentTarget.style.background = "transparent";
-              }}
               onClick={() => window.api.window.minimize()}
               title="Minimize"
             >
               <Minus size={16} />
             </button>
             <button
-              className="flex h-8 w-12 items-center justify-center transition-colors"
+              className="flex h-8 w-12 items-center justify-center transition-colors hover:text-[var(--text-primary)] hover:bg-[var(--bg-overlay)]"
               style={{ color: "var(--text-muted)" }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = "var(--text-primary)";
-                e.currentTarget.style.background = "var(--bg-overlay)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = "var(--text-muted)";
-                e.currentTarget.style.background = "transparent";
-              }}
               onClick={() => window.api.window.maximize()}
               title={isMaximized ? "Restore" : "Maximize"}
             >

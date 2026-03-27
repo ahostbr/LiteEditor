@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useRef, useEffect, type KeyboardEvent } from "react";
 import { ArrowLeft, ArrowRight, RotateCw, Loader2, X } from "lucide-react";
 import { useBrowserShellStore } from "../../stores/browser-shell-store";

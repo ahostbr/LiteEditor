@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useEffect } from "react";
 import { X } from "lucide-react";
 import { useSettingsStore } from "../../stores/settings-store";

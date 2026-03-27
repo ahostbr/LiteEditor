@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useEffect, useRef } from "react";
 import { useTerminalStore } from "../../stores/terminal-store";
 import { useCanvasStore, type CanvasPaneState } from "../../stores/canvas-store";

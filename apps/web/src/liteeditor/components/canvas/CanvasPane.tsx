@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useRef, useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import { useCanvasStore, type CanvasPaneState } from "../../stores/canvas-store";

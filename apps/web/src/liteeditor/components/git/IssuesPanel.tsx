@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useEffect, useCallback } from "react";
 import { CircleDot, RefreshCw, Plus } from "lucide-react";
 import { useGitHubStore } from "../../stores/github-store";

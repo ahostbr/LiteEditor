@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useEffect, useRef } from "react";
 import { AlertTriangle, AlertCircle, Info } from "lucide-react";
 import { useDialogStore, type DialogButton } from "../../stores/dialog-store";
@@ -164,14 +163,8 @@ export function ConfirmDialog() {
                 key={i}
                 onClick={() => dismiss(i)}
                 autoFocus={i === 0}
-                className="px-4 py-1.5 rounded text-[12px] font-medium transition-all duration-100 cursor-default"
+                className={"px-4 py-1.5 rounded text-[12px] font-medium transition-all duration-100 cursor-default dialog-btn-" + (btn.variant || "muted")}
                 style={getButtonStyle(btn.variant)}
-                onMouseEnter={(e) => {
-                  Object.assign(e.currentTarget.style, getButtonHoverStyle(btn.variant));
-                }}
-                onMouseLeave={(e) => {
-                  Object.assign(e.currentTarget.style, getButtonStyle(btn.variant));
-                }}
               >
                 {btn.label}
               </button>

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useEffect, useRef, type RefObject } from "react";
 import { useZenStore, type ZenPanel } from "../../stores/zen-store";
 

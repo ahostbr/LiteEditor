@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useEffect, useState } from "react";
 import { GitBranch, ArrowUp, ArrowDown, RefreshCw } from "lucide-react";
 import { useRepositoryStore } from "../../stores/repository-store";

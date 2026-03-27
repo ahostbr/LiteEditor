@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useCallback, useEffect, useRef } from "react";
 import { Search, CaseSensitive, WholeWord, Regex, X } from "lucide-react";
 import { cn } from "../../lib/cn";

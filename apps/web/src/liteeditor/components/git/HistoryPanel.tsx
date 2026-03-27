@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useEffect } from "react";
 import { useRepositoryStore } from "../../stores/repository-store";
 import { logWarn } from "../../stores/error-store";

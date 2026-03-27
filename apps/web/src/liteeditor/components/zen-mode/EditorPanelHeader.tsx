@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Save, X } from "lucide-react";
 import { FileIcon } from "../shared/FileIcon";
 import { useZenStore } from "../../stores/zen-store";

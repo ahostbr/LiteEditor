@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useEffect, useRef, Suspense } from "react";
 import { useUiStore } from "./stores/ui-store";
 

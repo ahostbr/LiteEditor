@@ -1,18 +1,21 @@
-// @ts-nocheck
 import React, { useState } from "react";
-import { useGitStore, type ChangedFile } from "../../stores/git-store";
+import { useRepositoryStore } from "../../stores/repository-store";
+import type { ChangedFile } from "../../types/repository";
 import { useEditorStore } from "../../stores/editor-store";
 import { logWarn, logError } from "../../stores/error-store";
 import { StatusBadge } from "../shared/StatusBadge";
 import { ContextMenu, type ContextMenuItem } from "../shared/ContextMenu";
 
 export function GitFileItem({ file }: { file: ChangedFile }) {
-  const { toggleStaged, discardChanges } = useGitStore();
+  const stageFile = useRepositoryStore((s) => s.stageFile);
+  const unstageFile = useRepositoryStore((s) => s.unstageFile);
+  const discardFileChanges = useRepositoryStore((s) => s.discardFileChanges);
   const openDiff = useEditorStore((s) => s.openDiff);
   const projectRoot = useEditorStore((s) => s.projectRoot);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
-  const fileName = file.path.split(/[\\/]/).pop() || file.path;
+  const fileName = file.path.split(/[\/]/).pop() || file.path;
+  const toggleStaged = () => (file.staged ? unstageFile(file.path) : stageFile(file.path));
 
   const handleClick = async () => {
     if (!projectRoot) return;
@@ -37,8 +40,8 @@ export function GitFileItem({ file }: { file: ChangedFile }) {
   };
 
   const contextItems: ContextMenuItem[] = [
-    { label: file.staged ? "Unstage" : "Stage", onClick: () => toggleStaged(file.path) },
-    { label: "Discard Changes", onClick: () => discardChanges(file.path) },
+    { label: file.staged ? "Unstage" : "Stage", onClick: toggleStaged },
+    { label: "Discard Changes", onClick: () => discardFileChanges(file.path) },
     { separator: true, label: "", onClick: () => {} },
     { label: "Open File", onClick: handleClick },
   ];
@@ -53,7 +56,7 @@ export function GitFileItem({ file }: { file: ChangedFile }) {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            toggleStaged(file.path);
+            toggleStaged();
           }}
           className="shrink-0"
           title={file.staged ? "Unstage File" : "Stage File"}

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { Suspense, useEffect } from "react";
 import { TabBar } from "./TabBar";
 import { EmptyState } from "./EmptyState";

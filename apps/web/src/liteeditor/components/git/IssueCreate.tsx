@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { useGitHubStore } from "../../stores/github-store";

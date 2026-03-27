@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useCallback } from "react";
 import { Play, Square, Globe } from "lucide-react";
 import { useScriptStore, type DetectedScript } from "../../stores/script-store";

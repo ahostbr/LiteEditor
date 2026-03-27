@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { create } from "zustand";
 import { useTerminalStore } from "./terminal-store";
 import { useEditorStore } from "./editor-store";

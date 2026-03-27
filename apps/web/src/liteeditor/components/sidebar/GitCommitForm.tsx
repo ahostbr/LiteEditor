@@ -1,6 +1,5 @@
-// @ts-nocheck
 import React from "react";
-import { useGitStore } from "../../stores/git-store";
+import { useRepositoryStore } from "../../stores/repository-store";
 
 export function GitCommitForm() {
   const {
@@ -10,7 +9,7 @@ export function GitCommitForm() {
     setCommitDescription,
     createCommit,
     changedFiles,
-  } = useGitStore();
+  } = useRepositoryStore();
 
   const stagedCount = changedFiles.filter((f) => f.staged).length;
 

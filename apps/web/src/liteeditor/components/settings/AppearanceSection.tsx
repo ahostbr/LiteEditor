@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React from "react";
 import { ACCENT_PRESETS, applyThemeToDOM } from "../../lib/accent";
 import { THEMES, type ThemePreset } from "../../lib/themes";

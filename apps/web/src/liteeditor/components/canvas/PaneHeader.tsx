@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useRef, useEffect } from "react";
 import {
   GripHorizontal,
@@ -323,14 +322,8 @@ export function PaneHeader({ pane, isFocused, onDragStart, maximized }: PaneHead
               <button
                 onClick={handleAddTerminalTab}
                 onPointerDown={(e) => e.stopPropagation()}
-                className="flex items-center justify-center w-[20px] h-[20px] rounded transition-colors shrink-0"
+                className="flex items-center justify-center w-[20px] h-[20px] rounded transition-colors shrink-0 hover:bg-[var(--bg-overlay)]"
                 style={{ color: "var(--text-muted)" }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "var(--bg-overlay)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "transparent";
-                }}
                 title="New Terminal Tab"
               >
                 <Plus size={11} />
@@ -414,14 +407,8 @@ export function PaneHeader({ pane, isFocused, onDragStart, maximized }: PaneHead
         {/* Settings */}
         <button
           onClick={handleOpenSettings}
-          className={cn("flex items-center justify-center rounded transition-colors", btnSize)}
+          className={cn("flex items-center justify-center rounded transition-colors hover:bg-[var(--bg-overlay)]", btnSize)}
           style={{ color: "var(--text-muted)" }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "var(--bg-overlay)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "transparent";
-          }}
           title="Settings"
         >
           <Settings size={iconSize} />
@@ -433,14 +420,8 @@ export function PaneHeader({ pane, isFocused, onDragStart, maximized }: PaneHead
             e.stopPropagation();
             toggleMaximizePane(pane.id);
           }}
-          className={cn("flex items-center justify-center rounded transition-colors", btnSize)}
+          className={cn("flex items-center justify-center rounded transition-colors hover:bg-[var(--bg-overlay)]", btnSize)}
           style={{ color: "var(--text-muted)" }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "var(--bg-overlay)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "transparent";
-          }}
           onPointerDown={(e) => e.stopPropagation()}
           title={isMaximized ? "Restore" : "Fullscreen"}
         >
@@ -450,14 +431,8 @@ export function PaneHeader({ pane, isFocused, onDragStart, maximized }: PaneHead
         {/* Minimize */}
         <button
           onClick={() => updatePane(pane.id, { minimized: !pane.minimized })}
-          className={cn("flex items-center justify-center rounded transition-colors", btnSize)}
+          className={cn("flex items-center justify-center rounded transition-colors hover:bg-[var(--bg-overlay)]", btnSize)}
           style={{ color: "var(--text-muted)" }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "var(--bg-overlay)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "transparent";
-          }}
           title={pane.minimized ? "Restore" : "Minimize"}
         >
           <Minus size={iconSize + 1} />
@@ -466,16 +441,8 @@ export function PaneHeader({ pane, isFocused, onDragStart, maximized }: PaneHead
         {/* Close */}
         <button
           onClick={() => removePane(pane.id)}
-          className={cn("flex items-center justify-center rounded transition-colors", btnSize)}
+          className={cn("flex items-center justify-center rounded transition-colors hover:bg-red-600/30 hover:text-red-500", btnSize)}
           style={{ color: "var(--text-muted)" }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "rgba(220, 38, 38, 0.3)";
-            e.currentTarget.style.color = "#ef4444";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "transparent";
-            e.currentTarget.style.color = "var(--text-muted)";
-          }}
           title="Close Pane"
         >
           <X size={iconSize + 1} />

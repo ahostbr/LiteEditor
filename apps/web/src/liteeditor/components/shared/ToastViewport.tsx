@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { AlertCircle, CheckCircle2, Info, TriangleAlert, X } from "lucide-react";
 import { useToastStore, type ToastVariant } from "../../stores/toast-store";
 

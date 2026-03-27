@@ -245,3 +245,22 @@ body,
   --sidebar-primary-foreground: var(--color-bone);
   --sidebar-ring: var(--color-ember);
 }
+
+/* Template card hover — accent border + glow */
+.template-card:hover {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 16px var(--accent-dim, rgba(201, 162, 77, 0.2));
+}
+
+/* Dialog button hover states */
+.dialog-btn-primary:hover {
+  background-color: var(--accent-hover);
+}
+.dialog-btn-destructive:hover {
+  background-color: color-mix(in srgb, var(--error) 12%, transparent);
+  border-color: var(--error);
+}
+.dialog-btn-muted:hover {
+  background-color: var(--bg-subtle);
+  color: var(--text-primary);
+}

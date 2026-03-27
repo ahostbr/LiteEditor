@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { GripHorizontal, X } from "lucide-react";
 import { useZenStore } from "../../stores/zen-store";
 import { cn } from "../../lib/cn";

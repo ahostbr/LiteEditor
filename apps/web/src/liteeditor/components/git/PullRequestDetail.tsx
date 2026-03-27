@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState } from "react";
 import { GitMerge, X, Check, MessageSquare, ArrowRight } from "lucide-react";
 import { useGitHubStore } from "../../stores/github-store";

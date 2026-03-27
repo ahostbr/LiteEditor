@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React from "react";
 
 const STATUS_COLORS: Record<string, string> = {

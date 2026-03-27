@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { FileDiff, DiffLine } from "../../types/repository";
 
 interface DiffViewerProps {

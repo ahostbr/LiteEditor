@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { create } from "zustand";
 import { useCanvasStore, setWorkspaceIdProvider, type CanvasPaneState } from "./canvas-store";
 import { useEditorStore } from "./editor-store";

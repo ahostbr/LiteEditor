@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { X } from "lucide-react";
 import { useCanvasStore } from "../../stores/canvas-store";
@@ -139,17 +138,11 @@ export function Minimap({ containerRef }: MinimapProps) {
     >
       {/* Close button */}
       <button
-        className="absolute top-1 right-1 z-10 p-0.5 rounded transition-colors"
+        className="absolute top-1 right-1 z-10 p-0.5 rounded transition-colors hover:bg-[var(--bg-overlay)]"
         style={{ color: "var(--text-muted)" }}
         onClick={(e) => {
           e.stopPropagation();
           setVisible(false);
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = "var(--bg-overlay)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = "transparent";
         }}
       >
         <X size={10} />

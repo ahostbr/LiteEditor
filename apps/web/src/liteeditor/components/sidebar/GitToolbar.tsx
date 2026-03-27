@@ -1,19 +1,15 @@
-// @ts-nocheck
 import React from "react";
 import { ArrowUp, ArrowDown, RefreshCw } from "lucide-react";
-import { useGitStore } from "../../stores/git-store";
+import { useRepositoryStore } from "../../stores/repository-store";
 
 export function GitToolbar() {
-  const {
-    currentBranch,
-    isPushing,
-    isPulling,
-    isFetching,
-    pushOrigin,
-    pullOrigin,
-    fetchOrigin,
-    refreshStatus,
-  } = useGitStore();
+  const currentBranch = useRepositoryStore((s) => s.currentBranch);
+  const ahead = useRepositoryStore((s) => s.ahead);
+  const behind = useRepositoryStore((s) => s.behind);
+  const pushOrigin = useRepositoryStore((s) => s.pushOrigin);
+  const pullOrigin = useRepositoryStore((s) => s.pullOrigin);
+  const fetchOrigin = useRepositoryStore((s) => s.fetchOrigin);
+  const refreshStatus = useRepositoryStore((s) => s.refreshStatus);
 
   return (
     <div
@@ -22,24 +18,24 @@ export function GitToolbar() {
     >
       {currentBranch && (
         <span className="text-xs mr-2" style={{ color: "var(--text-secondary)" }}>
-          {currentBranch.name}
-          {(currentBranch.ahead > 0 || currentBranch.behind > 0) && (
+          {currentBranch}
+          {(ahead > 0 || behind > 0) && (
             <span style={{ color: "var(--text-muted)" }}>
               {" "}
-              ({currentBranch.ahead > 0 && `↑${currentBranch.ahead}`}
-              {currentBranch.behind > 0 && `↓${currentBranch.behind}`})
+              ({ahead > 0 && `↑${ahead}`}
+              {behind > 0 && `↓${behind}`})
             </span>
           )}
         </span>
       )}
       <div className="flex-1" />
-      <ToolbarBtn onClick={fetchOrigin} loading={isFetching} title="Fetch">
+      <ToolbarBtn onClick={fetchOrigin} title="Fetch">
         <RefreshCw size={14} />
       </ToolbarBtn>
-      <ToolbarBtn onClick={pullOrigin} loading={isPulling} title="Pull">
+      <ToolbarBtn onClick={pullOrigin} title="Pull">
         <ArrowDown size={14} />
       </ToolbarBtn>
-      <ToolbarBtn onClick={pushOrigin} loading={isPushing} title="Push">
+      <ToolbarBtn onClick={pushOrigin} title="Push">
         <ArrowUp size={14} />
       </ToolbarBtn>
       <ToolbarBtn onClick={refreshStatus} title="Refresh">
@@ -51,24 +47,21 @@ export function GitToolbar() {
 
 function ToolbarBtn({
   onClick,
-  loading,
   title,
   children,
 }: {
   onClick: () => void;
-  loading?: boolean;
   title: string;
   children: React.ReactNode;
 }) {
   return (
     <button
       onClick={onClick}
-      disabled={loading}
       title={title}
-      className="p-1 rounded hover:bg-[var(--bg-overlay)] transition-colors disabled:opacity-40"
+      className="p-1 rounded hover:bg-[var(--bg-overlay)] transition-colors"
       style={{ color: "var(--text-muted)" }}
     >
-      <span className={loading ? "animate-spin inline-block" : ""}>{children}</span>
+      {children}
     </button>
   );
 }

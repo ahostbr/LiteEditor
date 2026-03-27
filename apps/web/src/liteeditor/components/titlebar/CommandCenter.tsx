@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Search, X } from "lucide-react";
 import { useEditorStore } from "../../stores/editor-store";
@@ -180,7 +179,7 @@ export function CommandCenter() {
 
   return (
     <button
-      className="flex items-center gap-2 px-3 transition-colors cursor-default"
+      className="flex items-center gap-2 px-3 transition-colors cursor-default hover:bg-[var(--bg-overlay)]"
       style={
         {
           border: "1px solid var(--border)",
@@ -189,16 +188,9 @@ export function CommandCenter() {
           width: "38vw",
           maxWidth: "600px",
           color: "var(--text-secondary)",
-          background: "transparent",
           WebkitAppRegion: "no-drag",
         } as React.CSSProperties
       }
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = "var(--bg-overlay)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = "transparent";
-      }}
       onClick={openSearch}
     >
       <Search size={13} style={{ color: "var(--text-muted)", flexShrink: 0 }} />

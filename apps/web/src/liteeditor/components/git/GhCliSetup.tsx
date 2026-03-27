@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState } from "react";
 import { Download, ExternalLink, RefreshCw } from "lucide-react";
 import { useGitHubStore } from "../../stores/github-store";

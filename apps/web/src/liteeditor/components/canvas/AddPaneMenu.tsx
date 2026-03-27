@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useEffect, useRef } from "react";
 import { logWarn } from "../../stores/error-store";
 import { Terminal, FileCode, Globe, X, GitBranch, MessageSquare, FolderOpen, Search, Settings } from "lucide-react";

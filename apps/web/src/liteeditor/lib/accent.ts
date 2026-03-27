@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { ThemePreset } from "./themes";
 
 export interface AccentColors {

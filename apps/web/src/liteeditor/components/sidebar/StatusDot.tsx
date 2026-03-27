@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { cn } from "../../lib/cn";
 
 export type StatusDotState = "idle" | "running" | "success" | "warning" | "error";

@@ -1,4 +1,3 @@
-// @ts-nocheck
 const EXTENSION_TO_LANGUAGE: Record<string, string> = {
   ".js": "javascript",
   ".jsx": "javascript",

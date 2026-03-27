@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { create } from "zustand";
 import { logWarn } from "./error-store";
 

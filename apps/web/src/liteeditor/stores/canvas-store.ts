@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { create } from "zustand";
 import { cleanupPaneSession } from "../lib/session-cleanup";
 
@@ -215,6 +214,11 @@ const COLUMN_GAP = 24;
 const COLUMN_MARGIN = 40;
 const COLUMN_PANE_GAP = 16;
 
+// Module-level derived-state cache — invalidated by Map reference change (every mutation creates new Map)
+type CanvasBounds = { minX: number; minY: number; maxX: number; maxY: number; width: number; height: number };
+let _orderedPanesCache: { map: Map<string, CanvasPaneState>; result: CanvasPaneState[] } | null = null;
+let _canvasBoundsCache: { map: Map<string, CanvasPaneState>; result: CanvasBounds } | null = null;
+
 export const useCanvasStore = create<CanvasState>((set, get) => ({
   panes: new Map(),
   viewportX: 0,
@@ -419,7 +423,12 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   getCanvasBounds: () => {
     const panes = get().panes;
-    if (panes.size === 0) return { minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0 };
+    if (_canvasBoundsCache && _canvasBoundsCache.map === panes) return _canvasBoundsCache.result;
+    if (panes.size === 0) {
+      const result = { minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0 };
+      _canvasBoundsCache = { map: panes, result };
+      return result;
+    }
     let minX = Infinity,
       minY = Infinity,
       maxX = -Infinity,
@@ -430,17 +439,22 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       maxX = Math.max(maxX, pane.x + pane.width);
       maxY = Math.max(maxY, pane.y + pane.height);
     }
-    return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
+    const result = { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
+    _canvasBoundsCache = { map: panes, result };
+    return result;
   },
 
   getOrderedPanes: () => {
-    const panes = Array.from(get().panes.values());
+    const panes = get().panes;
+    if (_orderedPanesCache && _orderedPanesCache.map === panes) return _orderedPanesCache.result;
     // Sort by Y first (row), then X (column)
-    return panes.sort((a, b) => {
+    const result = Array.from(panes.values()).sort((a, b) => {
       const rowDiff = a.y - b.y;
       if (Math.abs(rowDiff) > 50) return rowDiff; // Different rows
       return a.x - b.x; // Same row, sort by x
     });
+    _orderedPanesCache = { map: panes, result };
+    return result;
   },
 
   getPaneByIndex: (index) => {

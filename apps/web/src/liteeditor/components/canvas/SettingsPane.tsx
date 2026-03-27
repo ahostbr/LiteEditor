@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { UnifiedSettings } from "../settings/UnifiedSettings";
 
 export function SettingsPane() {

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useSettingsStore } from "../stores/settings-store";
 import { useEditorStore } from "../stores/editor-store";
 

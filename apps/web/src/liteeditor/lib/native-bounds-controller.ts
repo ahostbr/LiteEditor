@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * NativeBoundsController — Centralized bounds tracking for all native WebContentsView overlays.
  *

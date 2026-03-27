@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { SearchPanel } from "../sidebar/SearchPanel";
 
 export function SearchPane() {

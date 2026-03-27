@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useCallback, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -159,11 +158,9 @@ function StyledSelect({ value, onChange, options }: {
 function ActionButton({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: React.ReactNode; }) {
   return (
     <button onClick={onClick} disabled={disabled}
-      className="px-4 py-1.5 text-xs font-semibold rounded-lg transition-all disabled:opacity-40"
+      className="px-4 py-1.5 text-xs font-semibold rounded-lg transition-all disabled:opacity-40 hover:opacity-85"
       style={{ backgroundColor: "var(--accent, #c9a24d)", color: "var(--accent-foreground, #0a0a0b)",
-        border: "1px solid transparent" }}
-      onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.85"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}>
+        border: "1px solid transparent" }}>
       {children}
     </button>
   );
@@ -373,9 +370,7 @@ export function UnifiedSettings() {
                     <div key={`${provider}:${slug}`} className="flex items-center justify-between py-1 border-b last:border-b-0" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
                       <code className="text-[10px] font-mono" style={{ color: "var(--text-primary)" }}>{slug}</code>
                       <button onClick={() => updateSettings(patchCustomModels(provider, customModels.filter((m) => m !== slug)))}
-                        className="text-[10px]" style={{ color: "var(--text-muted)" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}>Remove</button>
+                        className="text-[10px] hover:text-red-500" style={{ color: "var(--text-muted)" }}>Remove</button>
                     </div>
                   ))}
                 </div>

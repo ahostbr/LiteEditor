@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { create } from "zustand";
 import { DEFAULT_SETTINGS } from "../lib/constants";
 import { logWarn, logError } from "./error-store";

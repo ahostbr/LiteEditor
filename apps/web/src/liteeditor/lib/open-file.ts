@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useEditorStore } from "../stores/editor-store";
 import { useUiStore } from "../stores/ui-store";
 import { useZenStore } from "../stores/zen-store";

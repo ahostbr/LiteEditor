@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState } from "react";
 import { GitBranch, X, Send } from "lucide-react";
 import { useGitHubStore } from "../../stores/github-store";

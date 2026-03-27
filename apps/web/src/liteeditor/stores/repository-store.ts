@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { create } from "zustand";
 import type { ChangedFile, FileDiff, Commit, FileStatus, RepositoryTab } from "../types/repository";
 import { parseDiff } from "../lib/diff-parser";

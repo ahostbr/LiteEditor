@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React from "react";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import { EditorPane } from "./EditorPane";

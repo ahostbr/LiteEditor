@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Pane Sync Middleware
  *

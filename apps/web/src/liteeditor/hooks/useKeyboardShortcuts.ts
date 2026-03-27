@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useEffect } from "react";
 import { isLiteEditorHostManaged } from "../hostMode";
 import { useEditorStore, getMonacoContent } from "../stores/editor-store";

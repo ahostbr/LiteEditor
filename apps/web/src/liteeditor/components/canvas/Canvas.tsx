@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import { useCanvasStore } from "../../stores/canvas-store";
 import { useWorkspaceStore } from "../../stores/workspace-store";
@@ -309,19 +308,11 @@ function TemplatePicker() {
           <button
             key={template.id}
             onClick={() => applyTemplate(template)}
-            className="group relative flex flex-col rounded-xl border p-4 transition-all duration-200"
+            className="group relative flex flex-col rounded-xl border p-4 transition-all duration-200 template-card"
             style={{
               borderColor: "var(--border)",
               backgroundColor: "var(--bg-muted)",
               minHeight: 120,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "var(--accent)";
-              e.currentTarget.style.boxShadow = "0 0 16px var(--accent-dim, rgba(201,162,77,0.2))";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "var(--border)";
-              e.currentTarget.style.boxShadow = "none";
             }}
           >
             {/* Spatial preview — simplified block diagram */}

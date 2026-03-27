@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useEffect, useRef } from "react";
 import { useZenStore } from "../../stores/zen-store";
 import { useLayoutStore } from "../../stores/layout-store";

@@ -1,10 +1,9 @@
-// @ts-nocheck
 import React, { useState } from "react";
 import { ChevronDown, ChevronRight, Clock } from "lucide-react";
-import { useGitStore } from "../../stores/git-store";
+import { useRepositoryStore } from "../../stores/repository-store";
 
 export function GitHistory() {
-  const { commits, loadHistory } = useGitStore();
+  const { commits, loadHistory } = useRepositoryStore();
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -33,8 +32,8 @@ export function GitHistory() {
                 {commit.message}
               </div>
               <div className="flex gap-2 text-[10px]" style={{ color: "var(--text-muted)" }}>
-                <span>{commit.hash.slice(0, 7)}</span>
-                <span>{commit.author_name}</span>
+                <span>{commit.shortHash}</span>
+                <span>{commit.authorName}</span>
                 <span>{new Date(commit.date).toLocaleDateString()}</span>
               </div>
             </div>

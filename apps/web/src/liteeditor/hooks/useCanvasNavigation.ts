@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useEffect, useCallback } from "react";
 import { useCanvasStore } from "../stores/canvas-store";
 

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useCallback, useRef, useEffect, useState } from "react";
 import { PanelRenderer } from "./PanelRenderer";
 import { useZenStore, type ZenPanel } from "../../stores/zen-store";

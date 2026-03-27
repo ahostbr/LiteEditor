@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useEffect, useRef } from "react";
 import { Save, FolderOpen, X, Trash2 } from "lucide-react";
 import { useCanvasStore, type CanvasPaneState } from "../../stores/canvas-store";
@@ -146,28 +145,16 @@ export function TemplateManager() {
         <div className="flex items-center gap-1">
           <button
             onClick={() => setMode("save")}
-            className="p-1 rounded transition-colors"
+            className="p-1 rounded transition-colors hover:bg-[var(--bg-overlay)]"
             style={{ color: mode === "save" ? "var(--accent)" : "var(--text-muted)" }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--bg-overlay)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-            }}
             title="Save Current Layout"
           >
             <Save size={13} />
           </button>
           <button
             onClick={() => setShow(false)}
-            className="p-1 rounded transition-colors"
+            className="p-1 rounded transition-colors hover:bg-[var(--bg-overlay)]"
             style={{ color: "var(--text-muted)" }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--bg-overlay)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-            }}
           >
             <X size={13} />
           </button>
@@ -227,14 +214,8 @@ export function TemplateManager() {
                 e.stopPropagation();
                 deleteTemplate(template);
               }}
-              className="p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+              className="p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-500"
               style={{ color: "var(--text-muted)" }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = "#ef4444";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = "var(--text-muted)";
-              }}
             >
               <Trash2 size={12} />
             </button>

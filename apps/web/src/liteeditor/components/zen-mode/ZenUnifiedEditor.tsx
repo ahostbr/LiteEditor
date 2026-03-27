@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { SplitPane } from "../editor/SplitPane";
 
 export function ZenUnifiedEditor() {

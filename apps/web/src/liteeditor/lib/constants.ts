@@ -1,4 +1,3 @@
-// @ts-nocheck
 export const DEFAULT_SETTINGS = {
   fontSize: 14,
   fontFamily: "JetBrains Mono, Consolas, Courier New, monospace",

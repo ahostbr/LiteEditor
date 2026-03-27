@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Plus, X, Globe, ChevronLeft, ChevronRight } from "lucide-react";
 import { type BrowserTab } from "../../stores/browser-shell-store";
@@ -193,6 +192,7 @@ export function TabSidebar({
           <button
             onClick={onNewTab}
             title="New tab (Cmd+T)"
+            className="hover:bg-[var(--bg-muted)]"
             style={{
               display: "flex",
               alignItems: "center",
@@ -202,12 +202,9 @@ export function TabSidebar({
               justifyContent: isExpanded ? "flex-start" : "center",
               borderRadius: 4,
               border: "none",
-              background: "none",
               cursor: "pointer",
               color: "var(--text-muted)",
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-muted)")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
           >
             <Plus size={14} style={{ flexShrink: 0 }} />
             {isExpanded && <span style={{ fontSize: 12 }}>New tab</span>}
@@ -437,19 +434,17 @@ function TabContextMenu({
             e.stopPropagation();
             onAction(action);
           }}
+          className="hover:bg-[var(--bg-muted)]"
           style={{
             display: "block",
             width: "100%",
             textAlign: "left",
             padding: "6px 14px",
             border: "none",
-            background: "none",
             cursor: "pointer",
             fontSize: 12,
             color: "var(--text-primary)",
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-muted)")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
         >
           {label}
         </button>

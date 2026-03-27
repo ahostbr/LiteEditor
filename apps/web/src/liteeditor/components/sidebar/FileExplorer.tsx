@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { RefreshCw, FolderOpen } from "lucide-react";
 import { TreeNode, type FileNode, type RefreshSignal } from "./TreeNode";
@@ -120,16 +119,8 @@ export function FileExplorer() {
         </span>
         <button
           onClick={loadTree}
-          className="flex items-center justify-center w-5 h-5 rounded transition-all duration-200 hover:scale-110 active:scale-95"
+          className="flex items-center justify-center w-5 h-5 rounded transition-all duration-200 hover:scale-110 active:scale-95 hover:bg-[var(--bg-overlay)] hover:text-[var(--accent)]"
           style={{ color: "var(--text-muted)" }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = "var(--accent)";
-            e.currentTarget.style.background = "var(--bg-overlay)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = "var(--text-muted)";
-            e.currentTarget.style.background = "transparent";
-          }}
           title="Refresh"
         >
           <RefreshCw size={12} className={isLoading ? "animate-spin" : ""} />

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React from "react";
 import { FileCode } from "lucide-react";
 import { KEYBOARD_SHORTCUTS } from "../../lib/constants";

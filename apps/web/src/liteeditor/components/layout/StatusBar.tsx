@@ -1,21 +1,15 @@
-// @ts-nocheck
-import { useGitStore } from "../../stores/git-store";
+import { useRepositoryStore } from "../../stores/repository-store";
 import { useCanvasStore } from "../../stores/canvas-store";
 import { useUiStore } from "../../stores/ui-store";
 
 export function StatusBar() {
-  const currentBranch = useGitStore((s) => s.currentBranch);
+  const currentBranch = useRepositoryStore((s) => s.currentBranch);
   const focusedPaneId = useCanvasStore((s) => s.focusedPaneId);
   const panes = useCanvasStore((s) => s.panes);
   const appMode = useUiStore((s) => s.appMode);
 
   const focusedPane = focusedPaneId ? panes.get(focusedPaneId) : null;
   const paneCount = panes.size;
-
-  const branchName =
-    typeof currentBranch === "string"
-      ? currentBranch
-      : currentBranch?.name ?? null;
 
   return (
     <div
@@ -36,13 +30,13 @@ export function StatusBar() {
         </div>
 
         {/* Git branch */}
-        {branchName && (
+        {currentBranch && (
           <div
             className="flex items-center gap-1"
             style={{ color: "var(--text-secondary)" }}
           >
             <span style={{ fontSize: "12px" }}>⌇</span>
-            <span>{branchName}</span>
+            <span>{currentBranch}</span>
           </div>
         )}
       </div>

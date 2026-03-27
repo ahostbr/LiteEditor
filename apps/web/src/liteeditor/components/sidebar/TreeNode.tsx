@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect, useRef } from "react";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "../../lib/cn";

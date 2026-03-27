@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useRef, useEffect, useCallback } from "react";
 import { X, Settings, Copy, Clipboard } from "lucide-react";
 import { useTerminalStore } from "../../stores/terminal-store";
