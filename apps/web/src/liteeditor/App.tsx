@@ -13,6 +13,7 @@ import { useLayoutStore } from "./stores/layout-store";
 import { useZenStore } from "./stores/zen-store";
 import { useCanvasStore } from "./stores/canvas-store";
 import { useAppearance } from "./hooks/useAppearance";
+import { useShallow } from "zustand/react/shallow";
 
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useCanvasNavigation } from "./hooks/useCanvasNavigation";
@@ -50,7 +51,6 @@ async function loadWorkspaceForProject(projectRoot: string, opts?: { skipCanvas?
 
     // Restore canvas state (pane layout, viewport)
     if (!opts?.skipCanvas && data.canvas && typeof data.canvas === "object") {
-      const { useCanvasStore } = await import("./stores/canvas-store");
       useCanvasStore.getState().restoreCanvasState(data.canvas as any);
     }
   } catch (err) {
@@ -62,7 +62,6 @@ async function saveWorkspaceForProject(projectRoot: string): Promise<void> {
   try {
     const editorState = useEditorStore.getState().getWorkspaceState();
     const uiState = useUiStore.getState().getUIState();
-    const { useCanvasStore } = await import("./stores/canvas-store");
     const canvasState = useCanvasStore.getState().getCanvasState();
     const workspace = { editor: editorState, ui: uiState, canvas: canvasState };
     await window.api.workspace.saveState(projectRoot, JSON.stringify(workspace, null, 2));
@@ -119,7 +118,6 @@ async function ensureClaudePanelSession(): Promise<string | null> {
 
   // If in canvas mode, add a Claude pane to the canvas
   if (ui.appMode === "canvas") {
-    const { useCanvasStore } = await import("./stores/canvas-store");
     const store = useCanvasStore.getState();
 
     // Check if Claude pane already exists
@@ -566,15 +564,17 @@ export default function App() {
   }, []);
 
   // Appearance: sync accent, glass blur, particles, etc. to CSS variables
-  const activeTheme = useSettingsStore((s) => s.activeTheme);
-  const accentColor = useSettingsStore((s) => s.accentColor);
-  const glassBlur = useSettingsStore((s) => s.glassBlur);
-  const reduceMotion = useSettingsStore((s) => s.reduceMotion);
-  const particleColor = useSettingsStore((s) => s.particleColor);
-  const glowColor = useSettingsStore((s) => s.glowColor);
-  const particleSpeed = useSettingsStore((s) => s.particleSpeed);
-  const particleDensity = useSettingsStore((s) => s.particleDensity);
-  const particleLifespan = useSettingsStore((s) => s.particleLifespan);
+  const { activeTheme, accentColor, glassBlur, reduceMotion, particleColor, glowColor, particleSpeed } = useSettingsStore(
+    useShallow((s) => ({
+      activeTheme: s.activeTheme,
+      accentColor: s.accentColor,
+      glassBlur: s.glassBlur,
+      reduceMotion: s.reduceMotion,
+      particleColor: s.particleColor,
+      glowColor: s.glowColor,
+      particleSpeed: s.particleSpeed,
+    }))
+  );
 
   useAppearance({ accentColor, glassBlur, reduceMotion, particleColor, glowColor, particleSpeed });
 

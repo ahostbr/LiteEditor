@@ -37,7 +37,7 @@ export function GhCliSetup() {
               onClick={handleInstall}
               disabled={installing}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50"
-              style={{ backgroundColor: "var(--accent)", color: "#000" }}
+              style={{ backgroundColor: "var(--accent)", color: "var(--accent-foreground, #0a0a0b)" }}
             >
               <Download size={12} />
               {installing ? "Installing..." : "Install Now (winget)"}
@@ -75,7 +75,7 @@ export function GhCliSetup() {
           <button
             onClick={() => checkGhCli()}
             className="flex items-center gap-1 mt-2 px-3 py-1.5 rounded text-xs font-medium transition-colors"
-            style={{ backgroundColor: "var(--accent)", color: "#000" }}
+            style={{ backgroundColor: "var(--accent)", color: "var(--accent-foreground, #0a0a0b)" }}
           >
             <RefreshCw size={12} />
             Re-check

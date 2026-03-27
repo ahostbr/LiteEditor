@@ -8,15 +8,15 @@ function statusColor(status: FileStatus): string {
   switch (status) {
     case "added":
     case "untracked":
-      return "#22c55e";
+      return "var(--color-ok, #4ade80)";
     case "modified":
-      return "#eab308";
+      return "var(--accent-color, #c9a24d)";
     case "deleted":
-      return "#ef4444";
+      return "var(--color-danger, #ef4444)";
     case "renamed":
-      return "#60a5fa";
+      return "var(--color-depth, #7ca8cf)";
     case "conflicted":
-      return "#f97316";
+      return "var(--color-danger, #f97316)";
     default:
       return "var(--text-muted)";
   }
@@ -199,7 +199,7 @@ export function ChangesPanel() {
           onClick={() => createCommit()}
           disabled={!commitSummary.trim() || staged.length === 0}
           className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded text-[11px] font-medium transition-colors disabled:opacity-40"
-          style={{ backgroundColor: "var(--accent)", color: "#000" }}
+          style={{ backgroundColor: "var(--accent)", color: "var(--accent-foreground, #0a0a0b)" }}
         >
           <Check size={12} />
           Commit ({staged.length} file{staged.length !== 1 ? "s" : ""})

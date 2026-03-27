@@ -90,7 +90,7 @@ export function PullRequestDetail() {
   };
 
   const stateColor =
-    prDetail.state === "MERGED" ? "#a855f7" : prDetail.state === "CLOSED" ? "#ef4444" : "#22c55e";
+    prDetail.state === "MERGED" ? "#a855f7" : prDetail.state === "CLOSED" ? "var(--color-danger, #ef4444)" : "var(--color-ok, #4ade80)";
 
   return (
     <div className="flex flex-col h-full">
@@ -123,10 +123,10 @@ export function PullRequestDetail() {
           <span>{prDetail.headRefName}</span>
           <ArrowRight size={10} />
           <span>{prDetail.baseRefName}</span>
-          <span className="ml-auto" style={{ color: "#22c55e" }}>
+          <span className="ml-auto" style={{ color: "var(--color-ok, #4ade80)" }}>
             +{prDetail.additions}
           </span>
-          <span style={{ color: "#ef4444" }}>-{prDetail.deletions}</span>
+          <span style={{ color: "var(--color-danger, #ef4444)" }}>-{prDetail.deletions}</span>
           <span>{prDetail.changedFiles} files</span>
         </div>
 
@@ -136,7 +136,7 @@ export function PullRequestDetail() {
             <button
               onClick={() => handleMerge("squash")}
               className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors"
-              style={{ backgroundColor: "#22c55e", color: "#000" }}
+              style={{ backgroundColor: "var(--color-ok, #4ade80)", color: "var(--accent-foreground, #0a0a0b)" }}
             >
               <GitMerge size={10} />
               Squash
@@ -166,7 +166,7 @@ export function PullRequestDetail() {
               {pendingReviewComments.length > 0 && (
                 <span
                   className="text-[8px] px-1 rounded-full"
-                  style={{ backgroundColor: "var(--accent)", color: "#000" }}
+                  style={{ backgroundColor: "var(--accent)", color: "var(--accent-foreground, #0a0a0b)" }}
                 >
                   {pendingReviewComments.length}
                 </span>
@@ -175,7 +175,7 @@ export function PullRequestDetail() {
             <button
               onClick={handleClose}
               className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors"
-              style={{ color: "#ef4444" }}
+              style={{ color: "var(--color-danger, #ef4444)" }}
             >
               <X size={10} />
               Close
@@ -205,14 +205,14 @@ export function PullRequestDetail() {
               <button
                 onClick={() => handleSubmitReview("APPROVE")}
                 className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium"
-                style={{ backgroundColor: "#22c55e", color: "#000" }}
+                style={{ backgroundColor: "var(--color-ok, #4ade80)", color: "var(--accent-foreground, #0a0a0b)" }}
               >
                 <Check size={10} /> Approve
               </button>
               <button
                 onClick={() => handleSubmitReview("REQUEST_CHANGES")}
                 className="px-2 py-1 rounded text-[10px] font-medium"
-                style={{ backgroundColor: "rgba(239,68,68,0.15)", color: "#ef4444" }}
+                style={{ backgroundColor: "color-mix(in srgb, var(--color-danger, #ef4444) 15%, transparent)", color: "var(--color-danger, #ef4444)" }}
               >
                 Request Changes
               </button>

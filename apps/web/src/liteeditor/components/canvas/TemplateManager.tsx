@@ -194,7 +194,7 @@ export function TemplateManager() {
           <button
             onClick={saveTemplate}
             className="px-2 py-1 rounded text-[10px] font-medium transition-colors"
-            style={{ backgroundColor: "var(--accent)", color: "#000" }}
+            style={{ backgroundColor: "var(--accent)", color: "var(--accent-foreground, #0a0a0b)" }}
           >
             Save
           </button>

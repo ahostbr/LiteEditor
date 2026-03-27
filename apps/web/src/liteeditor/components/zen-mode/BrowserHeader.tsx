@@ -10,7 +10,7 @@ import {
   Maximize2,
   Minimize2,
 } from "lucide-react";
-import { useBrowserStore } from "../../stores/browser-store";
+import { useBrowserShellStore } from "../../stores/browser-shell-store";
 import { useZenStore } from "../../stores/zen-store";
 import { useEditorStore } from "../../stores/editor-store";
 import { cn } from "../../lib/cn";
@@ -45,14 +45,12 @@ export function BrowserHeader({
   const isMaximized = useZenStore((s) => s.maximizedPanelId === panelId);
   const toggleMaximize = useZenStore((s) => s.toggleMaximize);
   const projectRoot = useEditorStore((s) => s.projectRoot);
-  const session = useBrowserStore((s) =>
-    browserSessionId ? s.sessions.get(browserSessionId) : undefined,
-  );
+  const activeTab = useBrowserShellStore((s) => s.getActiveTab(panelId));
 
-  const canGoBack = session?.canGoBack ?? false;
-  const canGoForward = session?.canGoForward ?? false;
-  const isLoading = session?.isLoading ?? false;
-  const currentUrl = session?.url ?? "";
+  const canGoBack = activeTab?.canGoBack ?? false;
+  const canGoForward = activeTab?.canGoForward ?? false;
+  const isLoading = activeTab?.isLoading ?? false;
+  const currentUrl = activeTab?.url ?? "";
 
   const displayUrl = isFocused ? urlInput : currentUrl;
 

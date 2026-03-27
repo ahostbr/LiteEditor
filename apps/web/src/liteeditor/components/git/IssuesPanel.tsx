@@ -51,7 +51,7 @@ export function IssuesPanel({ onCreateIssue }: IssuesPanelProps) {
               className="px-2 py-0.5 rounded text-[10px] font-medium capitalize transition-colors"
               style={{
                 backgroundColor: issueFilter === f ? "var(--accent)" : "transparent",
-                color: issueFilter === f ? "#000" : "var(--text-muted)",
+                color: issueFilter === f ? "var(--accent-foreground, #0a0a0b)" : "var(--text-muted)",
               }}
             >
               {f}
@@ -93,7 +93,7 @@ export function IssuesPanel({ onCreateIssue }: IssuesPanelProps) {
               <CircleDot
                 size={12}
                 style={{
-                  color: issue.state === "open" ? "#22c55e" : "#a855f7",
+                  color: issue.state === "open" ? "var(--color-ok, #4ade80)" : "#a855f7",
                   flexShrink: 0,
                 }}
               />

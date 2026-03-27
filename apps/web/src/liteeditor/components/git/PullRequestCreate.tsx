@@ -136,7 +136,7 @@ export function PullRequestCreate({ onClose, onCreated }: PullRequestCreateProps
           onClick={handleCreate}
           disabled={!title.trim() || creating}
           className="px-3 py-1.5 rounded text-[11px] font-medium disabled:opacity-40"
-          style={{ backgroundColor: "var(--accent)", color: "#000" }}
+          style={{ backgroundColor: "var(--accent)", color: "var(--accent-foreground, #0a0a0b)" }}
         >
           {creating ? "Creating..." : "Create PR"}
         </button>

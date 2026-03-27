@@ -91,10 +91,14 @@ export function applyThemeToDOM(theme: ThemePreset): void {
   root.setProperty("--color-stone", theme.stone);
   root.setProperty("--color-shadow", theme.shadow);
 
+  // Accent foreground
+  root.setProperty("--accent-foreground", theme.accentForeground);
+
   // Semantic
   root.setProperty("--color-ok", theme.ok);
   root.setProperty("--color-danger", theme.danger);
   root.setProperty("--color-depth", theme.info);
+  root.setProperty("--info", theme.info);
 
   // Update legacy aliases that read from the named tokens
   root.setProperty("--bg-base", theme.void);

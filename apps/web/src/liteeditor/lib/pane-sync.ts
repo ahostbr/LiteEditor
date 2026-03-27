@@ -199,6 +199,8 @@ export function initPaneSync(): () => void {
   // Subscribe to canvas-store changes
   const unsubCanvas = useCanvasStore.subscribe((state, prev) => {
     if (syncDepth > 0) return;
+    // Skip entirely if panes reference is unchanged (e.g. viewport scroll / zoom only)
+    if (state.panes === prev.panes) return;
     syncDepth++;
     try {
       const prevIds = canvasSyncIds(prev.panes);
@@ -219,6 +221,18 @@ export function initPaneSync(): () => void {
       }
 
       // Sync session ID updates (e.g., terminal/claude session assigned after creation)
+      // Build a syncId → zen panel index once for O(1) lookups below.
+      let zenPanelsBySyncId: Map<string, any> | null = null;
+      const getZenIndex = () => {
+        if (!zenPanelsBySyncId) {
+          zenPanelsBySyncId = new Map();
+          for (const panel of useZenStore.getState().panels) {
+            if (panel.syncId) zenPanelsBySyncId.set(panel.syncId, panel);
+          }
+        }
+        return zenPanelsBySyncId;
+      };
+
       for (const [id, pane] of state.panes) {
         if (!pane.syncId) continue;
         const prevPane = prev.panes.get(id);
@@ -232,8 +246,10 @@ export function initPaneSync(): () => void {
 
         if (sessionChanged) {
           const zenPanels = useZenStore.getState().panels;
-          const zenPanel = zenPanels.find((p) => p.syncId === pane.syncId);
+          const zenPanel = getZenIndex().get(pane.syncId);
           if (zenPanel) {
+            // Rebuild index after mutation so subsequent iterations stay accurate
+            zenPanelsBySyncId = null;
             useZenStore.setState({
               panels: zenPanels.map((p) =>
                 p.id === zenPanel.id
@@ -252,9 +268,9 @@ export function initPaneSync(): () => void {
 
         // Sync title renames (canvas → zen)
         if (pane.title !== prevPane.title) {
-          const zenPanels = useZenStore.getState().panels;
-          const zenPanel = zenPanels.find((p) => p.syncId === pane.syncId);
+          const zenPanel = getZenIndex().get(pane.syncId);
           if (zenPanel && zenPanel.title !== pane.title) {
+            zenPanelsBySyncId = null; // invalidate after mutation
             useZenStore.getState().renamePanel(zenPanel.id, pane.title);
           }
         }
@@ -267,6 +283,8 @@ export function initPaneSync(): () => void {
   // Subscribe to zen-store changes
   const unsubZen = useZenStore.subscribe((state, prev) => {
     if (syncDepth > 0) return;
+    // Skip entirely if panels reference is unchanged (e.g. active tab index or other zen-only state)
+    if (state.panels === prev.panels) return;
     syncDepth++;
     try {
       const prevIds = zenSyncIds(prev.panels);
@@ -286,10 +304,25 @@ export function initPaneSync(): () => void {
         }
       }
 
+      // Build a syncId → [canvasPaneId, canvasPane] index once for O(1) lookups below.
+      let canvasPanesBySyncId: Map<string, [string, any]> | null = null;
+      const getCanvasIndex = () => {
+        if (!canvasPanesBySyncId) {
+          canvasPanesBySyncId = new Map();
+          for (const [id, pane] of useCanvasStore.getState().panes) {
+            if (pane.syncId) canvasPanesBySyncId.set(pane.syncId, [id, pane]);
+          }
+        }
+        return canvasPanesBySyncId;
+      };
+
+      // Build a prev-panel id→panel index for O(1) lookups during session sync.
+      const prevPanelsById = new Map(prev.panels.map((p) => [p.id, p]));
+
       // Sync session ID updates (zen → canvas)
       for (const panel of state.panels) {
         if (!panel.syncId) continue;
-        const prevPanel = prev.panels.find((p) => p.id === panel.id);
+        const prevPanel = prevPanelsById.get(panel.id);
         if (!prevPanel) continue;
 
         const sessionChanged =
@@ -299,25 +332,27 @@ export function initPaneSync(): () => void {
           panel.codexSessionId !== prevPanel.codexSessionId;
 
         if (sessionChanged) {
-          for (const [id, pane] of useCanvasStore.getState().panes) {
-            if (pane.syncId === panel.syncId) {
-              useCanvasStore.getState().updatePane(id, {
-                terminalSessionId: panel.terminalSessionId ?? pane.terminalSessionId,
-                browserSessionId: panel.browserSessionId ?? pane.browserSessionId,
-                claudeSessionId: panel.claudeSessionId ?? pane.claudeSessionId,
-                codexSessionId: panel.codexSessionId ?? pane.codexSessionId,
-              });
-              break;
-            }
+          const entry = getCanvasIndex().get(panel.syncId);
+          if (entry) {
+            const [id, pane] = entry;
+            canvasPanesBySyncId = null; // invalidate after mutation
+            useCanvasStore.getState().updatePane(id, {
+              terminalSessionId: panel.terminalSessionId ?? pane.terminalSessionId,
+              browserSessionId: panel.browserSessionId ?? pane.browserSessionId,
+              claudeSessionId: panel.claudeSessionId ?? pane.claudeSessionId,
+              codexSessionId: panel.codexSessionId ?? pane.codexSessionId,
+            });
           }
         }
 
         // Sync title renames (zen → canvas)
         if (panel.title !== prevPanel.title) {
-          for (const [id, pane] of useCanvasStore.getState().panes) {
-            if (pane.syncId === panel.syncId && pane.title !== panel.title) {
+          const entry = getCanvasIndex().get(panel.syncId);
+          if (entry) {
+            const [id, pane] = entry;
+            if (pane.title !== panel.title) {
+              canvasPanesBySyncId = null; // invalidate after mutation
               useCanvasStore.getState().updatePane(id, { title: panel.title });
-              break;
             }
           }
         }

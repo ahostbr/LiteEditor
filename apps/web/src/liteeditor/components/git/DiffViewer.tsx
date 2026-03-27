@@ -8,11 +8,11 @@ interface DiffViewerProps {
 function lineColor(type: DiffLine["type"]): string {
   switch (type) {
     case "add":
-      return "rgba(34, 197, 94, 0.12)";
+      return "color-mix(in srgb, var(--color-ok, #4ade80) 12%, transparent)";
     case "delete":
-      return "rgba(239, 68, 68, 0.12)";
+      return "color-mix(in srgb, var(--color-danger, #ef4444) 12%, transparent)";
     case "hunk":
-      return "rgba(96, 165, 250, 0.08)";
+      return "color-mix(in srgb, var(--color-depth, #7ca8cf) 8%, transparent)";
     default:
       return "transparent";
   }
@@ -21,9 +21,9 @@ function lineColor(type: DiffLine["type"]): string {
 function lineTextColor(type: DiffLine["type"]): string {
   switch (type) {
     case "add":
-      return "#22c55e";
+      return "var(--color-ok, #4ade80)";
     case "delete":
-      return "#ef4444";
+      return "var(--color-danger, #ef4444)";
     case "hunk":
       return "var(--text-muted)";
     default:
@@ -91,10 +91,10 @@ export function DiffViewer({ diff }: DiffViewerProps) {
         }}
       >
         {diff.path}
-        <span className="ml-3" style={{ color: "#22c55e" }}>
+        <span className="ml-3" style={{ color: "var(--color-ok, #4ade80)" }}>
           +{diff.additions}
         </span>
-        <span className="ml-2" style={{ color: "#ef4444" }}>
+        <span className="ml-2" style={{ color: "var(--color-danger, #ef4444)" }}>
           -{diff.deletions}
         </span>
       </div>

@@ -44,14 +44,14 @@ export function AppearanceSection({
 
   return (
     <div className="flex flex-col gap-6">
-      <h3 className="font-display italic text-xl text-bone">Appearance</h3>
+      <h3 className="font-display italic text-xl" style={{ color: "var(--text-primary, #e8e4dc)" }}>Appearance</h3>
 
       {/* Theme selector */}
       <section className="flex flex-col gap-2">
-        <span className="text-[10px] text-stone uppercase tracking-widest font-medium">
+        <span className="text-[10px] uppercase tracking-widest font-medium" style={{ color: "var(--text-muted, #7a756d)" }}>
           Theme
         </span>
-        <span className="text-[10px] text-stone">
+        <span className="text-[10px]" style={{ color: "var(--text-muted, #7a756d)" }}>
           Choose your preferred color scheme
         </span>
         <div className="grid grid-cols-4 gap-2 mt-1">
@@ -108,7 +108,7 @@ export function AppearanceSection({
 
       {/* Custom accent color picker */}
       <section className="flex flex-col gap-2">
-        <span className="text-[10px] text-stone uppercase tracking-widest font-medium">
+        <span className="text-[10px] uppercase tracking-widest font-medium" style={{ color: "var(--text-muted, #7a756d)" }}>
           Custom Accent
         </span>
         <div className="flex items-center gap-3 mt-2">
@@ -125,23 +125,23 @@ export function AppearanceSection({
               aria-label="Custom accent color"
             />
           </label>
-          <span className="text-xs text-bone">{normalizeHex(accentColor)}</span>
+          <span className="text-xs" style={{ color: "var(--text-primary, #e8e4dc)" }}>{normalizeHex(accentColor)}</span>
         </div>
       </section>
 
       {/* Effects */}
       <div className="border-t border-divider/30 pt-4">
-        <span className="text-[10px] text-stone uppercase tracking-widest font-medium">
+        <span className="text-[10px] uppercase tracking-widest font-medium" style={{ color: "var(--text-muted, #7a756d)" }}>
           Effects
         </span>
       </div>
 
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-stone uppercase tracking-widest font-medium">
+          <span className="text-[10px] uppercase tracking-widest font-medium" style={{ color: "var(--text-muted, #7a756d)" }}>
             Particle Density
           </span>
-          <span className="text-[10px] text-stone tabular-nums">{particleDensity}</span>
+          <span className="text-[10px] tabular-nums" style={{ color: "var(--text-muted, #7a756d)" }}>{particleDensity}</span>
         </div>
         <input
           type="range"
@@ -150,16 +150,17 @@ export function AppearanceSection({
           step={10}
           value={particleDensity}
           onChange={(e) => setParticleDensity(parseInt(e.target.value))}
-          className="w-full h-1 accent-ember"
+          className="w-full h-1"
+          style={{ accentColor: "var(--accent, #c9a24d)" }}
         />
       </section>
 
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-stone uppercase tracking-widest font-medium">
+          <span className="text-[10px] uppercase tracking-widest font-medium" style={{ color: "var(--text-muted, #7a756d)" }}>
             Particle Speed
           </span>
-          <span className="text-[10px] text-stone tabular-nums">{particleSpeed.toFixed(1)}x</span>
+          <span className="text-[10px] tabular-nums" style={{ color: "var(--text-muted, #7a756d)" }}>{particleSpeed.toFixed(1)}x</span>
         </div>
         <input
           type="range"
@@ -168,16 +169,17 @@ export function AppearanceSection({
           step={0.1}
           value={particleSpeed}
           onChange={(e) => setParticleSpeed(parseFloat(e.target.value))}
-          className="w-full h-1 accent-ember"
+          className="w-full h-1"
+          style={{ accentColor: "var(--accent, #c9a24d)" }}
         />
       </section>
 
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-stone uppercase tracking-widest font-medium">
+          <span className="text-[10px] uppercase tracking-widest font-medium" style={{ color: "var(--text-muted, #7a756d)" }}>
             Particle Lifespan
           </span>
-          <span className="text-[10px] text-stone tabular-nums">
+          <span className="text-[10px] tabular-nums" style={{ color: "var(--text-muted, #7a756d)" }}>
             {particleLifespan.toFixed(1)}s
           </span>
         </div>
@@ -188,16 +190,17 @@ export function AppearanceSection({
           step={0.1}
           value={particleLifespan}
           onChange={(e) => setParticleLifespan(parseFloat(e.target.value))}
-          className="w-full h-1 accent-ember"
+          className="w-full h-1"
+          style={{ accentColor: "var(--accent, #c9a24d)" }}
         />
       </section>
 
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-stone uppercase tracking-widest font-medium">
+          <span className="text-[10px] uppercase tracking-widest font-medium" style={{ color: "var(--text-muted, #7a756d)" }}>
             Glass Blur
           </span>
-          <span className="text-[10px] text-stone tabular-nums">{glassBlur}px</span>
+          <span className="text-[10px] tabular-nums" style={{ color: "var(--text-muted, #7a756d)" }}>{glassBlur}px</span>
         </div>
         <input
           type="range"
@@ -206,7 +209,8 @@ export function AppearanceSection({
           step={2}
           value={glassBlur}
           onChange={(e) => setGlassBlur(parseInt(e.target.value))}
-          className="w-full h-1 accent-ember"
+          className="w-full h-1"
+          style={{ accentColor: "var(--accent, #c9a24d)" }}
         />
       </section>
 
@@ -216,11 +220,11 @@ export function AppearanceSection({
             type="checkbox"
             checked={reduceMotion}
             onChange={(e) => setReduceMotion(e.target.checked)}
-            className="accent-ember"
+            style={{ accentColor: "var(--accent, #c9a24d)" }}
           />
-          <span className="text-xs text-bone">Reduce motion</span>
+          <span className="text-xs" style={{ color: "var(--text-primary, #e8e4dc)" }}>Reduce motion</span>
         </label>
-        <p className="text-[10px] text-stone mt-1 pl-5">Disables particle effects and animations</p>
+        <p className="text-[10px] mt-1 pl-5" style={{ color: "var(--text-muted, #7a756d)" }}>Disables particle effects and animations</p>
       </section>
     </div>
   );

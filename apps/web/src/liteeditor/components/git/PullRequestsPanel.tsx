@@ -10,7 +10,7 @@ function reviewBadge(decision: PullRequest["reviewDecision"]) {
       return (
         <span
           className="text-[8px] px-1 rounded font-medium"
-          style={{ backgroundColor: "rgba(34,197,94,0.15)", color: "#22c55e" }}
+          style={{ backgroundColor: "color-mix(in srgb, var(--color-ok, #4ade80) 15%, transparent)", color: "var(--color-ok, #4ade80)" }}
         >
           Approved
         </span>
@@ -19,7 +19,7 @@ function reviewBadge(decision: PullRequest["reviewDecision"]) {
       return (
         <span
           className="text-[8px] px-1 rounded font-medium"
-          style={{ backgroundColor: "rgba(239,68,68,0.15)", color: "#ef4444" }}
+          style={{ backgroundColor: "color-mix(in srgb, var(--color-danger, #ef4444) 15%, transparent)", color: "var(--color-danger, #ef4444)" }}
         >
           Changes
         </span>
@@ -28,7 +28,7 @@ function reviewBadge(decision: PullRequest["reviewDecision"]) {
       return (
         <span
           className="text-[8px] px-1 rounded font-medium"
-          style={{ backgroundColor: "rgba(234,179,8,0.15)", color: "#eab308" }}
+          style={{ backgroundColor: "color-mix(in srgb, var(--accent-color, #c9a24d) 15%, transparent)", color: "var(--accent-color, #c9a24d)" }}
         >
           Review
         </span>
@@ -87,7 +87,7 @@ export function PullRequestsPanel({ onCreatePr }: PullRequestsPanelProps) {
               className="px-2 py-0.5 rounded text-[10px] font-medium capitalize transition-colors"
               style={{
                 backgroundColor: prFilter === f ? "var(--accent)" : "transparent",
-                color: prFilter === f ? "#000" : "var(--text-muted)",
+                color: prFilter === f ? "var(--accent-foreground, #0a0a0b)" : "var(--text-muted)",
               }}
             >
               {f}
@@ -132,8 +132,8 @@ export function PullRequestsPanel({ onCreatePr }: PullRequestsPanelProps) {
                     pr.state === "MERGED"
                       ? "#a855f7"
                       : pr.state === "CLOSED"
-                        ? "#ef4444"
-                        : "#22c55e",
+                        ? "var(--color-danger, #ef4444)"
+                        : "var(--color-ok, #4ade80)",
                   flexShrink: 0,
                 }}
               />

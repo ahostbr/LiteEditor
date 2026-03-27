@@ -150,6 +150,6 @@ export function TerminalInstance({ sessionId, onTermRef }: TerminalInstanceProps
   }, [settings.terminalFontSize]);
 
   return (
-    <div ref={containerRef} className="w-full h-full" style={{ backgroundColor: "#0c0c0f" }} />
+    <div ref={containerRef} className="w-full h-full" style={{ backgroundColor: "var(--color-void, #0c0c0f)" }} />
   );
 }

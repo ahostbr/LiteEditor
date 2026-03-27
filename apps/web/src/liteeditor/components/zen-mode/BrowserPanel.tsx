@@ -1,6 +1,5 @@
 // @ts-nocheck
 import { useEffect, useRef } from "react";
-import { useBrowserStore } from "../../stores/browser-store";
 import { useZenStore } from "../../stores/zen-store";
 import { useCanvasStore } from "../../stores/canvas-store";
 import { useUiStore } from "../../stores/ui-store";
@@ -24,9 +23,6 @@ export function BrowserPanel({ panelId, initialUrl, visible = true }: BrowserPan
   const sessionIdRef = useRef<string | null>(null);
   const nativeOverlayOpen = useUiStore((s) => s.nativeOverlayOpen);
   const effectiveVisible = visible && !nativeOverlayOpen;
-
-  const registerSession = useBrowserStore((s) => s.registerSession);
-  const updateSession = useBrowserStore((s) => s.updateSession);
 
   // Register with centralized bounds controller
   useEffect(() => {
@@ -69,7 +65,6 @@ export function BrowserPanel({ panelId, initialUrl, visible = true }: BrowserPan
       if (sessionId) {
         sessionIdRef.current = sessionId;
         nativeBoundsController.updateSessionId(panelId, sessionId);
-        registerSession(sessionId, initialUrl);
       } else {
         sessionId = await window.api.browser.createView(initialUrl);
         if (cancelled) {
@@ -79,7 +74,6 @@ export function BrowserPanel({ panelId, initialUrl, visible = true }: BrowserPan
 
         sessionIdRef.current = sessionId;
         nativeBoundsController.updateSessionId(panelId, sessionId);
-        registerSession(sessionId, initialUrl);
 
         // Persist sessionId to whichever store owns this panel
         useZenStore.setState((state) => ({
@@ -98,7 +92,6 @@ export function BrowserPanel({ panelId, initialUrl, visible = true }: BrowserPan
     // State updates from main process
     const unsub = window.api.browser.onStateUpdate((_event, data) => {
       if (data.sessionId !== sessionIdRef.current) return;
-      updateSession(data.sessionId, data);
       if (data.title) {
         useZenStore.setState((state) => ({
           panels: state.panels.map((p) => (p.id === panelId ? { ...p, title: data.title! } : p)),

@@ -1,6 +1,5 @@
 // @ts-nocheck
 import { useTerminalStore } from "../stores/terminal-store";
-import { useBrowserStore } from "../stores/browser-store";
 import { useBrowserShellStore } from "../stores/browser-shell-store";
 import { logWarn } from "../stores/error-store";
 
@@ -38,15 +37,6 @@ export function cleanupPaneSession(pane: CleanupTarget): void {
       useBrowserShellStore.getState().destroyPane(pane.id).catch((err) => {
         logWarn("session-cleanup", `Failed to destroy browser shell pane ${pane.id}`, err);
       });
-    }
-    // Legacy single-session fallback
-    if (pane.browserSessionId) {
-      try {
-        window.api.browser.destroyView(pane.browserSessionId);
-        useBrowserStore.getState().removeSession(pane.browserSessionId);
-      } catch (err) {
-        logWarn("session-cleanup", `Failed to destroy browser session ${pane.browserSessionId}`, err);
-      }
     }
   }
 

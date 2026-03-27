@@ -72,7 +72,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
               className="px-4 py-2 rounded text-sm transition-colors"
               style={{
                 backgroundColor: "var(--accent)",
-                color: "#000",
+                color: "var(--accent-foreground, #0a0a0b)",
               }}
             >
               Try Again

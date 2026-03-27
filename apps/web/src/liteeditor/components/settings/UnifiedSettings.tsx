@@ -159,11 +159,11 @@ function StyledSelect({ value, onChange, options }: {
 function ActionButton({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: React.ReactNode; }) {
   return (
     <button onClick={onClick} disabled={disabled}
-      className="px-4 py-1.5 text-xs font-medium rounded-lg transition-all disabled:opacity-40"
-      style={{ backgroundColor: "var(--accent-dim, rgba(201,162,77,0.12))", color: "var(--accent, #c9a24d)",
-        border: "1px solid var(--accent-dim, rgba(201,162,77,0.2))" }}
-      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--accent-dim, rgba(201,162,77,0.25))"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "var(--accent-dim, rgba(201,162,77,0.12))"; }}>
+      className="px-4 py-1.5 text-xs font-semibold rounded-lg transition-all disabled:opacity-40"
+      style={{ backgroundColor: "var(--accent, #c9a24d)", color: "var(--accent-foreground, #0a0a0b)",
+        border: "1px solid transparent" }}
+      onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.85"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}>
       {children}
     </button>
   );

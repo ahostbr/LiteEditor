@@ -54,7 +54,7 @@ export function IssueDetail() {
     await createBranchFromIssue(issueDetail.number, issueDetail.title);
   };
 
-  const stateColor = issueDetail.state === "open" ? "#22c55e" : "#a855f7";
+  const stateColor = issueDetail.state === "open" ? "var(--color-ok, #4ade80)" : "#a855f7";
 
   return (
     <div className="flex flex-col h-full">
@@ -106,7 +106,7 @@ export function IssueDetail() {
             <button
               onClick={handleClose}
               className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium"
-              style={{ color: "#ef4444" }}
+              style={{ color: "var(--color-danger, #ef4444)" }}
             >
               <X size={10} /> Close
             </button>
@@ -114,7 +114,7 @@ export function IssueDetail() {
             <button
               onClick={handleReopen}
               className="px-2 py-1 rounded text-[10px] font-medium"
-              style={{ color: "#22c55e" }}
+              style={{ color: "var(--color-ok, #4ade80)" }}
             >
               Reopen
             </button>
@@ -183,7 +183,7 @@ export function IssueDetail() {
           onClick={handleComment}
           disabled={!commentBody.trim() || submitting}
           className="p-1.5 rounded transition-colors disabled:opacity-40"
-          style={{ backgroundColor: "var(--accent)", color: "#000" }}
+          style={{ backgroundColor: "var(--accent)", color: "var(--accent-foreground, #0a0a0b)" }}
         >
           <Send size={12} />
         </button>

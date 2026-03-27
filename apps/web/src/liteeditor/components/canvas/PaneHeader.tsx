@@ -360,7 +360,7 @@ export function PaneHeader({ pane, isFocused, onDragStart, maximized }: PaneHead
           {pane.hasNotification && (
             <span
               className="text-[10px] px-1 rounded-full shrink-0"
-              style={{ backgroundColor: "var(--accent)", color: "#000" }}
+              style={{ backgroundColor: "var(--accent)", color: "var(--accent-foreground, #0a0a0b)" }}
             >
               {pane.notificationCount || "!"}
             </span>
