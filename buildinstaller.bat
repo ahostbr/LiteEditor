@@ -24,7 +24,7 @@ echo.
 
 :: Clean old staging dirs to avoid confusion
 echo Cleaning old staging directories...
-for /d %%D in ("%TEMP%\t3code-desktop-win-stage-*") do (
+for /d %%D in ("%TEMP%\liteeditor-desktop-win-stage-*") do (
   rmdir /s /q "%%D" 2>nul
 )
 
@@ -48,7 +48,7 @@ echo [3/3] Copying to release directory...
 
 :: Find the staging dir (should be only one now)
 set "STAGE_DIR="
-for /d %%D in ("%TEMP%\t3code-desktop-win-stage-*") do set "STAGE_DIR=%%D"
+for /d %%D in ("%TEMP%\liteeditor-desktop-win-stage-*") do set "STAGE_DIR=%%D"
 
 if not defined STAGE_DIR (
   echo ERROR: Could not find staging directory in %%TEMP%%.

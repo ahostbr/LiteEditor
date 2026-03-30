@@ -21,7 +21,7 @@ const requireFromDesktop = createRequire(path.join(repoRoot, "apps", "desktop", 
 const { _electron: electron } = requireFromWeb("playwright");
 const electronBinary = requireFromDesktop("electron");
 
-const runRoot = fs.mkdtempSync(path.join(os.tmpdir(), "t3code-liteeditor-e2e-"));
+const runRoot = fs.mkdtempSync(path.join(os.tmpdir(), "liteeditor-e2e-"));
 const screenshotsDir = path.join(runRoot, "screenshots");
 const logsPath = path.join(runRoot, "console.log");
 const summaryPath = path.join(runRoot, "summary.json");
@@ -288,8 +288,8 @@ async function main() {
     env: {
       ...process.env,
       APPDATA: appDataDir,
-      T3CODE_HOME: stateDir,
-      T3CODE_DISABLE_AUTO_UPDATE: "1",
+      LITEEDITOR_HOME: stateDir,
+      LITEEDITOR_DISABLE_AUTO_UPDATE: "1",
       ELECTRON_ENABLE_LOGGING: "1",
     },
   });
