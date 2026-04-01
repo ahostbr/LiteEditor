@@ -1,0 +1,88 @@
+{
+  "editor": {
+    "panes": [
+      {
+        "tabs": [
+          {
+            "path": "C:\\Projects\\LiteEditor\\TODO.md",
+            "type": "file",
+            "cursorLine": 6,
+            "cursorColumn": 52,
+            "scrollTop": 0
+          }
+        ],
+        "activeTabIndex": 0
+      }
+    ],
+    "activePaneIndex": 0,
+    "isSplit": false
+  },
+  "ui": {
+    "sidebarVisible": true,
+    "activeSidebarPanel": "files",
+    "sidebarWidth": 260,
+    "terminalPanelVisible": false,
+    "settingsPanelVisible": true,
+    "appMode": "canvas"
+  },
+  "canvas": {
+    "panes": [
+      {
+        "id": "canvas-pane-9",
+        "type": "unified-editor",
+        "x": 1744,
+        "y": 0,
+        "width": 800,
+        "height": 600,
+        "title": "Editor",
+        "minimized": false
+      },
+      {
+        "id": "canvas-pane-10",
+        "type": "terminal",
+        "x": 2568,
+        "y": 0,
+        "width": 800,
+        "height": 600,
+        "title": "Terminal",
+        "terminalTabCount": 1,
+        "minimized": false
+      },
+      {
+        "id": "canvas-pane-11",
+        "type": "unified-editor",
+        "x": 3392,
+        "y": 0,
+        "width": 800,
+        "height": 600,
+        "title": "Editor",
+        "minimized": false
+      },
+      {
+        "id": "canvas-pane-12",
+        "type": "terminal",
+        "x": 4216,
+        "y": 0,
+        "width": 800,
+        "height": 600,
+        "title": "Terminal",
+        "terminalTabCount": 1,
+        "minimized": false
+      },
+      {
+        "id": "canvas-pane-13",
+        "type": "chat",
+        "x": 10,
+        "y": 10,
+        "width": 937,
+        "height": 932,
+        "title": "Chat",
+        "minimized": false,
+        "threadId": "149089c1-bea3-4686-88e9-7b1396929a3d"
+      }
+    ],
+    "viewportX": 3124.213342712461,
+    "viewportY": -381.7437415797544,
+    "zoom": 0.82556485632
+  }
+}
