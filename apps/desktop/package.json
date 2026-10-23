@@ -4,6 +4,7 @@
   "private": true,
   "main": "dist-electron/main.js",
   "scripts": {
+    "postinstall": "install-electron",
     "dev": "bun run --parallel dev:bundle dev:electron",
     "dev:bundle": "tsdown --watch",
     "dev:electron": "bun run scripts/dev-electron.mjs",
@@ -14,23 +15,23 @@
     "smoke-test": "node scripts/smoke-test.mjs"
   },
   "dependencies": {
-    "better-sqlite3": "^12.6.2",
-    "chokidar": "^4.0.3",
+    "better-sqlite3": "^13.0.3",
+    "chokidar": "^6.0.0",
     "effect": "catalog:",
-    "electron": "40.6.0",
-    "electron-updater": "^6.6.2",
-    "node-pty": "^1.0.0",
-    "simple-git": "^3.27.0"
+    "electron": "45.0.0",
+    "electron-updater": "^6.8.9",
+    "node-pty": "^1.1.0",
+    "simple-git": "^4.0.2"
   },
   "devDependencies": {
     "@liteeditor/contracts": "workspace:*",
     "@liteeditor/shared": "workspace:*",
-    "@types/better-sqlite3": "^7.6.13",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:",
-    "wait-on": "^8.0.2"
+    "wait-on": "^9.5.1"
   },
   "productName": "LiteEditor"
 }
