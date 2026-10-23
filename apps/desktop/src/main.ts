@@ -1270,8 +1270,9 @@ function createWindow(): BrowserWindow {
     ...getIconOption(),
     title: APP_DISPLAY_NAME,
     frame: process.platform === "darwin",
-    titleBarStyle: process.platform === "darwin" ? "hiddenInset" : undefined,
-    trafficLightPosition: process.platform === "darwin" ? { x: 16, y: 18 } : undefined,
+    ...(process.platform === "darwin"
+      ? { titleBarStyle: "hiddenInset" as const, trafficLightPosition: { x: 16, y: 18 } }
+      : {}),
     webPreferences: {
       preload: Path.join(__dirname, "preload.js"),
       contextIsolation: true,

@@ -9,8 +9,10 @@ export default defineConfig({
   outDir: "dist",
   sourcemap: true,
   clean: true,
-  noExternal: (id) => id.startsWith("@liteeditor/"),
-  inlineOnly: false,
+  deps: {
+    alwaysBundle: (id) => id.startsWith("@liteeditor/"),
+    onlyBundle: false,
+  },
   banner: {
     js: "#!/usr/bin/env node\n",
   },
