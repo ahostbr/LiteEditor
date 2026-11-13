@@ -56,7 +56,12 @@
     "vitest": "catalog:"
   },
   "overrides": {
+    "@hono/node-server": "^2.1.6",
     "dompurify": "^3.4.17",
+    "follow-redirects": "^1.16.2",
+    "hono": "^4.13.16",
+    "joi": "^18.3.1",
+    "toml": "^5.0.1",
     "vite": "^8.0.0"
   },
   "engines": {
